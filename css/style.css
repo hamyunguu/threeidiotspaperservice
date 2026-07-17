@@ -22,6 +22,11 @@
   --duration: 1s;
   --easing: ease-in-out;
 
+  /* 회전 투시. none = 오소메트릭(정사영) — 면이 원근으로 커지지 않아
+     헤더 밑으로 파고들지 않고, 납작한 책장 넘김으로 읽힌다.
+     살짝 깊이감을 원하면 500vw처럼 아주 먼 값을 준다. */
+  --flip-perspective: none;
+
   --header-h: 4.5rem;        /* 45px */
 
   --mono: "IBM Plex Mono", monospace;
@@ -121,8 +126,8 @@ body {
   width: 100vw;
   height: calc(100vh - var(--header-h));
   overflow: visible;              /* preserve-3d 요소에 overflow 금지(WebKit) */
-  perspective: 100vw;
-  transform-style: preserve-3d;
+  perspective: var(--flip-perspective);
+  transform-style: preserve-3d;   /* 정사영이어도 두 면의 깊이 정렬에 필요 */
 }
 
 .container-carrousel .bodier {
