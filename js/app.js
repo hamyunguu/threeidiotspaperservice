@@ -69,13 +69,42 @@
       var current = (i === p);
       face.classList.toggle('is-current', current);
       face.setAttribute('aria-hidden', current ? 'false' : 'true');
-      if (!current) {
-        [].slice.call(face.querySelectorAll('.panel')).forEach(function (panel) {
-          panel.scrollTop = 0;
-        });
-      }
+      /* 스크롤 리셋은 여기서 하지 않는다 — 떠나는 면이 아직 화면에
+         보이는 시점이라, 여기서 되돌리면 회전 직전에 콘텐츠가 맨 위로
+         튕겨 올라가는 게 보인다. 착지 후 land()가 처리한다. */
     });
   }
+
+  /* 착지 처리 --------------------------------------------------------------
+     시계(setTimeout)가 아니라 transitionend로 잡는다. 타이머는 트랜지션의
+     실제 종료와 어긋날 수 있고, 몇 프레임이라도 먼저 발화하면 회전이
+     88~89°인 상태에서 0°로 리베이스되어 끊기는 스냅이 보인다.
+     타임아웃은 이벤트가 안 오는 경우(숨긴 탭 등)의 안전망으로만 둔다. */
+
+  var landTimer = null;
+
+  function land() {
+    if (!state.busy) return;       /* 이미 착지 처리됨 */
+    state.busy = false;
+    window.clearTimeout(landTimer);
+    swapClass('flag-carrousel-loading-', 'false');
+    applyInstant(rebase);          /* 착지 → 0° 리베이스 */
+
+    /* 이제 정면이 아닌 면들은 안 보이므로 스크롤을 조용히 되돌린다 */
+    var p = position();
+    faces.forEach(function (face, i) {
+      if (i === p) return;
+      [].slice.call(face.querySelectorAll('.panel')).forEach(function (panel) {
+        panel.scrollTop = 0;
+      });
+    });
+
+    history.replaceState(null, '', '#' + position());
+  }
+
+  carrousel.addEventListener('transitionend', function (e) {
+    if (e.target === carrousel && e.propertyName === 'transform') land();
+  });
 
   function go(target) {
     if (state.busy) return;
@@ -90,12 +119,7 @@
     render();
     carrousel.style.transform = 'rotateY(' + (delta * 90) + 'deg)';
 
-    window.setTimeout(function () {
-      state.busy = false;
-      swapClass('flag-carrousel-loading-', 'false');
-      applyInstant(rebase);        /* 착지 → 0° 리베이스 */
-      history.replaceState(null, '', '#' + position());
-    }, DURATION);
+    landTimer = window.setTimeout(land, DURATION + 200);   /* 안전망 */
   }
 
   function advance(step) {
