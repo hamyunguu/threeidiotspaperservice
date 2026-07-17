@@ -173,12 +173,24 @@ body {
 
   transform-origin: 50% 50%;
   backface-visibility: hidden;
-  overflow: hidden;
   background: var(--paper);
+
+  /* overflow를 여기 걸면 안 된다.
+     WebKit(Safari)은 preserve-3d 컨테이너의 자식에 overflow가 걸리면 그
+     자식을 3D 공간에서 평탄화한다. 3D 체인이 끊겨 면들이 제자리를 잃고
+     사다리꼴로 흩어진다. 클리핑과 스크롤은 변환되지 않는 안쪽 .content가
+     맡는다. (원본이 extendedsafari 플래그로 분기하던 문제) */
+}
+
+/* 클리핑과 스크롤은 변환 대상이 아닌 안쪽 요소가 맡는다 */
+.container-carrousel .bodier .content {
+  height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* 면이 정면일 때만 안쪽 스크롤을 허용한다 */
-.container-carrousel .bodier.is-current { overflow-y: auto; }
+.container-carrousel .bodier.is-current .content { overflow-y: auto; }
 
 /* 각 면의 고정 회전각. 컨테이너 회전 + 이 각 = 0°일 때 정면이 된다.  */
 .bodier-1 { transform: rotateY(0deg);   z-index: 550; }  /* position 0 */

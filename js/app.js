@@ -75,12 +75,17 @@
     setVar('--zoe-c', state.sa);
     setVar('--zoe-d', state.sb);
 
-    /* 정면인 면에만 스크롤과 포커스를 허용한다 */
+    /* 정면인 면에만 스크롤과 포커스를 허용한다.
+       스크롤 컨테이너는 .bodier가 아니라 그 안의 .content다 — .bodier는
+       3D 변환 대상이라 overflow를 걸 수 없다(style.css 참고). */
     faces.forEach(function (face, i) {
       var current = (i === p);
       face.classList.toggle('is-current', current);
       face.setAttribute('aria-hidden', current ? 'false' : 'true');
-      if (!current) face.scrollTop = 0;
+      if (!current) {
+        var scroller = face.querySelector('.content');
+        if (scroller) scroller.scrollTop = 0;
+      }
     });
 
     /* 현재 섹션 링크 표시 */
