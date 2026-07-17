@@ -13,6 +13,18 @@
 
 <link rel="stylesheet" href="css/reset.css">
 <link rel="stylesheet" href="css/style.css">
+
+<!-- Order 3D 프리뷰용 Three.js. importmap으로 bare specifier를 CDN에
+     매핑한다. 실제 로드는 order.js가 Order 첫 진입 때 동적 import로만
+     수행하므로, 다른 페이지에는 부하를 주지 않는다. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
 </head>
 
 <!--
@@ -47,10 +59,10 @@
      착지 완료 후 아래로 슬라이드하며 등장한다. -->
 <div class="subheader subheader-order" aria-hidden="true">
   <nav class="subnav" aria-label="Order 메뉴">
-    <span class="subnav-item is-active">Poster</span>
-    <span class="subnav-item">Book</span>
-    <span class="subnav-item">Leaflet</span>
-    <span class="subnav-item">Print</span>
+    <button type="button" class="subnav-item is-active" data-mode="poster">Poster</button>
+    <button type="button" class="subnav-item" data-mode="book">Book</button>
+    <button type="button" class="subnav-item" data-mode="leaflet">Leaflet</button>
+    <button type="button" class="subnav-item" data-mode="print">Print</button>
   </nav>
   <div class="subline"></div>
 </div>
@@ -162,10 +174,25 @@
     </div>
   </section>
 
-  <!-- 면 3 · Order (서브헤더는 면 밖 .subheader-order로 분리) -->
+  <!-- 면 3 · Order (서브헤더는 면 밖 .subheader-order로 분리)
+       좌: 옵션 구성 폼(모드별로 order.js가 채움) / 우: 실시간 3D 프리뷰 -->
   <section class="bodier bodier-3" aria-label="Order">
-    <div class="panel panel-left panel-under-subnav"></div>
-    <div class="panel panel-right"></div>
+    <div class="panel panel-left panel-under-subnav order-options-panel">
+      <form class="order-options" id="orderOptions" autocomplete="off">
+        <p class="order-loading">옵션을 불러오는 중…</p>
+      </form>
+    </div>
+    <div class="panel panel-right panel-fixed order-preview-panel">
+      <div class="order-stage" id="orderStage">
+        <div class="order-drop-hint" id="orderDropHint">
+          <p>여기에 이미지를 끌어다 놓으면<br>바로 3D로 반영됩니다</p>
+        </div>
+      </div>
+      <div class="order-stage-bar">
+        <span class="order-dim" id="orderDim"></span>
+        <button type="button" class="order-reset" id="orderResetView">시점 초기화</button>
+      </div>
+    </div>
   </section>
 
   <!-- 면 4 · Program (서브헤더는 면 밖 .subheader-program로 분리) -->
@@ -179,5 +206,6 @@
 <button type="button" class="chat">Chat</button>
 
 <script src="js/app.js"></script>
+<script type="module" src="js/order.js"></script>
 </body>
 </html>

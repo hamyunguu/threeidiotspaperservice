@@ -168,10 +168,17 @@ body {
   top: var(--header-h);
   bottom: 0;
   left: 50%;
-  width: 0;
-  border-left: 1px solid var(--line);
+  width: 1px;                     /* border-left(width:0) 대신 실제 폭 —
+                                     Safari가 zero-width 박스의 border를
+                                     페인트하지 않는 경우를 피한다 */
+  background: var(--line);
   z-index: 560;                   /* 면(≤550) 위, 헤더(600) 아래 */
   pointer-events: none;
+  /* translateZ(0)으로 합성 레이어에 올린다. 면들이 will-change:transform
+     으로 합성 레이어인데, Safari는 합성 레이어와 비합성 요소 사이에서
+     z-index를 지키지 않아 면이 구분선을 덮어버렸다. 이 요소도 합성
+     레이어가 되면 z-index 순서가 지켜진다. translateX(-50%)로 중앙 정렬. */
+  transform: translateX(-50%) translateZ(0);
 }
 
 /* --------------------------------------------------------------------------
@@ -360,7 +367,9 @@ body {
   width: 100vw;
   height: 4.5rem;
   z-index: 570;                     /* 구분선(560) 위, 헤더(600) 아래 */
-  transform: translateY(-100%);     /* 헤더 뒤로 접어 숨긴다 */
+  /* translate3d(2D 아님)으로 합성 레이어를 보장한다 — 구분선과 같은
+     이유로, Safari에서 합성된 면 레이어가 서브헤더를 덮지 않게 한다. */
+  transform: translate3d(0, -100%, 0);   /* 헤더 뒤로 접어 숨긴다 */
   opacity: 0;
   pointer-events: none;
   transition: transform 0.55s var(--easing), opacity 0.35s ease;
@@ -369,7 +378,7 @@ body {
 /* 해당 페이지에 착지(로딩 아님)했을 때만 내려온다 */
 .switch-state-position-2:not(.flag-carrousel-loading-true) .subheader-order,
 .switch-state-position-3:not(.flag-carrousel-loading-true) .subheader-program {
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
   opacity: 1;
   pointer-events: auto;
 }
@@ -398,6 +407,149 @@ body {
 
 /* 서브헤더가 있는 면의 좌측 패널은 그 아래에서 시작 */
 .panel-under-subnav { top: 6.1rem; }
+
+/* --------------------------------------------------------------------------
+   ORDER — 옵션 폼(좌) + 3D 프리뷰(우)
+   디자인 시스템 유지: IBM Plex Mono, #f5f9fe/#dbf0ff, 주황·하늘 강조
+   -------------------------------------------------------------------------- */
+
+.order-options-panel { padding-right: 1.2rem; }
+
+.order-options {
+  font-family: var(--mono);
+  font-size: 1.5rem;
+  color: var(--ink);
+  padding-bottom: 4rem;
+}
+.order-loading { color: #9db4cc; padding: 2rem 0; }
+
+.opt-group { padding: 1.4rem 0; border-top: 1px solid rgba(0,0,0,0.12); }
+.opt-group:first-child { border-top: 0; }
+
+.opt-legend {
+  font-size: 1.3rem;
+  color: var(--accent-sub);
+  margin-bottom: 1rem;
+  letter-spacing: 0.02em;
+}
+
+/* 업로드 */
+.opt-uploads { display: flex; flex-direction: column; gap: 0.8rem; }
+.opt-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1rem 1.2rem;
+  border: 1px dashed rgba(0,34,249,0.35);
+  background: var(--bar);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.opt-upload:hover { border-color: var(--ink); }
+.opt-upload.is-set { border-style: solid; border-color: var(--accent-sub); }
+.opt-upload-label { font-size: 1.5rem; }
+.opt-upload-state { font-size: 1.25rem; color: #6a86a6; }
+.opt-upload.is-set .opt-upload-state { color: var(--accent-sub); }
+
+/* 옵션 행 */
+.opt-row {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.55rem 0;
+}
+.opt-label { font-size: 1.45rem; color: #4a5a6d; }
+
+.opt-select, .opt-input {
+  font-family: var(--mono);
+  font-size: 1.45rem;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid rgba(0,0,0,0.25);
+  padding: 0.5rem 0.7rem;
+  width: 100%;
+  border-radius: 0;
+}
+.opt-select:focus, .opt-input:focus { outline: none; border-color: var(--accent); }
+
+.opt-num { display: inline-flex; align-items: center; gap: 0.6rem; }
+.opt-num .opt-input { width: 8rem; }
+.opt-unit { font-size: 1.35rem; color: #6a86a6; }
+
+/* 세그먼트(라디오) */
+.opt-seg { display: inline-flex; border: 1px solid rgba(0,0,0,0.25); }
+.opt-seg-item {
+  font-family: var(--mono);
+  font-size: 1.4rem;
+  color: #4a5a6d;
+  background: transparent;
+  padding: 0.5rem 1.1rem;
+  border-left: 1px solid rgba(0,0,0,0.18);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.opt-seg-item:first-child { border-left: 0; }
+.opt-seg-item.is-on { background: var(--accent); color: #fff; }
+
+/* --- 3D 스테이지(우) --- */
+.order-preview-panel { padding: 0; overflow: hidden; }
+.order-stage {
+  position: absolute;
+  inset: 0 0 4.5rem 0;
+  overflow: hidden;
+}
+.order-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.order-canvas:active { cursor: grabbing; }
+
+.order-stage.is-drop::after {
+  content: "";
+  position: absolute; inset: 1.5rem;
+  border: 2px dashed var(--accent);
+  background: rgba(246,91,49,0.06);
+  pointer-events: none;
+}
+
+.order-drop-hint {
+  position: absolute;
+  left: 50%; bottom: 2rem;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 1.3rem;
+  line-height: 1.5;
+  color: #9db4cc;
+  text-align: center;
+  pointer-events: none;
+}
+
+.order-error {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  font-family: var(--mono); font-size: 1.5rem; line-height: 1.6;
+  color: var(--accent); text-align: center;
+}
+
+.order-stage-bar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.6rem;
+  border-top: 1px solid rgba(0,0,0,0.12);
+  font-family: var(--mono);
+  font-size: 1.35rem;
+  color: #4a5a6d;
+}
+.order-reset {
+  font-family: var(--mono);
+  font-size: 1.35rem;
+  color: var(--ink);
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+}
+.order-reset:hover { border-color: var(--ink); }
 
 /* --------------------------------------------------------------------------
    CHAT — 고정, 우하단
