@@ -652,7 +652,10 @@ async function createEngine(mount) {
 
   function resize() {
     const w = mount.clientWidth || 1, h = mount.clientHeight || 1;
-    renderer.setSize(w, h, false);
+    // setSize의 updateStyle=true(기본): 캔버스의 CSS width/height를 인라인으로
+    // 지정한다. CSS(.order-canvas)가 없거나 캐시가 낡아도 캔버스가 드로잉버퍼
+    // 크기(예: 1610px)로 표시돼 패널을 넘치는 것을 방지한다.
+    renderer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     fitCamera();          // 비율이 바뀌면 다시 담는다
