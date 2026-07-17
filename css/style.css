@@ -109,15 +109,18 @@ body {
    CARROUSEL — 헤더 아래 전체가 회전 무대
    -------------------------------------------------------------------------- */
 
-/* 회전 구조: 컨테이너는 돌지 않는다 — 원근만 제공한다.
-   회전은 네 면이 동시에 자기 각도를 바꾸는 것이다.
+/* 회전 구조: 정사영 2장 카드 플립.
 
-   원근을 회전하는 요소 자신에게 붙이면(이전 구조), 컨테이너의 회전이
-   원근 없이 합성되어 착지 순간(t=1)에도 면이 평평하지 않다 — 우측
-   가장자리가 중심에서 2배 거리까지 벌어진 왜곡 상태로 착지한 뒤
-   리베이스가 순간적으로 펴서, 매 전환 끝에 스냅이 보였다.
-   정적 컨테이너의 원근 아래에서 면이 돌면 착지한 면은 정확히
-   perspective × rotateY(0) = 평면이라 왜곡이 원천적으로 없다. */
+   정사영(perspective: none)에서는 공유 3D 공간이 필요 없다 — 회전은
+   가로 축소로만 렌더되므로, 나가는 면과 들어오는 면 두 장을 z-index로
+   쌓으면 시각 결과가 같다. 그래서 preserve-3d와 backface-visibility를
+   쓰지 않는다. preserve-3d로 두 면이 축 평면에서 교차하면 합성기가
+   매 프레임 레이어를 조각내야 해서(특히 Studio의 큰 지도 이미지에서)
+   프레임드랍이 났다.
+
+   면은 항상 최대 2장만 보인다: 현재 면(상태 클래스) + 전환 중의
+   나가는 면(.is-flipping). 나머지는 visibility로 합성에서 제외한다.
+   전환: 나가는 면 0°→-90°(접힘), 들어오는 면 +90°→0°(펼쳐짐) 동시. */
 .container-carrousel {
   position: fixed;
   top: var(--header-h);
@@ -125,9 +128,8 @@ body {
   z-index: 400;
   width: 100vw;
   height: calc(100vh - var(--header-h));
-  overflow: visible;              /* preserve-3d 요소에 overflow 금지(WebKit) */
-  perspective: var(--flip-perspective);
-  transform-style: preserve-3d;   /* 정사영이어도 두 면의 깊이 정렬에 필요 */
+  overflow: visible;
+  perspective: var(--flip-perspective);   /* 깊이감을 되살릴 때만 의미 */
 }
 
 .container-carrousel .bodier {
@@ -135,21 +137,24 @@ body {
   inset: 0;
   z-index: 500;
   transform-origin: 50% 50%;
-  backface-visibility: hidden;
   background: var(--paper);
+  visibility: hidden;
   transition: transform var(--duration) var(--easing);
-  will-change: transform;
-  /* 회전각은 JS가 인라인으로 쓴다. 착지 후 정규화(mod 360)는
-     렌더가 동일해 눈에 보이지 않는다.
-     overflow 금지 — WebKit은 preserve-3d 자식에 overflow가 걸리면
-     3D 공간에서 평탄화한다. 스크롤은 안쪽 .panel이 맡는다. */
+  /* 회전각은 JS가 인라인으로 쓴다. 스크롤은 안쪽 .panel이 맡는다. */
 }
 
-/* 첫 페인트용 사전 각도. JS 리베이스가 인라인으로 덮어쓴다. */
-.bodier-1 { transform: rotateY(0deg);   z-index: 550; }
-.bodier-2 { transform: rotateY(-90deg); }
-.bodier-3 { transform: rotateY(180deg); }
-.bodier-4 { transform: rotateY(90deg);  }
+/* 현재 면(상태 클래스 — JS 이전 첫 페인트도 보장)과 나가는 면만 보인다 */
+.switch-state-position-0 .bodier-1,
+.switch-state-position-1 .bodier-2,
+.switch-state-position-2 .bodier-3,
+.switch-state-position-3 .bodier-4,
+.bodier.is-flipping { visibility: visible; }
+
+/* 들어오는 면이 위에 쌓인다 */
+.bodier.is-current { z-index: 550; }
+
+/* 합성 레이어 승격은 실제로 보이는 면에만 */
+.bodier.is-current, .bodier.is-flipping { will-change: transform; }
 
 /* 면 안의 이미지는 전부 명시 치수를 갖는다 — reset의 max-width:100%가
    0×0 앵커(.logo-square)나 패널보다 큰 지도(986>920)를 붕괴시키므로 해제 */
@@ -182,6 +187,8 @@ body {
 
 /* 면이 정면일 때만 스크롤을 허용한다 */
 .bodier.is-current .panel { overflow-y: auto; }
+/* 단, 고정 패널은 정면이어도 스크롤하지 않는다 (identity 우측 등) */
+.bodier.is-current .panel.panel-fixed { overflow-y: hidden; }
 .panel::-webkit-scrollbar { width: 0; }       /* 디자인에 스크롤바 없음 */
 
 /* 콘텐츠를 정중앙에 놓는 패널 */

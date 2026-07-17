@@ -4,15 +4,16 @@
    헤더는 고정이고, 헤더 아래 분할 영역 전체가 하나의 면으로 회전한다.
    구동 방식은 florisschrama.nl을 모티프로 재구현한 것:
 
-   - 네 면이 한 점에 겹친 카드 스택. 컨테이너는 돌지 않고 원근만
-     제공하며, 회전은 네 면이 동시에 자기 각도를 바꾸는 것이다.
-     정적 원근 아래에서 도는 면은 착지 순간 정확히 평면이 된다 —
-     회전하는 요소 자신에게 원근을 붙이면 착지 순간에도 원근 잔여
-     왜곡이 남아 매 전환 끝에 스냅이 보인다.
-   - 정면인 면만 보이는 것은 backface-visibility와 모서리 각도가 처리.
+   - 정사영 2장 카드 플립. 전환에는 나가는 면과 들어오는 면 두 장만
+     참여한다: 나가는 면 0°→-90°(접힘), 들어오는 면 +90°→0°(펼쳐짐).
+     나머지 면은 visibility로 합성에서 제외 — 매 전환 4면을 전부
+     애니메이션하던 이전 구조는 합성 부하로 프레임드랍이 났다.
+   - 정사영이라 공유 3D 공간이 필요 없다. preserve-3d로 두 면이 축
+     평면에서 교차하면 합성기가 매 프레임 레이어를 조각내야 해서
+     비싸다. z-index 쌓기(들어오는 면이 위)로 대체한다.
    - 상태는 누산 정수 abs로 들고, 이동 delta는 항상 1~3(앞으로만) —
-     3→0에서 되감지 않는다(fallforward).
-   - 착지 후 각도 정규화(rebase)는 mod 360이라 렌더가 동일 — 무음이다.
+     3→0에서 되감지 않는다(fallforward). 어느 거리든 시각적으로는
+     한 번의 책장 넘김이다.
    - 움직이는 transform은 전부 JS 인라인. CSS는 transition만 선언한다.
      (var/calc 기반 transform은 Safari 트랜지션 버그를 밟는다.)
    ========================================================================== */
@@ -42,24 +43,7 @@
     body.className = list.join(' ');
   }
 
-  /* 회전 구조: 컨테이너는 원근만 제공하고 돌지 않는다. 회전은 네 면이
-     동시에 자기 각도를 바꾸는 것이다. 위치 p 기준 면 i의 정규화 각도:
-     현재 면 0°, 다음 90°, 반대 180°, 이전 270°. */
-  function faceAngle(i, p) {
-    return (((i - p) % COUNT + COUNT) % COUNT) * 90;
-  }
-
-  /* 착지 후 각도 정규화. 전환 중 각도는 0~270에서 delta×90만큼 내려가
-     음수가 되는데, rotateY(-90°)와 rotateY(270°)는 렌더가 동일하므로
-     이 리셋은 눈에 보이지 않는다. */
-  function rebase() {
-    var p = position();
-    faces.forEach(function (face, i) {
-      face.style.transform = 'rotateY(' + faceAngle(i, p) + 'deg)';
-    });
-  }
-
-  /* 트랜지션 없이 면 transform을 확정해야 할 때 */
+  /* 트랜지션 없이 면 transform을 확정해야 할 때 (전환 시작 각도 배치) */
   function applyInstant(fn) {
     faces.forEach(function (face) { face.style.transition = 'none'; });
     fn();
@@ -88,30 +72,31 @@
      타임아웃은 이벤트가 안 오는 경우(숨긴 탭 등)의 안전망으로만 둔다. */
 
   var landTimer = null;
+  var flipOutgoing = null;         /* 전환 중인 두 면 */
+  var flipIncoming = null;
 
   function land() {
     if (!state.busy) return;       /* 이미 착지 처리됨 */
     state.busy = false;
     window.clearTimeout(landTimer);
     swapClass('flag-carrousel-loading-', 'false');
-    applyInstant(rebase);          /* 착지 → 0° 리베이스 */
 
-    /* 이제 정면이 아닌 면들은 안 보이므로 스크롤을 조용히 되돌린다 */
-    var p = position();
-    faces.forEach(function (face, i) {
-      if (i === p) return;
-      [].slice.call(face.querySelectorAll('.panel')).forEach(function (panel) {
+    /* 나가는 면을 합성에서 제외하고 스크롤을 조용히 되돌린다 */
+    if (flipOutgoing) {
+      flipOutgoing.classList.remove('is-flipping');
+      [].slice.call(flipOutgoing.querySelectorAll('.panel')).forEach(function (panel) {
         panel.scrollTop = 0;
       });
-    });
+    }
+    flipOutgoing = null;
+    flipIncoming = null;
 
     history.replaceState(null, '', '#' + position());
   }
 
-  /* 면들의 transitionend가 컨테이너로 버블된다. 네 면이 동시에 끝나지만
-     land()는 busy 플래그로 한 번만 실행된다. */
+  /* 면의 transitionend가 컨테이너로 버블된다. 들어오는 면 기준 한 번만. */
   carrousel.addEventListener('transitionend', function (e) {
-    if (e.propertyName === 'transform' && faces.indexOf(e.target) !== -1) land();
+    if (e.propertyName === 'transform' && e.target === flipIncoming) land();
   });
 
   function go(target) {
@@ -124,14 +109,23 @@
     state.busy = true;
     swapClass('flag-carrousel-loading-', 'true');
 
+    flipOutgoing = faces[p0];
+    flipIncoming = faces[target];
+
+    /* 순서 주의: is-flipping을 먼저 붙여야 상태 클래스가 넘어간 뒤에도
+       나가는 면이 계속 보인다 */
+    flipOutgoing.classList.add('is-flipping');
+
     state.abs += delta;            /* 항상 앞으로 */
     render();
 
-    /* 모든 면이 이전 위치 기준 정규화 각도에서 delta×90°만큼 감소 —
-       도착 면(p0+delta)은 delta×90 − delta×90 = 정확히 0°에 착지한다 */
-    faces.forEach(function (face, i) {
-      face.style.transform = 'rotateY(' + (faceAngle(i, p0) - delta * 90) + 'deg)';
+    /* 시작 각도를 트랜지션 없이 배치한 뒤 목표 각도로 보낸다 */
+    applyInstant(function () {
+      flipOutgoing.style.transform = 'rotateY(0deg)';
+      flipIncoming.style.transform = 'rotateY(90deg)';
     });
+    flipOutgoing.style.transform = 'rotateY(-90deg)';
+    flipIncoming.style.transform = 'rotateY(0deg)';
 
     landTimer = window.setTimeout(land, DURATION + 200);   /* 안전망 */
   }
@@ -174,5 +168,6 @@
   var hash = Number(window.location.hash.replace('#', ''));
   if (hash >= 1 && hash < COUNT) state.abs = hash;
   render();
-  applyInstant(rebase);
+  /* 초기 transform 배치는 필요 없다 — 현재 면은 상태 클래스가 보이게
+     하고, 각도는 전환이 시작될 때 applyInstant가 배치한다 */
 })();
