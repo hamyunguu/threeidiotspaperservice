@@ -104,6 +104,15 @@ body {
    CARROUSEL — 헤더 아래 전체가 회전 무대
    -------------------------------------------------------------------------- */
 
+/* 회전 구조: 컨테이너는 돌지 않는다 — 원근만 제공한다.
+   회전은 네 면이 동시에 자기 각도를 바꾸는 것이다.
+
+   원근을 회전하는 요소 자신에게 붙이면(이전 구조), 컨테이너의 회전이
+   원근 없이 합성되어 착지 순간(t=1)에도 면이 평평하지 않다 — 우측
+   가장자리가 중심에서 2배 거리까지 벌어진 왜곡 상태로 착지한 뒤
+   리베이스가 순간적으로 펴서, 매 전환 끝에 스냅이 보였다.
+   정적 컨테이너의 원근 아래에서 면이 돌면 착지한 면은 정확히
+   perspective × rotateY(0) = 평면이라 왜곡이 원천적으로 없다. */
 .container-carrousel {
   position: fixed;
   top: var(--header-h);
@@ -114,10 +123,6 @@ body {
   overflow: visible;              /* preserve-3d 요소에 overflow 금지(WebKit) */
   perspective: 100vw;
   transform-style: preserve-3d;
-  transform-origin: 50% 50%;
-  transition: transform var(--duration) var(--easing);
-  will-change: transform;
-  /* 회전각은 JS가 인라인으로 쓴다: 0° → delta×90°, 착지 후 0° 리베이스 */
 }
 
 .container-carrousel .bodier {
@@ -127,7 +132,11 @@ body {
   transform-origin: 50% 50%;
   backface-visibility: hidden;
   background: var(--paper);
-  /* overflow 금지 — WebKit은 preserve-3d 자식에 overflow가 걸리면
+  transition: transform var(--duration) var(--easing);
+  will-change: transform;
+  /* 회전각은 JS가 인라인으로 쓴다. 착지 후 정규화(mod 360)는
+     렌더가 동일해 눈에 보이지 않는다.
+     overflow 금지 — WebKit은 preserve-3d 자식에 overflow가 걸리면
      3D 공간에서 평탄화한다. 스크롤은 안쪽 .panel이 맡는다. */
 }
 

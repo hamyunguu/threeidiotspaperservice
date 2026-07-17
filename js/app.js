@@ -4,13 +4,15 @@
    헤더는 고정이고, 헤더 아래 분할 영역 전체가 하나의 면으로 회전한다.
    구동 방식은 florisschrama.nl을 모티프로 재구현한 것:
 
-   - 네 면이 한 점에 겹친 카드 스택. 각 면이 사전 회전각(0/-90/180/90)을
-     갖고, 컨테이너가 돌면 정면인 면만 보인다(backface-visibility).
+   - 네 면이 한 점에 겹친 카드 스택. 컨테이너는 돌지 않고 원근만
+     제공하며, 회전은 네 면이 동시에 자기 각도를 바꾸는 것이다.
+     정적 원근 아래에서 도는 면은 착지 순간 정확히 평면이 된다 —
+     회전하는 요소 자신에게 원근을 붙이면 착지 순간에도 원근 잔여
+     왜곡이 남아 매 전환 끝에 스냅이 보인다.
+   - 정면인 면만 보이는 것은 backface-visibility와 모서리 각도가 처리.
    - 상태는 누산 정수 abs로 들고, 이동 delta는 항상 1~3(앞으로만) —
      3→0에서 되감지 않는다(fallforward).
-   - 매 전환은 0°에서 delta×90°까지만 돌고, 착지 즉시 컨테이너를 0°로
-     리셋하며 면들의 사전 각도를 새 위치 기준으로 재배치한다(리베이스).
-     리베이스 없이 각도를 누산하면 ±90° 면에 원근 잔여 왜곡이 남는다.
+   - 착지 후 각도 정규화(rebase)는 mod 360이라 렌더가 동일 — 무음이다.
    - 움직이는 transform은 전부 JS 인라인. CSS는 transition만 선언한다.
      (var/calc 기반 transform은 Safari 트랜지션 버그를 밟는다.)
    ========================================================================== */
@@ -40,25 +42,29 @@
     body.className = list.join(' ');
   }
 
-  /* 위치 p 기준 면 i의 사전 각도: 현재 0°, 다음 -90°, 반대 180°, 이전 +90° */
+  /* 회전 구조: 컨테이너는 원근만 제공하고 돌지 않는다. 회전은 네 면이
+     동시에 자기 각도를 바꾸는 것이다. 위치 p 기준 면 i의 정규화 각도:
+     현재 면 0°, 다음 90°, 반대 180°, 이전 270°. */
   function faceAngle(i, p) {
-    return -(((i - p) % COUNT + COUNT) % COUNT) * 90;
+    return (((i - p) % COUNT + COUNT) % COUNT) * 90;
   }
 
+  /* 착지 후 각도 정규화. 전환 중 각도는 0~270에서 delta×90만큼 내려가
+     음수가 되는데, rotateY(-90°)와 rotateY(270°)는 렌더가 동일하므로
+     이 리셋은 눈에 보이지 않는다. */
   function rebase() {
     var p = position();
-    carrousel.style.transform = 'rotateY(0deg)';
     faces.forEach(function (face, i) {
       face.style.transform = 'rotateY(' + faceAngle(i, p) + 'deg)';
     });
   }
 
-  /* 트랜지션 없이 transform을 확정해야 할 때 */
+  /* 트랜지션 없이 면 transform을 확정해야 할 때 */
   function applyInstant(fn) {
-    carrousel.style.transition = 'none';
+    faces.forEach(function (face) { face.style.transition = 'none'; });
     fn();
     void carrousel.offsetWidth;
-    carrousel.style.transition = '';
+    faces.forEach(function (face) { face.style.transition = ''; });
   }
 
   function render() {
@@ -102,14 +108,17 @@
     history.replaceState(null, '', '#' + position());
   }
 
+  /* 면들의 transitionend가 컨테이너로 버블된다. 네 면이 동시에 끝나지만
+     land()는 busy 플래그로 한 번만 실행된다. */
   carrousel.addEventListener('transitionend', function (e) {
-    if (e.target === carrousel && e.propertyName === 'transform') land();
+    if (e.propertyName === 'transform' && faces.indexOf(e.target) !== -1) land();
   });
 
   function go(target) {
     if (state.busy) return;
 
-    var delta = ((target - position()) % COUNT + COUNT) % COUNT;
+    var p0 = position();
+    var delta = ((target - p0) % COUNT + COUNT) % COUNT;
     if (delta === 0) return;
 
     state.busy = true;
@@ -117,7 +126,12 @@
 
     state.abs += delta;            /* 항상 앞으로 */
     render();
-    carrousel.style.transform = 'rotateY(' + (delta * 90) + 'deg)';
+
+    /* 모든 면이 이전 위치 기준 정규화 각도에서 delta×90°만큼 감소 —
+       도착 면(p0+delta)은 delta×90 − delta×90 = 정확히 0°에 착지한다 */
+    faces.forEach(function (face, i) {
+      face.style.transform = 'rotateY(' + (faceAngle(i, p0) - delta * 90) + 'deg)';
+    });
 
     landTimer = window.setTimeout(land, DURATION + 200);   /* 안전망 */
   }
