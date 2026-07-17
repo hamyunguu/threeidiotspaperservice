@@ -1,0 +1,312 @@
+/* ==========================================================================
+   회전 시스템 클론
+   --------------------------------------------------------------------------
+   두 개의 좌표계가 하나의 상태값(position)으로 맞물려 돈다.
+
+   1) CARROUSEL — 콘텐츠 면(.bodier)의 Y축 회전
+      네 면이 전부 중앙에 겹쳐 있다. transform-origin에 Z 오프셋이 없어서
+      진짜 큐브가 아니라 '한 점에서 회전하는 카드 스택'이다. 각 면이 미리
+      회전각을 갖고 있고 컨테이너가 돌면, 정면(0°)인 면만 보이고 나머지는
+      모서리로 서거나(90°) 뒷면(180°)이라 backface-visibility가 숨긴다.
+
+   2) ZOETROPE — 헤더 메뉴의 X축 슬라이드
+      항목 4개 × 33.3333vw = 메뉴 폭 133.333vw. 같은 메뉴를 두 벌 두고
+      정확히 133.333vw 간격으로 배치해 leapfrog시킨다. 한 벌이 왼쪽으로
+      빠져나가면 다른 한 벌이 오른쪽에서 들어와 무한 회전 착시를 만든다.
+
+   원본은 상태를 body 클래스(switch-*-position-N)로만 표현하고 모션은 전부
+   CSS가 처리한다. 그 설계를 유지하되, 3→0 되감기 없이 항상 앞으로 도는
+   fallforward를 위해 각도 누산값만 커스텀 프로퍼티로 받는다.
+   (원본은 discrete 클래스 + JS 보정으로 같은 결과를 낸다.)
+   ========================================================================== */
+
+:root {
+  --ink: rgb(248, 33, 72);
+  --paper: rgb(255, 255, 255);
+
+  /* 측정값: font-size 28.8px / line-height 33.12px = 1.15 */
+  --font-size: 28.8px;
+  --line-height: 1.15;
+
+  --duration: 1s;
+  --easing: ease-in-out;
+
+  /* JS가 갱신하는 누산값 */
+  --turns: 0;    /* 캐러셀이 돈 총 회전수 (정수, 음수 가능) */
+  --zoe-a: 0;    /* 첫 번째 메뉴 오프셋 (vw 단위 스칼라) */
+  --zoe-b: 0;    /* 두 번째 메뉴 오프셋 */
+}
+
+html { height: 100%; }
+
+body {
+  min-height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;              /* 면 안쪽에서 스크롤한다 */
+}
+
+.container.hfeed { position: relative; }
+
+/* --------------------------------------------------------------------------
+   HEADER / NAV
+   -------------------------------------------------------------------------- */
+
+.header {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  z-index: 600;
+  pointer-events: none;          /* 링크만 다시 켠다 */
+}
+.header a { pointer-events: auto; }
+
+.branding { display: none; }     /* 원본에서도 감춰져 있다 */
+
+.menu-container { position: relative; }
+
+.menu-container .menu {
+  display: block;
+  position: fixed;
+  z-index: 600;
+  transition: transform var(--duration) var(--easing);
+  will-change: transform;
+}
+
+/* --- primary: 33.3333vw 스텝으로 흐르는 메뉴 두 벌 --- */
+
+.menu-container-primary .menu {
+  top: 0;
+  width: calc(1px + 133.333vw);
+  padding-top: calc(0.2875em);
+}
+
+.menu-container-primary .menu .menu-item {
+  display: block;
+  float: left;
+  clear: none;
+  width: calc(33.3333vw - 0.714286em);
+  padding: 0 calc(0.357143em);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.menu-container-primary .menu:first-of-type {
+  transform: translate3d(calc(var(--zoe-a) * 1vw), 0, 0);
+}
+.menu-container-primary .menu:last-of-type {
+  transform: translate3d(calc(var(--zoe-b) * 1vw), 0, 0);
+}
+
+/* --- secondary: 현재 섹션 제목. 한 줄 아래(1.38em)에서 100vw 스텝으로 흐른다 --- */
+
+.menu-container-secondary .menu {
+  top: calc(1.38em);
+  width: calc(400vw);
+}
+
+.menu-container-secondary .menu:first-of-type {
+  transform: translate3d(calc(var(--zoe-c) * 1vw), 0, 0);
+}
+.menu-container-secondary .menu:last-of-type {
+  transform: translate3d(calc(var(--zoe-d) * 1vw), 0, 0);
+}
+
+.menu-container-secondary .menu .menu-item {
+  display: block;
+  float: left;
+  width: calc(100vw - 0.5em);
+  padding: 0 0.25em;
+  overflow: hidden;
+}
+
+/* 진행 중에는 클릭을 막아 상태가 꼬이지 않게 한다 */
+.flag-carrousel-loading-true .menu-container a { pointer-events: none; }
+
+/* --------------------------------------------------------------------------
+   CARROUSEL — 회전의 본체
+   -------------------------------------------------------------------------- */
+
+.container-carrousel {
+  position: fixed;
+  top: 0; left: 0;
+  z-index: 400;
+  width: 100vw;
+  height: 100vh;
+  overflow: visible;
+
+  perspective: 100vw;            /* = 뷰포트 폭. 면이 정확히 화면을 채운다 */
+  transform-style: preserve-3d;
+  transform-origin: 50% 50%;     /* Z 오프셋 없음 → 중앙 한 점에서 회전 */
+
+  transition: transform var(--duration) var(--easing);
+  will-change: transform;
+
+  transform: rotateY(calc(var(--turns) * 360deg + var(--angle, 0deg)));
+}
+
+/* 상태 클래스가 각도를 정한다 — 원본의 설계 그대로 */
+.switch-state-position-0 { --angle: 0deg; }
+.switch-state-position-1 { --angle: 90deg; }
+.switch-state-position-2 { --angle: 180deg; }
+.switch-state-position-3 { --angle: 270deg; }
+
+/* 캐러셀 밖의 정적 기준면 */
+.bodier-0 {
+  position: absolute;
+  top: 0; left: 0;
+  z-index: 100;
+}
+
+.container-carrousel .bodier {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 500;
+
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+/* 면이 정면일 때만 안쪽 스크롤을 허용한다 */
+.container-carrousel .bodier.is-current { overflow-y: auto; }
+
+/* 각 면의 고정 회전각. 컨테이너 회전 + 이 각 = 0°일 때 정면이 된다.  */
+.bodier-1 { transform: rotateY(0deg);   z-index: 550; }  /* position 0 */
+.bodier-2 { transform: rotateY(-90deg); }                /* position 1 */
+.bodier-3 { transform: rotateY(180deg); }                /* position 2 */
+.bodier-4 { transform: rotateY(90deg);  }                /* position 3 */
+
+/* JS 없이도 첫 면은 읽힌다 */
+.flag-javascript-false .container-carrousel { perspective: none; transform: none; }
+.flag-javascript-false .container-carrousel .bodier { transform: none; position: relative; height: auto; }
+
+/* --------------------------------------------------------------------------
+   CONTENT
+   -------------------------------------------------------------------------- */
+
+.content {
+  padding: calc(0.2875em) calc(0.357143em);
+  padding-top: calc(2.9em);      /* 헤더 두 줄(메뉴 + 제목) 아래에서 시작 */
+  min-height: 100vh;
+}
+
+.title {
+  /* 제목은 secondary 메뉴가 대신 표시한다 */
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* 좌우 이등분. 우측(메타 + 이미지)은 인트로와 같은 높이에서 시작한다. */
+.spread {
+  display: flex;
+  gap: calc(1.428572em);
+  align-items: flex-start;
+}
+.spread-main  { flex: 0 0 48%; min-width: 0; }
+.spread-aside { flex: 1 1 0;   min-width: 0; }
+
+.intro {
+  font-size: 1.55em;
+  line-height: 1.1;
+  margin-bottom: 0.9em;
+}
+
+.cols {
+  display: flex;
+  gap: calc(0.714286em);
+  align-items: flex-start;
+}
+.col { flex: 1 1 0; min-width: 0; }
+.col p + p { margin-top: 0.85em; }
+
+.meta a { text-decoration: underline; }
+.meta + .meta { margin-top: 0.85em; }
+
+/* 이미지 자리 — 외부 에셋 없이 비율만 잡아둔다 */
+.figure {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-top: 0.6em;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(248, 33, 72, 0.06) 0,
+      rgba(248, 33, 72, 0.06) 8px,
+      rgba(248, 33, 72, 0.13) 8px,
+      rgba(248, 33, 72, 0.13) 16px
+    );
+  border: 1px solid rgba(248, 33, 72, 0.35);
+}
+.figure-tall { aspect-ratio: 4 / 5; }
+.figure-wide { aspect-ratio: 5 / 4; }
+
+/* 프로젝트 그리드 */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: calc(0.714286em);
+}
+.tile { display: block; }
+.tile .figure { margin-top: 0; }
+.tile .caption {
+  display: block;
+  margin-top: 0.3em;
+  font-size: 0.62em;
+  line-height: 1.2;
+}
+.tile:hover .figure { border-color: var(--ink); }
+
+/* --------------------------------------------------------------------------
+   LOADING / FOOTER
+   -------------------------------------------------------------------------- */
+
+.loading {
+  position: fixed;
+  top: 0; left: 0;
+  z-index: 700;
+  padding: calc(0.2875em) calc(0.357143em);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s linear;
+}
+.flag-carrousel-loading-true .loading { opacity: 1; }
+
+.footer { display: none; }
+
+/* --------------------------------------------------------------------------
+   RESPONSIVE
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  :root { --font-size: 22px; }
+  .intro { font-size: 1.3em; }
+  .spread { flex-direction: column; }
+  .spread-main, .spread-aside { flex: 1 1 auto; width: 100%; }
+  .cols { flex-direction: column; }
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 560px) {
+  :root { --font-size: 17px; }
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* 모션 최소화 설정 존중 — 회전 없이 즉시 전환 */
+@media (prefers-reduced-motion: reduce) {
+  :root { --duration: 0.001s; }
+  .container-carrousel { perspective: none; }
+}

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home — Studio, Identity, Print, Autonomous</title>
+<link rel="stylesheet" href="css/reset.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<!--
+  body의 클래스가 곧 상태 머신이다.
+  switch-state-position-N          → 캐러셀(콘텐츠 면)이 보여줄 위치
+  switch-zoetrope-position-primary-N → 조에트로프(헤더 메뉴)가 밀려난 위치
+  두 값은 항상 동기화된다. JS는 이 클래스만 갈아끼우고, 모션은 전부 CSS가 한다.
+-->
+<body class="html-body body-home body-list
+             flag-javascript-false
+             flag-zoetrope-true flag-carrousel-true
+             flag-carrousel-limited-true flag-carrousel-extended-true
+             flag-fallforward-true flag-transitions-true
+             switch-state-position-0
+             switch-zoetrope-position-primary-0
+             switch-zoetrope-position-secondary-0">
+
+<div class="container hfeed">
+
+  <header class="header">
+    <div class="branding">
+      <a href="#0">Studio</a>
+    </div>
+
+    <nav class="access access-0 nav">
+      <!--
+        조에트로프: 같은 메뉴를 두 벌 두고 133.333vw 간격으로 leapfrog시켜
+        무한 회전 착시를 만든다. 한 벌이 왼쪽으로 빠져나가면 다른 한 벌이 오른쪽에서 들어온다.
+      -->
+      <div class="menu-container menu-container-primary">
+        <ul class="menu menu-0">
+          <li class="menu-item" data-position="0"><a href="#0">Studio</a></li>
+          <li class="menu-item" data-position="1"><a href="#1">Identity</a></li>
+          <li class="menu-item" data-position="2"><a href="#2">Print</a></li>
+          <li class="menu-item" data-position="3"><a href="#3">Autonomous</a></li>
+        </ul>
+        <ul class="menu menu-1" aria-hidden="true">
+          <li class="menu-item" data-position="0"><a href="#0" tabindex="-1">Studio</a></li>
+          <li class="menu-item" data-position="1"><a href="#1" tabindex="-1">Identity</a></li>
+          <li class="menu-item" data-position="2"><a href="#2" tabindex="-1">Print</a></li>
+          <li class="menu-item" data-position="3"><a href="#3" tabindex="-1">Autonomous</a></li>
+        </ul>
+      </div>
+
+      <!--
+        세컨더리: 현재 섹션 제목. 1.38em 아래 줄에서 100vw 스텝으로 흐른다.
+        primary와 같은 leapfrog 구조라 두 벌이 필요하다.
+      -->
+      <div class="menu-container menu-container-secondary" aria-hidden="true">
+        <ul class="menu menu-2">
+          <li class="menu-item"><a href="#0" tabindex="-1">Studio</a></li>
+          <li class="menu-item"><a href="#1" tabindex="-1">Identity</a></li>
+          <li class="menu-item"><a href="#2" tabindex="-1">Print</a></li>
+          <li class="menu-item"><a href="#3" tabindex="-1">Autonomous</a></li>
+        </ul>
+        <ul class="menu menu-3">
+          <li class="menu-item"><a href="#0" tabindex="-1">Studio</a></li>
+          <li class="menu-item"><a href="#1" tabindex="-1">Identity</a></li>
+          <li class="menu-item"><a href="#2" tabindex="-1">Print</a></li>
+          <li class="menu-item"><a href="#3" tabindex="-1">Autonomous</a></li>
+        </ul>
+      </div>
+    </nav>
+  </header>
+
+  <div class="loading"><p>Loading…</p></div>
+
+  <!-- bodier-0: 캐러셀 밖에 있는 정적 기준면. JS가 꺼지면 이것만 남는다. -->
+  <div class="bodier bodier-0 bodier-project">
+    <div class="content content-0 content-project"></div>
+  </div>
+
+  <!--
+    캐러셀: 네 면이 전부 중앙에 겹쳐 있고 각자 미리 Y축 회전각을 갖는다.
+    컨테이너가 돌면 backface-visibility:hidden 때문에 정면인 한 면만 보인다.
+  -->
+  <div class="container container-carrousel">
+
+    <!-- 0° — Studio -->
+    <div class="bodier bodier-1 bodier-page">
+      <div class="content content-1 content-page">
+        <h1 class="title">Studio</h1>
+        <!--
+          화면을 좌우로 이등분한다. 좌: 인트로 + 그 아래 두 컬럼.
+          우: 연락처 메타 + 이미지. 우측은 인트로와 같은 높이에서 시작한다.
+        -->
+        <div class="spread">
+          <div class="spread-main">
+            <div class="intro">
+              <p>여기는 소개 문단이 들어갈 자리입니다. 원본과 같은 타입 스케일과
+                 행간으로 흐르도록 잡아두었으니, 실제 문구로 갈아끼우면 됩니다.
+                 문단이 길어질수록 아래 컬럼이 밀려 내려가고 우측 이미지 컬럼은
+                 제자리를 지킵니다.</p>
+            </div>
+            <div class="cols">
+              <div class="col col-a">
+                <p>좌측 컬럼. 연혁이나 이력처럼 길게 이어지는 텍스트가 들어가는 자리입니다.
+                   폭은 뷰포트에 따라 유동적으로 줄어듭니다.</p>
+                <p>두 번째 문단. 문단 사이 간격도 원본의 리듬을 따릅니다.</p>
+              </div>
+              <div class="col col-b">
+                <p>중앙 컬럼. 강연·워크숍·전시처럼 날짜와 항목이 반복되는 목록 자리입니다.</p>
+                <p>30 Okt — 4 Nov<br>항목 제목이 들어갈 자리, 도시</p>
+                <p>13 — 21 Okt<br>또 다른 항목, 도시</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="spread-aside">
+            <p class="meta">이름이 들어갈 자리<br>
+               <a href="#0">이메일 주소</a></p>
+            <p class="meta"><a href="#0">Instagram</a><br>
+               <a href="#0">LinkedIn</a></p>
+            <div class="figure figure-wide" role="img" aria-label="이미지 자리"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- -90° — Identity -->
+    <div class="bodier bodier-2 bodier-projects">
+      <div class="content content-2 content-projects">
+        <h1 class="title">Identity</h1>
+        <div class="grid">
+          <a class="tile" href="#1"><span class="figure" role="img" aria-label="이미지 자리"></span><span class="caption">프로젝트 01</span></a>
+          <a class="tile" href="#1"><span class="figure" role="img" aria-label="이미지 자리"></span><span class="caption">프로젝트 02</span></a>
+          <a class="tile" href="#1"><span class="figure" role="img" aria-label="이미지 자리"></span><span class="caption">프로젝트 03</span></a>
+          <a class="tile" href="#1"><span class="figure" role="img" aria-label="이미지 자리"></span><span class="caption">프로젝트 04</span></a>
+          <a class="tile" href="#1"><span class="figure" role="img" aria-label="이미지 자리"></span><span class="caption">프로젝트 05</span></a>
+          <a class="tile" href="#1"><span class="figure" role="img" aria-label="이미지 자리"></span><span class="caption">프로젝트 06</span></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 180° — Print -->
+    <div class="bodier bodier-3 bodier-projects">
+      <div class="content content-3 content-projects">
+        <h1 class="title">Print</h1>
+        <div class="grid">
+          <a class="tile" href="#2"><span class="figure figure-tall" role="img" aria-label="이미지 자리"></span><span class="caption">프린트 01</span></a>
+          <a class="tile" href="#2"><span class="figure figure-tall" role="img" aria-label="이미지 자리"></span><span class="caption">프린트 02</span></a>
+          <a class="tile" href="#2"><span class="figure figure-tall" role="img" aria-label="이미지 자리"></span><span class="caption">프린트 03</span></a>
+          <a class="tile" href="#2"><span class="figure figure-tall" role="img" aria-label="이미지 자리"></span><span class="caption">프린트 04</span></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 90° — Autonomous -->
+    <div class="bodier bodier-4 bodier-projects">
+      <div class="content content-4 content-projects">
+        <h1 class="title">Autonomous</h1>
+        <div class="grid">
+          <a class="tile" href="#3"><span class="figure" role="img" aria-label="이미지 자리"></span><span class="caption">작업 01</span></a>
+          <a class="tile" href="#3"><span class="figure" role="img" aria-label="이미지 자리"></span><span class="caption">작업 02</span></a>
+          <a class="tile" href="#3"><span class="figure" role="img" aria-label="이미지 자리"></span><span class="caption">작업 03</span></a>
+          <a class="tile" href="#3"><span class="figure" role="img" aria-label="이미지 자리"></span><span class="caption">작업 04</span></a>
+          <a class="tile" href="#3"><span class="figure" role="img" aria-label="이미지 자리"></span><span class="caption">작업 05</span></a>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.container-carrousel -->
+
+  <footer class="footer">
+    <div class="colophon"><p>Colophon</p></div>
+  </footer>
+
+</div><!-- /.container -->
+
+<script src="js/app.js"></script>
+</body>
+</html>
