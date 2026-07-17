@@ -38,11 +38,35 @@
   </div>
 </header>
 
+<!-- 중앙 구분선: 면 밖에 고정. 회전과 무관하게 항상 또렷하다.
+     (면 안에 두면 면이 접힐 때 함께 좁아지고, 두 면이 겹치는 순간
+     두 선이 만나 흐려 보였다.) -->
+<div class="divider" aria-hidden="true"></div>
+
+<!-- 서브헤더: Order/Program 전용. 면 밖에 고정해 회전에 끌려가지 않고,
+     착지 완료 후 아래로 슬라이드하며 등장한다. -->
+<div class="subheader subheader-order" aria-hidden="true">
+  <nav class="subnav" aria-label="Order 메뉴">
+    <span class="subnav-item is-active">Poster</span>
+    <span class="subnav-item">Book</span>
+    <span class="subnav-item">Leaflet</span>
+    <span class="subnav-item">Print</span>
+  </nav>
+  <div class="subline"></div>
+</div>
+<div class="subheader subheader-program" aria-hidden="true">
+  <nav class="subnav" aria-label="Program 메뉴">
+    <span class="subnav-item is-active">Program 1.</span>
+    <span class="subnav-item">Program 2.</span>
+    <span class="subnav-item">Program 3.</span>
+  </nav>
+  <div class="subline"></div>
+</div>
+
 <div class="container-carrousel">
 
   <!-- 면 1 · identity (hero) -->
   <section class="bodier bodier-1" aria-label="identity">
-    <div class="divider" aria-hidden="true"></div>
 
     <div class="panel panel-left">
       <div class="hero-canvas">
@@ -109,7 +133,6 @@
 
   <!-- 면 2 · Studio -->
   <section class="bodier bodier-2" aria-label="Studio">
-    <div class="divider" aria-hidden="true"></div>
 
     <div class="panel panel-left">
       <div class="studio-info">
@@ -139,33 +162,14 @@
     </div>
   </section>
 
-  <!-- 면 3 · Order -->
+  <!-- 면 3 · Order (서브헤더는 면 밖 .subheader-order로 분리) -->
   <section class="bodier bodier-3" aria-label="Order">
-    <div class="divider" aria-hidden="true"></div>
-
-    <nav class="subnav" aria-label="Order 메뉴">
-      <span class="subnav-item is-active">Poster</span>
-      <span class="subnav-item">Book</span>
-      <span class="subnav-item">Leaflet</span>
-      <span class="subnav-item">Print</span>
-    </nav>
-    <div class="subline" aria-hidden="true"></div>
-
     <div class="panel panel-left panel-under-subnav"></div>
     <div class="panel panel-right"></div>
   </section>
 
-  <!-- 면 4 · Program -->
+  <!-- 면 4 · Program (서브헤더는 면 밖 .subheader-program로 분리) -->
   <section class="bodier bodier-4" aria-label="Program">
-    <div class="divider" aria-hidden="true"></div>
-
-    <nav class="subnav" aria-label="Program 메뉴">
-      <span class="subnav-item is-active">Program 1.</span>
-      <span class="subnav-item">Program 2.</span>
-      <span class="subnav-item">Program 3.</span>
-    </nav>
-    <div class="subline" aria-hidden="true"></div>
-
     <div class="panel panel-left panel-under-subnav"></div>
     <div class="panel panel-right"></div>
   </section>

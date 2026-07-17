@@ -160,13 +160,18 @@ body {
    0×0 앵커(.logo-square)나 패널보다 큰 지도(986>920)를 붕괴시키므로 해제 */
 .bodier img { max-width: none; }
 
-/* 중앙 세로 구분선 — 각 면의 일부라서 면과 함께 회전한다 */
+/* 중앙 세로 구분선 — 면 밖에 고정. 회전과 무관하게 항상 또렷하다.
+   면 안에 두면 면이 접힐 때 함께 좁아졌다 펴지고, 전환 중 두 면의
+   두 선이 겹쳐 흐려 보였다. 헤더 아래부터 바닥까지, 면 위에 얹는다. */
 .divider {
-  position: absolute;
-  top: 0; bottom: 0;
+  position: fixed;
+  top: var(--header-h);
+  bottom: 0;
   left: 50%;
   width: 0;
   border-left: 1px solid var(--line);
+  z-index: 560;                   /* 면(≤550) 위, 헤더(600) 아래 */
+  pointer-events: none;
 }
 
 /* --------------------------------------------------------------------------
@@ -342,8 +347,32 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   면 3·4 · Order / Program — 서브내비 + 왼쪽 절반 구분선
-   -------------------------------------------------------------------------- */
+   면 3·4 · Order / Program — 서브헤더 (면 밖 고정, 착지 후 슬라이드 다운)
+   --------------------------------------------------------------------------
+   서브헤더는 면과 함께 회전하지 않는다. 헤더 바로 아래에 고정해 두고,
+   평소엔 헤더 뒤로 접혀 숨어 있다가(translateY로 위로 넣음), 해당
+   페이지에 완전히 착지한 뒤에만 아래로 슬라이드하며 나타난다. */
+
+.subheader {
+  position: fixed;
+  top: var(--header-h);
+  left: 0;
+  width: 100vw;
+  height: 4.5rem;
+  z-index: 570;                     /* 구분선(560) 위, 헤더(600) 아래 */
+  transform: translateY(-100%);     /* 헤더 뒤로 접어 숨긴다 */
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.55s var(--easing), opacity 0.35s ease;
+}
+
+/* 해당 페이지에 착지(로딩 아님)했을 때만 내려온다 */
+.switch-state-position-2:not(.flag-carrousel-loading-true) .subheader-order,
+.switch-state-position-3:not(.flag-carrousel-loading-true) .subheader-program {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
 
 .subnav {
   position: absolute;
@@ -362,12 +391,12 @@ body {
 
 .subline {
   position: absolute;
-  left: 0; top: 4.5rem;              /* 뷰포트 90px */
+  left: 0; top: 4.5rem;              /* 서브헤더 바닥 = 뷰포트 90px */
   width: 96rem;                      /* 960px — 왼쪽 절반만 */
   border-top: 1px solid var(--line);
 }
 
-/* 서브내비가 있는 면의 좌측 패널은 그 아래에서 시작 */
+/* 서브헤더가 있는 면의 좌측 패널은 그 아래에서 시작 */
 .panel-under-subnav { top: 6.1rem; }
 
 /* --------------------------------------------------------------------------
