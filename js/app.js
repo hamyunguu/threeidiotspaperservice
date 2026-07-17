@@ -1,11 +1,17 @@
 /* ==========================================================================
    회전 상태 머신
    --------------------------------------------------------------------------
-   JS가 하는 일은 단 하나 — 상태값을 계산해서 body의 클래스와 커스텀
-   프로퍼티에 써넣는 것. 회전도 슬라이드도 전부 CSS가 한다.
+   JS가 상태값(누산 위치)을 계산해 인라인 transform과 body 클래스에 쓴다.
+   보간(1초 ease-in-out)은 CSS의 transition이 담당한다.
 
-   상태는 position(0~3)이 아니라 abs(누산 정수)로 들고 있다. 그래야
-   3 → 0으로 갈 때 뒤로 되감기지 않고 계속 앞으로 돈다(fallforward).
+   이전 버전은 CSS 커스텀 프로퍼티(var/calc)로 각도를 구동했는데, Safari는
+   커스텀 프로퍼티 변경 → 의존하는 transform의 트랜지션 경로에 버그가 있어
+   면과 메뉴가 제자리를 잃었다. 인라인 transform 값 변경은 모든 브라우저가
+   동일하게 보간하므로 이 방식으로 통일한다. (원본 사이트도 같은 방식이다.)
+
+   상태는 position(0~3)이 아니라 abs(누산 정수)로 들고 있다. 각도가
+   abs × 90°로 계속 자라므로 3 → 0으로 갈 때 뒤로 되감기지 않고 앞으로
+   돈다(fallforward).
    ========================================================================== */
 
 (function () {
@@ -26,13 +32,13 @@
   var S_CYCLE = S_MENU * 2;        // 800vw
 
   var state = {
-    abs: 0,          /* 누산 위치. position = abs mod 4 */
+    abs: 0,          /* 누산 위치. position = abs mod 4, 각도 = abs × 90° */
     busy: false,
-    /* 메뉴 두 벌의 현재 오프셋(vw). 관측값과 동일한 초기 배치 */
-    pa: -P_STEP,     /* primary 첫 벌  → -33.3333vw */
-    pb: -P_STEP + P_MENU, /* primary 둘째 벌 → 100vw */
-    sa: 0,           /* secondary 첫 벌 */
-    sb: S_MENU       /* secondary 둘째 벌 */
+    /* 메뉴 두 벌의 현재 오프셋(vw). 원본 관측값과 동일한 초기 배치 */
+    pa: -P_STEP,             /* primary 첫 벌  → -33.3333vw */
+    pb: -P_STEP + P_MENU,    /* primary 둘째 벌 → 100vw */
+    sa: 0,                   /* secondary 첫 벌 */
+    sb: S_MENU               /* secondary 둘째 벌 */
   };
 
   var carrousel = document.querySelector('.container-carrousel');
@@ -45,35 +51,57 @@
   }
 
   function swapClass(prefix, value) {
-    var next = prefix + value;
     var list = body.className.split(/\s+/).filter(function (c) {
       return c && c.indexOf(prefix) !== 0;
     });
-    list.push(next);
+    list.push(prefix + value);
     body.className = list.join(' ');
   }
 
-  function setVar(name, value) {
-    body.style.setProperty(name, String(value));
+  /* 상태 → 인라인 transform ------------------------------------------------
+
+     컨테이너 각도는 매 전환마다 0°에서 출발해 delta×90°까지만 돈다.
+     착지 후에는 컨테이너를 0°로 리셋하고 면들의 사전 각도를 새 위치
+     기준으로 재배치한다(rebase). 원본 사이트가 착지 상태에서 항상
+     컨테이너 transform이 항등행렬인 이유가 이것이다.
+
+     리베이스 없이 각도를 누산하면(abs×90°) 컨테이너의 affine 회전과
+     그 안의 perspective가 합성될 때 ±90° 위치의 면에 원근 잔여 왜곡이
+     남는다 — 착지했는데 면이 사다리꼴로 뒤틀려 보이는 원인. 0°/180°
+     에서는 상쇄되어 멀쩡하기 때문에 절반의 면에서만 드러난다. */
+
+  function menuTransforms() {
+    if (primary[0])   primary[0].style.transform   = 'translate3d(' + state.pa + 'vw, 0, 0)';
+    if (primary[1])   primary[1].style.transform   = 'translate3d(' + state.pb + 'vw, 0, 0)';
+    if (secondary[0]) secondary[0].style.transform = 'translate3d(' + state.sa + 'vw, 0, 0)';
+    if (secondary[1]) secondary[1].style.transform = 'translate3d(' + state.sb + 'vw, 0, 0)';
   }
 
-  /* 상태 → DOM 반영 -------------------------------------------------------- */
+  /* 위치 p 기준 면 i의 사전 각도: 현재 면 0°, 다음 -90°, 반대 180°, 이전 +90° */
+  function faceAngle(i, p) {
+    return -(((i - p) % COUNT + COUNT) % COUNT) * 90;
+  }
+
+  function rebase() {
+    var p = position();
+    carrousel.style.transform = 'rotateY(0deg)';
+    faces.forEach(function (face, i) {
+      face.style.transform = 'rotateY(' + faceAngle(i, p) + 'deg)';
+    });
+  }
+
+  /* 트랜지션 없이 transform을 확정해야 할 때 (초기 배치, 조에트로프 재활용) */
+  function applyInstant(els, fn) {
+    els.forEach(function (el) { el.style.transition = 'none'; });
+    fn();
+    els.forEach(function (el) { void el.offsetWidth; el.style.transition = ''; });
+  }
 
   function render() {
     var p = position();
 
+    /* 잉크색(Studio 빨강/나머지 파랑)과 상태 표시는 이 클래스가 정한다 */
     swapClass('switch-state-position-', p);
-    swapClass('switch-zoetrope-position-primary-', p);
-    swapClass('switch-zoetrope-position-secondary-', p);
-
-    /* 캐러셀 각도 = turns*360 + 클래스가 정한 각도.
-       abs*90 을 두 항으로 쪼개면 turns = floor(abs/4). */
-    setVar('--turns', Math.floor(state.abs / COUNT));
-
-    setVar('--zoe-a', state.pa);
-    setVar('--zoe-b', state.pb);
-    setVar('--zoe-c', state.sa);
-    setVar('--zoe-d', state.sb);
 
     /* 정면인 면에만 스크롤과 포커스를 허용한다.
        스크롤 컨테이너는 .bodier가 아니라 그 안의 .content다 — .bodier는
@@ -97,27 +125,17 @@
 
   /* 조에트로프 재활용 ------------------------------------------------------
      메뉴가 화면 밖으로 완전히 빠져나간 순간에만 반대편으로 순간이동시킨다.
-     offset = -MENU 이면 오른쪽 끝이 0vw(화면 왼쪽 경계)라 이미 안 보이고,
-     +MENU 이면 왼쪽 끝이 133vw라 역시 안 보인다. 두 '안 보이는 상태' 사이를
-     건너뛰므로 점프가 눈에 띄지 않는다. 이게 조에트로프의 원리 그대로다. */
-
-  function recycle(el, offset, menuW, cycle) {
-    if (offset > -menuW + 0.001) return offset;   /* 아직 화면에 걸쳐 있다 */
-    var next = offset + cycle;
-    el.style.transition = 'none';
-    el.style.transform = 'translate3d(' + next + 'vw, 0, 0)';
-    void el.offsetWidth;                          /* 강제 리플로우 */
-    el.style.transition = '';
-    el.style.transform = '';
-    return next;
-  }
+     offset = -MENU 면 오른쪽 끝이 0vw(화면 왼쪽 경계)라 이미 안 보이고,
+     +MENU 면 왼쪽 끝이 133vw라 역시 안 보인다. 두 '안 보이는 상태' 사이를
+     건너뛰므로 점프가 눈에 띄지 않는다. 조에트로프의 원리 그대로다. */
 
   function recycleAll() {
-    if (primary[0])   state.pa = recycle(primary[0],   state.pa, P_MENU, P_CYCLE);
-    if (primary[1])   state.pb = recycle(primary[1],   state.pb, P_MENU, P_CYCLE);
-    if (secondary[0]) state.sa = recycle(secondary[0], state.sa, S_MENU, S_CYCLE);
-    if (secondary[1]) state.sb = recycle(secondary[1], state.sb, S_MENU, S_CYCLE);
-    render();
+    var moved = false;
+    if (state.pa <= -P_MENU + 0.001) { state.pa += P_CYCLE; moved = true; }
+    if (state.pb <= -P_MENU + 0.001) { state.pb += P_CYCLE; moved = true; }
+    if (state.sa <= -S_MENU + 0.001) { state.sa += S_CYCLE; moved = true; }
+    if (state.sb <= -S_MENU + 0.001) { state.sb += S_CYCLE; moved = true; }
+    if (moved) applyInstant(primary.concat(secondary), menuTransforms);
   }
 
   /* 이동 ------------------------------------------------------------------ */
@@ -139,9 +157,14 @@
 
     render();
 
+    /* 컨테이너는 0°에서 delta×90°로 돈다. delta는 1~3(항상 앞) */
+    carrousel.style.transform = 'rotateY(' + (delta * 90) + 'deg)';
+    menuTransforms();              /* 인라인 값 변경 → CSS transition이 보간 */
+
     window.setTimeout(function () {
       state.busy = false;
       swapClass('flag-carrousel-loading-', 'false');
+      applyInstant([carrousel], rebase);   /* 착지 → 0°로 리베이스 */
       recycleAll();
       history.replaceState(null, '', '#' + position());
     }, DURATION);
@@ -156,13 +179,11 @@
   document.addEventListener('click', function (e) {
     var link = e.target.closest ? e.target.closest('.menu-item a') : null;
     if (!link) return;
-    var item = link.closest('.menu-item');
-    var pos = item && item.getAttribute('data-position');
     e.preventDefault();
-    /* 복제된 메뉴에는 data-position이 없으므로 인덱스로 되짚는다 */
-    if (pos === null || pos === undefined) {
-      var siblings = [].slice.call(item.parentNode.children);
-      pos = siblings.indexOf(item);
+    var item = link.closest('.menu-item');
+    var pos = item.getAttribute('data-position');
+    if (pos === null) {
+      pos = [].slice.call(item.parentNode.children).indexOf(item);
     }
     go(Number(pos));
   });
@@ -188,24 +209,21 @@
     advance(dx < 0 ? 1 : -1);
   }, { passive: true });
 
-  /* 시작 ------------------------------------------------------------------ */
-
-  swapClass('flag-javascript-', 'true');
+  /* 시작 ------------------------------------------------------------------
+     초기 배치는 애니메이션 없이 확정한다. */
 
   var hash = Number(window.location.hash.replace('#', ''));
-  if (hash >= 0 && hash < COUNT && !isNaN(hash) && hash !== 0) {
-    /* 초기 위치는 애니메이션 없이 맞춘다 */
+  if (hash >= 1 && hash < COUNT) {
     state.abs = hash;
     state.pa -= P_STEP * hash;
     state.pb -= P_STEP * hash;
     state.sa -= S_STEP * hash;
     state.sb -= S_STEP * hash;
-    carrousel.style.transition = 'none';
-    render();
-    void carrousel.offsetWidth;
-    carrousel.style.transition = '';
-    recycleAll();
-  } else {
-    render();
   }
+  render();
+  applyInstant([carrousel].concat(primary).concat(secondary), function () {
+    rebase();
+    menuTransforms();
+  });
+  recycleAll();
 })();

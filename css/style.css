@@ -1,5 +1,5 @@
 /* ==========================================================================
-   회전 시스템 클론
+   회전 시스템 클론 — 원본 실측 기반 전면 재작성
    --------------------------------------------------------------------------
    두 개의 좌표계가 하나의 상태값(position)으로 맞물려 돈다.
 
@@ -11,30 +11,44 @@
 
    2) ZOETROPE — 헤더 메뉴의 X축 슬라이드
       항목 4개 × 33.3333vw = 메뉴 폭 133.333vw. 같은 메뉴를 두 벌 두고
-      정확히 133.333vw 간격으로 배치해 leapfrog시킨다. 한 벌이 왼쪽으로
-      빠져나가면 다른 한 벌이 오른쪽에서 들어와 무한 회전 착시를 만든다.
+      정확히 133.333vw 간격으로 배치해 leapfrog시킨다.
 
-   원본은 상태를 body 클래스(switch-*-position-N)로만 표현하고 모션은 전부
-   CSS가 처리한다. 그 설계를 유지하되, 3→0 되감기 없이 항상 앞으로 도는
-   fallforward를 위해 각도 누산값만 커스텀 프로퍼티로 받는다.
-   (원본은 discrete 클래스 + JS 보정으로 같은 결과를 낸다.)
+   움직이는 transform(캐러셀 각도, 메뉴 오프셋)은 전부 JS가 인라인
+   스타일로 쓴다. 이전 버전은 var()/calc() 기반 transform을 CSS 클래스로
+   구동했는데, Safari는 커스텀 프로퍼티 변경이 그에 의존하는 transform
+   트랜지션으로 이어지는 경로에 버그가 있어 면과 메뉴가 제자리를 잃었다.
+   인라인 transform 값 변경은 모든 브라우저가 동일하게 보간한다.
+   여기의 transition 선언이 그 보간을 담당한다.
+
+   실측 원본 (1280×800, 1em = 28.8px):
+   - 잉크색: Studio(위치 0) rgb(248,33,72) / 나머지 rgb(0,34,249)
+   - 콘텐츠 패딩 0 0.5em, 컬럼 48.3vw 플로트, 컬럼 패딩 2.82em 0 4.6em
+   - 아티클: 제목(1em) 위 + 자연폭 이미지 아래, 아래 여백 1.15em
+   - 인트로/이력/연락처 등 작은 활자 0.7em
    ========================================================================== */
 
 :root {
-  --ink: rgb(248, 33, 72);
+  --ink: rgb(248, 33, 72);            /* Studio(위치 0) — 빨강 */
+  --ink-soft: rgba(248, 33, 72, 0.06);
+  --ink-soft2: rgba(248, 33, 72, 0.13);
+  --ink-line: rgba(248, 33, 72, 0.35);
   --paper: rgb(255, 255, 255);
 
-  /* 측정값: font-size 28.8px / line-height 33.12px = 1.15 */
-  --font-size: 28.8px;
+  --font-size: 28.8px;                /* 측정값: 28.8px / 33.12px = 1.15 */
   --line-height: 1.15;
 
   --duration: 1s;
   --easing: ease-in-out;
+}
 
-  /* JS가 갱신하는 누산값 */
-  --turns: 0;    /* 캐러셀이 돈 총 회전수 (정수, 음수 가능) */
-  --zoe-a: 0;    /* 첫 번째 메뉴 오프셋 (vw 단위 스칼라) */
-  --zoe-b: 0;    /* 두 번째 메뉴 오프셋 */
+/* 프로젝트 면(위치 1~3)에서는 페이지 전체가 파랑으로 바뀐다 — 원본 규칙 */
+.switch-state-position-1,
+.switch-state-position-2,
+.switch-state-position-3 {
+  --ink: rgb(0, 34, 249);
+  --ink-soft: rgba(0, 34, 249, 0.06);
+  --ink-soft2: rgba(0, 34, 249, 0.13);
+  --ink-line: rgba(0, 34, 249, 0.35);
 }
 
 html { height: 100%; }
@@ -48,7 +62,7 @@ body {
   line-height: var(--line-height);
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;              /* 면 안쪽에서 스크롤한다 */
+  overflow: hidden;                   /* 면 안쪽(.content)에서 스크롤한다 */
 }
 
 .container.hfeed { position: relative; }
@@ -62,14 +76,15 @@ body {
   top: 0; left: 0;
   width: 100vw;
   z-index: 600;
-  pointer-events: none;          /* 링크만 다시 켠다 */
+  pointer-events: none;               /* 링크만 다시 켠다 */
 }
 .header a { pointer-events: auto; }
 
-.branding { display: none; }     /* 원본에서도 감춰져 있다 */
+.branding { display: none; }          /* 원본에서도 감춰져 있다 */
 
 .menu-container { position: relative; }
 
+/* transform 값은 JS가 인라인으로 쓴다. 여기서는 보간만 선언한다. */
 .menu-container .menu {
   display: block;
   position: fixed;
@@ -77,8 +92,6 @@ body {
   transition: transform var(--duration) var(--easing);
   will-change: transform;
 }
-
-/* --- primary: 33.3333vw 스텝으로 흐르는 메뉴 두 벌 --- */
 
 .menu-container-primary .menu {
   top: 0;
@@ -97,27 +110,11 @@ body {
   text-overflow: ellipsis;
 }
 
-.menu-container-primary .menu:first-of-type {
-  transform: translate3d(calc(var(--zoe-a) * 1vw), 0, 0);
-}
-.menu-container-primary .menu:last-of-type {
-  transform: translate3d(calc(var(--zoe-b) * 1vw), 0, 0);
-}
-
-/* --- secondary: 현재 섹션 제목. 한 줄 아래(1.38em)에서 100vw 스텝으로 흐른다 --- */
-
+/* 세컨더리: 현재 섹션 제목. 한 줄 아래(1.38em), 100vw 스텝 */
 .menu-container-secondary .menu {
   top: calc(1.38em);
   width: calc(400vw);
 }
-
-.menu-container-secondary .menu:first-of-type {
-  transform: translate3d(calc(var(--zoe-c) * 1vw), 0, 0);
-}
-.menu-container-secondary .menu:last-of-type {
-  transform: translate3d(calc(var(--zoe-d) * 1vw), 0, 0);
-}
-
 .menu-container-secondary .menu .menu-item {
   display: block;
   float: left;
@@ -139,29 +136,14 @@ body {
   z-index: 400;
   width: 100vw;
   height: 100vh;
-  overflow: visible;
-
-  perspective: 100vw;            /* = 뷰포트 폭. 면이 정확히 화면을 채운다 */
+  overflow: visible;                  /* preserve-3d 요소에 overflow를 걸면
+                                         WebKit이 자식을 평탄화한다 */
+  perspective: 100vw;                 /* = 뷰포트 폭 */
   transform-style: preserve-3d;
-  transform-origin: 50% 50%;     /* Z 오프셋 없음 → 중앙 한 점에서 회전 */
-
+  transform-origin: 50% 50%;          /* Z 오프셋 없음 → 중앙 한 점에서 회전 */
   transition: transform var(--duration) var(--easing);
   will-change: transform;
-
-  transform: rotateY(calc(var(--turns) * 360deg + var(--angle, 0deg)));
-}
-
-/* 상태 클래스가 각도를 정한다 — 원본의 설계 그대로 */
-.switch-state-position-0 { --angle: 0deg; }
-.switch-state-position-1 { --angle: 90deg; }
-.switch-state-position-2 { --angle: 180deg; }
-.switch-state-position-3 { --angle: 270deg; }
-
-/* 캐러셀 밖의 정적 기준면 */
-.bodier-0 {
-  position: absolute;
-  top: 0; left: 0;
-  z-index: 100;
+  /* 회전각은 JS가 인라인으로 쓴다: rotateY(abs × 90deg) */
 }
 
 .container-carrousel .bodier {
@@ -170,50 +152,37 @@ body {
   width: 100vw;
   height: 100vh;
   z-index: 500;
-
   transform-origin: 50% 50%;
   backface-visibility: hidden;
   background: var(--paper);
-
-  /* overflow를 여기 걸면 안 된다.
-     WebKit(Safari)은 preserve-3d 컨테이너의 자식에 overflow가 걸리면 그
-     자식을 3D 공간에서 평탄화한다. 3D 체인이 끊겨 면들이 제자리를 잃고
-     사다리꼴로 흩어진다. 클리핑과 스크롤은 변환되지 않는 안쪽 .content가
-     맡는다. (원본이 extendedsafari 플래그로 분기하던 문제) */
+  /* overflow 금지 — WebKit은 preserve-3d 컨테이너의 자식에 overflow가
+     걸리면 그 자식을 3D 공간에서 평탄화한다. 클리핑과 스크롤은 변환되지
+     않는 안쪽 .content가 맡는다. */
 }
 
-/* 클리핑과 스크롤은 변환 대상이 아닌 안쪽 요소가 맡는다 */
+/* 각 면의 고정 회전각. 컨테이너 회전 + 이 각 = 0°일 때 정면이 된다.
+   정적이라 Safari에서도 안전하다. */
+.bodier-1 { transform: rotateY(0deg);   z-index: 550; }  /* 위치 0 */
+.bodier-2 { transform: rotateY(-90deg); }                /* 위치 1 */
+.bodier-3 { transform: rotateY(180deg); }                /* 위치 2 */
+.bodier-4 { transform: rotateY(90deg);  }                /* 위치 3 */
+
+/* 클리핑·스크롤 담당. 면이 정면일 때만 스크롤을 허용한다. */
 .container-carrousel .bodier .content {
   height: 100vh;
   box-sizing: border-box;
   overflow: hidden;
 }
-
-/* 면이 정면일 때만 안쪽 스크롤을 허용한다 */
 .container-carrousel .bodier.is-current .content { overflow-y: auto; }
 
-/* 각 면의 고정 회전각. 컨테이너 회전 + 이 각 = 0°일 때 정면이 된다.  */
-.bodier-1 { transform: rotateY(0deg);   z-index: 550; }  /* position 0 */
-.bodier-2 { transform: rotateY(-90deg); }                /* position 1 */
-.bodier-3 { transform: rotateY(180deg); }                /* position 2 */
-.bodier-4 { transform: rotateY(90deg);  }                /* position 3 */
-
-/* JS 없이도 첫 면은 읽힌다 */
-.flag-javascript-false .container-carrousel { perspective: none; transform: none; }
-.flag-javascript-false .container-carrousel .bodier { transform: none; position: relative; height: auto; }
-
 /* --------------------------------------------------------------------------
-   CONTENT
+   CONTENT — 실측 구조
    -------------------------------------------------------------------------- */
 
-.content {
-  padding: calc(0.2875em) calc(0.357143em);
-  padding-top: calc(2.9em);      /* 헤더 두 줄(메뉴 + 제목) 아래에서 시작 */
-  min-height: 100vh;
-}
+.content { padding: 0 0.5em; }
 
+/* 페이지 제목은 세컨더리 메뉴가 표시한다 */
 .title {
-  /* 제목은 secondary 메뉴가 대신 표시한다 */
   position: absolute;
   width: 1px; height: 1px;
   overflow: hidden;
@@ -221,66 +190,78 @@ body {
   white-space: nowrap;
 }
 
-/* 좌우 이등분. 우측(메타 + 이미지)은 인트로와 같은 높이에서 시작한다. */
-.spread {
-  display: flex;
-  gap: calc(1.428572em);
-  align-items: flex-start;
+/* 플로트 2컬럼.
+   단위는 vw가 아니라 % — 실측 618px은 정확히 (100vw - 패딩)의 50%다.
+   vw로 잡으면 세로 스크롤바(15px)가 생겼을 때 가용폭이 줄어 둘째 컬럼이
+   0.3px 차이로 아래로 떨어진다. %는 스크롤바를 뺀 실제 폭을 따라간다. */
+.column {
+  float: left;
+  width: 50%;
+  padding: 2.82em 0 4.6em;            /* 실측 81.14px / 132.48px */
 }
-.spread-main  { flex: 0 0 48%; min-width: 0; }
-.spread-aside { flex: 1 1 0;   min-width: 0; }
+.content::after { content: ""; display: block; clear: both; }
 
-.intro {
-  font-size: 1.55em;
-  line-height: 1.1;
-  margin-bottom: 0.9em;
-}
+/* --- 아티클: 제목 위 + 이미지 아래 (프로젝트 면) --- */
 
-.cols {
-  display: flex;
-  gap: calc(0.714286em);
-  align-items: flex-start;
-}
-.col { flex: 1 1 0; min-width: 0; }
-.col p + p { margin-top: 0.85em; }
+.entry { padding: 0 0 1.15em; }
 
-.meta a { text-decoration: underline; }
-.meta + .meta { margin-top: 0.85em; }
+.entry-header { padding: 0 0.5em; }
+.entry-header h2 { font-size: 1em; font-weight: 400; }
 
-/* 이미지 자리 — 외부 에셋 없이 비율만 잡아둔다 */
-.figure {
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  margin-top: 0.6em;
+.entry-images { padding: 0 0.5em; }
+.entry-image { display: block; padding: 0 0 1.15em; text-align: center; }
+
+/* 이미지 자리 — 원본은 자연폭을 중앙 정렬한다. 폭·종횡비는 인라인. */
+.ph {
+  display: inline-block;
+  max-width: 100%;
   background:
     repeating-linear-gradient(
       45deg,
-      rgba(248, 33, 72, 0.06) 0,
-      rgba(248, 33, 72, 0.06) 8px,
-      rgba(248, 33, 72, 0.13) 8px,
-      rgba(248, 33, 72, 0.13) 16px
+      var(--ink-soft) 0, var(--ink-soft) 8px,
+      var(--ink-soft2) 8px, var(--ink-soft2) 16px
     );
-  border: 1px solid rgba(248, 33, 72, 0.35);
+  border: 1px solid var(--ink-line);
 }
-.figure-tall { aspect-ratio: 4 / 5; }
-.figure-wide { aspect-ratio: 5 / 4; }
+.entry-header a:hover { text-decoration: underline; }
+.entry:hover .ph { border-color: var(--ink); }
 
-/* 프로젝트 그리드 */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: calc(0.714286em);
+/* --- 인트로: 첫 컬럼 머리, 작은 활자 --- */
+
+.entry-introduction {
+  font-size: 0.7em;
+  padding: 0 0.714em 1.64em;          /* 부모 1em 기준 0.5em / 1.15em */
 }
-.tile { display: block; }
-.tile .figure { margin-top: 0; }
-.tile .caption {
-  display: block;
-  margin-top: 0.3em;
-  font-size: 0.62em;
-  line-height: 1.2;
+
+/* --- Studio 면 --- */
+
+.entry-bodier { padding: 0 0.5em 1.15em; }
+
+/* 큰 인트로 (실측 근사 1.55em) */
+.content-page .column-even > .entry-bodier {
+  font-size: 1.55em;
+  line-height: 1.1;
+  padding: 0 0.323em 0.742em;         /* 부모 1em 기준 0.5em / 1.15em */
 }
-.tile:hover .figure { border-color: var(--ink); }
+
+/* 이력·행사 — 컬럼 안에서 반씩 플로트, 작은 활자 */
+.entry-labels { font-size: 0.7em; }
+.entry-labels::after { content: ""; display: block; clear: both; }
+.labels {
+  float: left;
+  width: 50%;
+  padding: 0 0.714em 1.64em;
+  box-sizing: border-box;
+}
+.labels p { padding: 0 0 1.15em; }
+
+/* 연락처 */
+.entry-footer {
+  font-size: 0.7em;
+  padding: 0.41em 0.714em 1.64em;
+}
+.entry-footer p { padding: 0 0 1.15em; }
+.entry-footer a { text-decoration: underline; }
 
 /* --------------------------------------------------------------------------
    LOADING / FOOTER
@@ -299,22 +280,22 @@ body {
 
 .footer { display: none; }
 
+/* 포커스 표시 */
+a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
 /* --------------------------------------------------------------------------
    RESPONSIVE
    -------------------------------------------------------------------------- */
 
 @media (max-width: 900px) {
   :root { --font-size: 22px; }
-  .intro { font-size: 1.3em; }
-  .spread { flex-direction: column; }
-  .spread-main, .spread-aside { flex: 1 1 auto; width: 100%; }
-  .cols { flex-direction: column; }
-  .grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 560px) {
   :root { --font-size: 17px; }
-  .grid { grid-template-columns: 1fr; }
+  .column { width: 100%; padding-bottom: 0; }
+  .column:last-of-type { padding-top: 0; padding-bottom: 4.6em; }
+  .content-page .column-odd { padding-top: 0; }
 }
 
 /* 모션 최소화 설정 존중 — 회전 없이 즉시 전환 */
