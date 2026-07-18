@@ -304,23 +304,18 @@ body {
 .img-poster   { left: 0;       top: 290.4rem; width: 47.8rem; height: 71.7rem; }
 .img-namecard { left: 49.7rem; top: 290.4rem; width: 42.3rem; height: 42.8rem; }
 
-/* --- 우측: iPS 로고 정사각 배치 --- */
+/* --- 우측: iPS 로고 입방체 (Three.js 익스트루드, identity3d.js) ---------
+   로고 벡터를 입체 글리프로 익스트루드해 정사각 6세트로 정육면체를
+   조립한다. 여기는 마운트(캔버스 컨테이너)만 잡는다. */
 
-.logo-square {
+.logo-cube-scene {
   position: absolute;
-  left: 50%; top: 50%;
-  width: 0; height: 0;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;              /* 드래그가 스크롤로 새지 않게 */
 }
-.lu {
-  position: absolute;
-  width: 24.1rem; height: 24.6rem;   /* 241×246 */
-  transform: translate(-50%, -50%);
-}
-/* 실측 중심 오프셋 (px÷10) */
-.lu-bl { left: -13.85rem; top:  13.65rem; }
-.lu-br { left:  13.5rem;  top:  13.65rem; transform: translate(-50%,-50%) rotate(-90deg); }
-.lu-tr { left:  13.75rem; top: -13.65rem; transform: translate(-50%,-50%) rotate(180deg); }
-.lu-tl { left: -13.6rem;  top: -13.65rem; transform: translate(-50%,-50%) rotate(90deg); }
+.logo-cube-scene:active { cursor: grabbing; }
+.logo-cube-scene canvas { display: block; }
 
 /* --------------------------------------------------------------------------
    면 2 · Studio
