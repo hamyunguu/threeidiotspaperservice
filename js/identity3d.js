@@ -95,8 +95,9 @@ async function createCube(el) {
   fill.position.set(-5, -2, -4);
   scene.add(fill);
 
-  const material = new THREE.MeshStandardMaterial({
-    color: 0x111111, roughness: 0.55, metalness: 0.05,
+  /* 흰 글리프 — 검정 상자 위에서 어느 각도든 또렷하다 */
+  const glyphMat = new THREE.MeshStandardMaterial({
+    color: 0xf5f9fe, roughness: 0.5, metalness: 0,
   });
 
   /* --- SVG → 입체 유닛 --- */
@@ -105,8 +106,11 @@ async function createCube(el) {
   const geo = new THREE.ExtrudeGeometry(shapes, {
     depth: D, bevelEnabled: false, curveSegments: 10,
   });
-  /* SVG는 y가 아래로 자란다 → 뒤집고, 유닛 중심을 원점으로 */
-  geo.scale(1, -1, 1);
+  /* 유닛 중심을 원점으로. y 뒤집기(SVG는 y가 아래로 자란다)는 지오메트리에
+     굽지 않고 메시 scale로 처리한다 — 지오메트리에 음수 스케일을 구우면
+     삼각형 감김이 뒤집혀 앞면 캡이 깨져 렌더된다(정면에서 글리프가
+     허옇게 빠지던 원인). 메시 행렬의 음수 스케일은 Three.js가 감김·법선을
+     자동 보정한다. */
   geo.computeBoundingBox();
   const bb = geo.boundingBox;
   geo.translate(
@@ -114,12 +118,10 @@ async function createCube(el) {
     -(bb.min.y + bb.max.y) / 2,
     -(bb.min.z + bb.max.z) / 2
   );
-  /* 241×246(SVG) → 24.1×24.6(배치 스케일) */
-  const s = 24.1 / 241;
-  const unitGeo = geo.clone().scale(s, s, 1);
 
   /* --- 유닛 4개 → 정사각 한 면 (평면 배치의 좌표·회전 그대로.
          CSS는 y가 아래로, 회전이 시계방향이라 부호를 뒤집는다) --- */
+  const s = 24.1 / 241;              /* 241×246(SVG) → 24.1×24.6(배치) */
   const LAYOUT = [
     { x: -13.85, y: -13.65, rot: 0 },            /* bl */
     { x:  13.5,  y: -13.65, rot:  Math.PI / 2 }, /* br (css -90°) */
@@ -128,7 +130,8 @@ async function createCube(el) {
   ];
   const faceAssembly = new THREE.Group();
   LAYOUT.forEach(u => {
-    const mesh = new THREE.Mesh(unitGeo, material);
+    const mesh = new THREE.Mesh(geo, glyphMat);
+    mesh.scale.set(s, -s, 1);        /* y 뒤집기 + 배치 스케일 (메시 레벨) */
     mesh.position.set(u.x, u.y, 0);
     mesh.rotation.z = u.rot;
     faceAssembly.add(mesh);
@@ -141,16 +144,17 @@ async function createCube(el) {
      글리프는 반쯤 표면 위로 돋아나 돋을새김으로 읽힌다. */
   const cube = new THREE.Group();
 
-  const paperMat = new THREE.MeshStandardMaterial({
-    color: 0xf5f9fe, roughness: 0.95, metalness: 0,
+  /* 검정 상자 — 흰 글리프가 어느 각도에서든 또렷하게 뜬다 */
+  const boxMat = new THREE.MeshStandardMaterial({
+    color: 0x131313, roughness: 0.62, metalness: 0,
   });
-  const box = new THREE.Mesh(new THREE.BoxGeometry(F, F, F), paperMat);
+  const box = new THREE.Mesh(new THREE.BoxGeometry(F, F, F), boxMat);
   cube.add(box);
 
-  /* 모서리 헤어라인 — 사이트의 1px 라인 미학과 맞추고 형태를 잡아준다 */
+  /* 모서리 헤어라인 — 검정 면끼리 맞닿는 경계를 옅은 흰 선이 잡아준다 */
   const edges = new THREE.LineSegments(
     new THREE.EdgesGeometry(box.geometry),
-    new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18 })
+    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22 })
   );
   cube.add(edges);
 
