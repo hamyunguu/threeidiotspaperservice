@@ -23,7 +23,7 @@
 
   var body = document.body;
 
-  var COUNT = 4;
+  var COUNT = 3;                   /* Home / Order / Program */
   var DURATION = 1000;             /* CSS --duration과 맞춘다 */
 
   var state = { abs: 0, busy: false };
@@ -147,7 +147,7 @@
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === 'ArrowRight') { e.preventDefault(); advance(1); }
     if (e.key === 'ArrowLeft')  { e.preventDefault(); advance(-1); }
-    if (e.key >= '1' && e.key <= '4') { e.preventDefault(); go(Number(e.key) - 1); }
+    if (e.key >= '1' && e.key <= '3') { e.preventDefault(); go(Number(e.key) - 1); }
   });
 
   var touchX = null;
@@ -168,6 +168,21 @@
   var hash = Number(window.location.hash.replace('#', ''));
   if (hash >= 1 && hash < COUNT) state.abs = hash;
   render();
+
+  /* 로딩 화면 걷어내기 — 회전 로고를 줄여 여기로 옮겼다. 폰트·히어로
+     이미지까지 받은 뒤(load) 페이드아웃한다. 이벤트를 놓쳐도 화면이
+     가려진 채 남지 않도록 타임아웃 안전망을 둔다. */
+  var loader = document.getElementById('loader');
+  function hideLoader() {
+    if (!body.classList.contains('is-loading')) return;
+    body.classList.remove('is-loading');
+    if (loader) {
+      window.setTimeout(function () { loader.style.display = 'none'; }, 600);
+    }
+  }
+  if (document.readyState === 'complete') window.setTimeout(hideLoader, 400);
+  else window.addEventListener('load', function () { window.setTimeout(hideLoader, 400); });
+  window.setTimeout(hideLoader, 5000);          /* 안전망 */
   /* 초기 transform 배치는 필요 없다 — 현재 면은 상태 클래스가 보이게
      하고, 각도는 전환이 시작될 때 applyInstant가 배치한다 */
 })();

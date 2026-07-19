@@ -15,7 +15,7 @@
    원본 폼의 name(goods_size, in_paper_group, in_lastJob4 …)을 그대로 쓴다.
 
    Three.js는 Order에 처음 들어올 때만 동적 import한다(다른 페이지 부하 0).
-   활성/비활성은 body의 switch-state-position-2 클래스를 관찰해 판단하고,
+   활성/비활성은 body의 switch-state-position-1 클래스를 관찰해 판단하고,
    비활성일 때는 렌더 루프를 멈춘다.
    ========================================================================== */
 
@@ -876,7 +876,7 @@ function derive() {
 /* --- 활성화 관찰: Order(위치 2)일 때만 3D를 돌린다 ---------------------- */
 
 function isOrderActive() {
-  return document.body.classList.contains('switch-state-position-2');
+  return document.body.classList.contains('switch-state-position-1');
 }
 
 async function activate() {

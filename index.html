@@ -8,13 +8,13 @@
 <!-- 폰트: 디자인 원본 그대로 무료 임베드 가능한 것 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=Noto+Sans+KR:wght@350;400&family=Marcellus&family=Playfair+Display:ital,wght@1,700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=IBM+Plex+Sans:wght@400&family=Noto+Sans+KR:wght@350;400&family=Marcellus&family=Playfair+Display:ital,wght@1,700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/spoqa/spoqa-han-sans@latest/css/SpoqaHanSansNeo.css">
 
 <!-- ?v= 는 캐시 무효화용. 에셋을 바꾸면 이 숫자를 올려 브라우저가
      낡은 CSS를 재사용하지 않게 한다(Safari 캐시로 스타일이 빠지던 문제). -->
 <link rel="stylesheet" href="css/reset.css?v=2">
-<link rel="stylesheet" href="css/style.css?v=9">
+<link rel="stylesheet" href="css/style.css?v=12">
 
 <!-- Order 3D 프리뷰용 Three.js. importmap으로 bare specifier를 CDN에
      매핑한다. 실제 로드는 order.js가 Order 첫 진입 때 동적 import로만
@@ -30,34 +30,53 @@
 </head>
 
 <!--
-  Figma: Web-Mobile / hero page(1:3), Slide 16:9 - 3(10:511), - 4(10:598), - 5(10:736)
-  1920×1080 기준. 1rem = 10px@1920 (html font-size = 100vw/192).
+  Figma: Web-Mobile / hero page 104:80. 1920×1080 기준.
+  1rem = 10px@1920 (html font-size = 100vw/192).
 
-  헤더(45px 바)는 고정. 그 아래 분할 영역 전체가 회전 무대다 —
+  헤더(53px)는 고정. 그 아래 분할 영역 전체가 회전 무대다 —
   florisschrama.nl의 구동 방식을 모티프로: 한 점 카드 스택, 1초
   ease-in-out, 항상 앞으로(fallforward), 착지 후 리베이스.
+  면은 Home / Order / Program 3면.
 -->
-<body class="switch-state-position-0">
+<body class="switch-state-position-0 is-loading">
+
+<!-- 로딩 화면 — 히어로 우측에 있던 회전 로고를 줄여서 여기로 옮겼다.
+     첫 페인트부터 보이고, load 이후 app.js가 걷어낸다. -->
+<div class="loader" id="loader">
+  <div class="logo-square logo-spin logo-square-sm" aria-label="TiPS 로고">
+    <img class="lu lu-bl" src="assets/logo-unit.png" alt="">
+    <img class="lu lu-br" src="assets/logo-unit.png" alt="">
+    <img class="lu lu-tr" src="assets/logo-unit.png" alt="">
+    <img class="lu lu-tl" src="assets/logo-unit.png" alt="">
+  </div>
+  <p class="loader-label">Three Idiots Paper Service</p>
+</div>
 
 <header class="header">
   <nav class="gnb" aria-label="주 메뉴">
-    <a class="gnb-item" href="#0" data-position="0">identity</a>
-    <a class="gnb-item" href="#1" data-position="1">Studio</a>
-    <a class="gnb-item" href="#2" data-position="2">Order</a>
-    <a class="gnb-item" href="#3" data-position="3">Program</a>
+    <a class="gnb-item" href="#0" data-position="0">Home</a>
+    <a class="gnb-item" href="#1" data-position="1">Order</a>
+    <a class="gnb-item" href="#2" data-position="2">Program</a>
   </nav>
+
+  <form class="search" role="search" onsubmit="return false">
+    <label class="search-label" for="searchInput">Search</label>
+    <input class="search-input" id="searchInput" type="search" autocomplete="off">
+  </form>
+
   <div class="account">
     <button type="button">Login</button>
     <button type="button">Cart</button>
   </div>
 </header>
 
-<!-- 중앙 구분선: 면 밖에 고정. 회전과 무관하게 항상 또렷하다.
+<!-- 구분선: 면 밖에 고정. 회전과 무관하게 항상 또렷하다.
      (면 안에 두면 면이 접힐 때 함께 좁아지고, 두 면이 겹치는 순간
      두 선이 만나 흐려 보였다.) -->
-<div class="divider" aria-hidden="true"></div>
+<div class="rule rule-h" aria-hidden="true"></div>
+<div class="rule rule-v" aria-hidden="true"></div>
 
-<!-- 서브헤더: Order/Program 전용. 면 밖에 고정해 회전에 끌려가지 않고,
+<!-- 서브헤더: Order 전용. 면 밖에 고정해 회전에 끌려가지 않고,
      착지 완료 후 아래로 슬라이드하며 등장한다. -->
 <div class="subheader subheader-order" aria-hidden="true">
   <nav class="subnav" aria-label="Order 메뉴">
@@ -66,120 +85,35 @@
     <button type="button" class="subnav-item" data-mode="leaflet">Leaflet</button>
     <button type="button" class="subnav-item" data-mode="print">Print</button>
   </nav>
-  <div class="subline"></div>
-</div>
-<div class="subheader subheader-program" aria-hidden="true">
-  <nav class="subnav" aria-label="Program 메뉴">
-    <span class="subnav-item is-active">Program 1.</span>
-    <span class="subnav-item">Program 2.</span>
-    <span class="subnav-item">Program 3.</span>
-  </nav>
-  <div class="subline"></div>
 </div>
 
 <div class="container-carrousel">
 
-  <!-- 면 1 · identity (hero) -->
-  <section class="bodier bodier-1" aria-label="identity">
+  <!-- 면 1 · Home (히어로 4슬라이드) -->
+  <section class="bodier bodier-1" aria-label="Home">
 
-    <div class="panel panel-left">
-      <div class="hero-canvas">
-        <div class="hero-intro">
-          <p>인쇄 앞에서는 우리 모두가 조금은 얼간이가 됩니다.</p>
-          <p>어떤 종이를 고를지, 어떤 방법으로 묶을지,</p>
-          <p>무엇을 물어봐야 할지 몰라 매번 묻고, 찾고, 다시 확인합니다.</p>
-          <p class="blank">&#8203;</p>
-          <p>팁스는 그 경험에서 시작합니다.</p>
-          <p>인쇄 앞에서 얼간이가 되는 사람들을 위해.</p>
-        </div>
+    <div class="panel panel-left hero-left">
+      <p class="hero-count"><span id="heroCount">1</span>/<span id="heroTotal">4</span></p>
 
-        <div class="hero-circle" aria-hidden="true"></div>
+      <!-- 슬라이드는 hero.js가 HERO 데이터로 채운다 -->
+      <div class="hero-slides" id="heroSlides"></div>
 
-        <div class="circle-label label-testing">
-          <p class="w1">TESTING</p>
-          <p class="w2">impressions</p>
-        </div>
-        <div class="circle-label label-tying">
-          <p class="w1">TYING</p>
-          <p class="w2">insights</p>
-        </div>
-        <div class="circle-label label-three">
-          <p class="w1">THREE</p>
-          <p class="w2">ideas</p>
-        </div>
-
-        <p class="hero-eyebrow">Tips의  브랜드 가치</p>
-
-        <p class="hero-headline">Experiment for Many Ways to<br>BIND PAPER</p>
-
-        <ul class="hero-bullets">
-          <li>TESTING impressions (인상의 실험)</li>
-          <li>TYING insights (인사이트 엮기)</li>
-          <li>THREE ideas (세 얼간이의 아이디어)</li>
-        </ul>
-
-        <p class="hero-desc">TiPS(Three Idiots Paper Service)는 낯설고 막막하게만
-          느껴지던 인쇄소에서의 경험을 능동적인 실험과 탐구의 장으로
-          탈바꿈시키는 개념적인 인쇄 브랜드입니다. &quot;인쇄 앞에서는 우리
-          모두가 조금은 얼간이(idiots)가 된다&quot;는 보편적인 공감대에서
-          출발한 이 프로젝트는, 사용자가 혼란스러움을 넘어 종이와 제본의
-          매력을 발견할 수 있도록 돕는 유저 중심의 인쇄 시스템을 구축합니다.
-          브랜딩, UX/UI, 편집 디자인, 그리고 공간 디자인을 통합하여, 기존
-          인쇄소의 한계를 극복하고 스토리텔링과 다채로운 프로그램이 중심이
-          되는 새로운 인쇄 문화를 제안합니다</p>
-
-        <img class="hero-img img-space" src="assets/space-mockup.jpg" alt="공간 목업">
-        <img class="hero-img img-poster" src="assets/poster-mockup.jpg" alt="브랜딩 포스터 목업">
-        <img class="hero-img img-namecard" src="assets/namecard.jpg" alt="TiPS 명함">
-      </div>
+      <button type="button" class="hero-arrow" id="heroArrow" aria-label="다음 슬라이드">
+        <svg viewBox="0 0 56 40" aria-hidden="true">
+          <path d="M2 20h50M36 4l16 16-16 16" fill="none" stroke="currentColor"
+                stroke-width="3" stroke-linecap="square"/>
+        </svg>
+      </button>
     </div>
 
-    <div class="panel panel-right panel-center panel-fixed">
-      <!-- iPS 로고 정사각(유닛 4개, 0/90/180/270도) — 평면 그래픽이
-           화면 평면 안에서 시계방향으로 천천히 자전한다(CSS rotate). -->
-      <div class="logo-square logo-spin" aria-label="TiPS 로고">
-        <img class="lu lu-bl" src="assets/logo-unit.png" alt="">
-        <img class="lu lu-br" src="assets/logo-unit.png" alt="">
-        <img class="lu lu-tr" src="assets/logo-unit.png" alt="">
-        <img class="lu lu-tl" src="assets/logo-unit.png" alt="">
-      </div>
+    <div class="panel panel-right hero-right" id="heroRight">
+      <!-- 슬라이드별 이미지는 hero.js가 교차 페이드로 교체한다 -->
     </div>
   </section>
 
-  <!-- 면 2 · Studio -->
-  <section class="bodier bodier-2" aria-label="Studio">
-
-    <div class="panel panel-left">
-      <div class="studio-info">
-        <p>Member</p>
-        <p class="blank">&#8203;</p>
-        <p>김한주</p>
-        <p>윤찬혁</p>
-        <p>함윤규</p>
-        <p class="blank">&#8203;</p>
-        <p>Contact</p>
-        <p class="blank">&#8203;</p>
-        <p>010.5215.7074 / donejuicy@gmail.com</p>
-        <p>010.8457.3450 / hamyunguu@gmail.com</p>
-        <p>010.9927.8455 / chauhynk@gmail.com</p>
-        <p class="blank">&#8203;</p>
-        <p>Location</p>
-        <p class="blank">&#8203;</p>
-        <p>서울 광진구 능동로 145 B1-2F, 05010</p>
-        <p>05010, B1-2F, 145 Neungdong-ro,</p>
-        <p>Gwangjin-gu, Seoul, South Korea</p>
-      </div>
-    </div>
-
-    <div class="panel panel-right panel-center studio-map-wrap">
-      <img class="studio-map" src="assets/map.png" alt="오시는 길 지도">
-      <img class="studio-logo" src="assets/three-idiots-logo.png" alt="THREE idiots">
-    </div>
-  </section>
-
-  <!-- 면 3 · Order (서브헤더는 면 밖 .subheader-order로 분리)
+  <!-- 면 2 · Order (서브헤더는 면 밖 .subheader-order로 분리)
        좌: 옵션 구성 폼(모드별로 order.js가 채움) / 우: 실시간 3D 프리뷰 -->
-  <section class="bodier bodier-3" aria-label="Order">
+  <section class="bodier bodier-2" aria-label="Order">
     <div class="panel panel-left panel-under-subnav order-options-panel">
       <form class="order-options" id="orderOptions" autocomplete="off">
         <p class="order-loading">옵션을 불러오는 중…</p>
@@ -198,9 +132,9 @@
     </div>
   </section>
 
-  <!-- 면 4 · Program (서브헤더는 면 밖 .subheader-program로 분리) -->
-  <section class="bodier bodier-4" aria-label="Program">
-    <div class="panel panel-left panel-under-subnav"></div>
+  <!-- 면 3 · Program -->
+  <section class="bodier bodier-3" aria-label="Program">
+    <div class="panel panel-left"></div>
     <div class="panel panel-right"></div>
   </section>
 
@@ -208,7 +142,8 @@
 
 <button type="button" class="chat">Chat</button>
 
-<script src="js/app.js?v=2"></script>
+<script src="js/app.js?v=3"></script>
+<script src="js/hero.js?v=1"></script>
 <script type="module" src="js/order.js?v=5"></script>
 </body>
 </html>

@@ -12,10 +12,14 @@
    ========================================================================== */
 
 :root {
-  --paper: #f5f9fe;          /* 페이지/면 배경 */
-  --bar: #dbf0ff;            /* 헤더 바 */
-  --accent: #f65b31;         /* GNB 활성 (Foundation/Orange/O300) */
-  --accent-sub: #6bbfff;     /* 서브내비 활성 (Foundation/Group/blue-6) */
+  --paper: #fff;             /* 페이지/좌측 면 배경 */
+  --panel-tint: #f5f9fe;     /* 우측 이미지 패널 바탕 */
+  --bar: #fff;               /* 헤더 바 */
+  /* Foundation/Group/blue-6 — 개편 레이아웃의 단일 강조색.
+     활성 메뉴 배경, 아이브로, 강조 문장, 화살표에 모두 쓴다. */
+  --blue: #6bbfff;
+  --accent: var(--blue);
+  --accent-sub: var(--blue);
   --ink: #000;
   --line: #000;
 
@@ -27,7 +31,8 @@
      살짝 깊이감을 원하면 500vw처럼 아주 먼 값을 준다. */
   --flip-perspective: none;
 
-  --header-h: 4.5rem;        /* 45px */
+  --header-h: 5.3rem;        /* 53px — Figma 104:80의 상단 점선 위치 */
+  --hero-fade: 0.4s;         /* 슬라이드 교차 페이드 (hero.js와 맞춘다) */
 
   --mono: "IBM Plex Mono", monospace;
   --kr-spoqa: "Spoqa Han Sans Neo", sans-serif;
@@ -59,6 +64,8 @@ body {
    HEADER — 고정, 회전하지 않는다
    -------------------------------------------------------------------------- */
 
+/* 실측(1920 기준): 메뉴 x=20 w=320, Search x=50%+20, Login/Cart x=87.5%+20 w=200.
+   전부 top=16px, IBM Plex Mono 20px. 바탕은 흰색이고 구분은 점선이 맡는다. */
 .header {
   position: fixed;
   top: 0; left: 0;
@@ -66,41 +73,75 @@ body {
   height: var(--header-h);
   z-index: 600;
   background: var(--bar);
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 2rem;                /* 20px */
+  line-height: 1;
 }
 
 .gnb {
+  position: absolute;
+  left: 2rem; top: 1.6rem;
+  width: 32rem;                   /* 320px */
   display: flex;
-  gap: 4.8rem;                    /* 48px */
   align-items: center;
-  padding-left: 2rem;             /* 20px */
-  font-family: var(--mono);
-  font-size: 2.4rem;              /* 24px */
-  line-height: 1;
+  justify-content: space-between;
   white-space: nowrap;
 }
-.gnb-item { color: var(--ink); cursor: pointer; }
+.gnb-item {
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0.2rem 0.3rem;         /* 활성 배경 박스의 여백 */
+}
 
-/* 활성 섹션 표시 — 상태 클래스가 정한다 */
+/* 활성 섹션 — 디자인은 글자 뒤에 파란 배경 박스를 깐다 */
 .switch-state-position-0 .gnb-item[data-position="0"],
 .switch-state-position-1 .gnb-item[data-position="1"],
-.switch-state-position-2 .gnb-item[data-position="2"],
-.switch-state-position-3 .gnb-item[data-position="3"] { color: var(--accent); }
+.switch-state-position-2 .gnb-item[data-position="2"] {
+  background: var(--blue);
+  color: var(--ink);
+}
+
+.search {
+  position: absolute;
+  left: calc(50% + 2rem);
+  top: 1.6rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+.search-label { white-space: nowrap; }
+.search-input {
+  width: 30rem;                   /* 밑줄 길이 366px 근사 */
+  font-family: var(--mono);
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 0 0 0.2rem;
+  border-radius: 0;
+}
+.search-input:focus { outline: none; border-bottom-color: var(--blue); }
+/* Safari가 붙이는 검색 취소 버튼 제거 — 디자인에 없다 */
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-cancel-button { -webkit-appearance: none; }
 
 .account {
+  position: absolute;
+  left: calc(87.5% + 2rem);
+  top: 1.6rem;
+  width: 20rem;                   /* 200px */
   display: flex;
   justify-content: space-between;
-  width: 20rem;                   /* 200px */
-  margin-right: 2rem;             /* 우측 여백 20px */
-  font-family: var(--mono);
-  font-size: 2.6rem;              /* 26px */
-  line-height: 1;
   white-space: nowrap;
 }
-.account button { cursor: pointer; }
+.account button {
+  font-family: var(--mono);
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+}
 
 /* 전환 중에는 클릭을 막아 상태가 꼬이지 않게 한다 */
 .flag-carrousel-loading-true .gnb-item { pointer-events: none; }
@@ -143,11 +184,11 @@ body {
   /* 회전각은 JS가 인라인으로 쓴다. 스크롤은 안쪽 .panel이 맡는다. */
 }
 
-/* 현재 면(상태 클래스 — JS 이전 첫 페인트도 보장)과 나가는 면만 보인다 */
+/* 현재 면(상태 클래스 — JS 이전 첫 페인트도 보장)과 나가는 면만 보인다.
+   면은 Home(0) / Order(1) / Program(2) 3장이다. */
 .switch-state-position-0 .bodier-1,
 .switch-state-position-1 .bodier-2,
 .switch-state-position-2 .bodier-3,
-.switch-state-position-3 .bodier-4,
 .bodier.is-flipping { visibility: visible; }
 
 /* 들어오는 면이 위에 쌓인다 */
@@ -163,21 +204,29 @@ body {
 /* 중앙 세로 구분선 — 면 밖에 고정. 회전과 무관하게 항상 또렷하다.
    면 안에 두면 면이 접힐 때 함께 좁아졌다 펴지고, 전환 중 두 면의
    두 선이 겹쳐 흐려 보였다. 헤더 아래부터 바닥까지, 면 위에 얹는다. */
-.divider {
+/* 구분선(점선) — 헤더 아래 가로선 1개 + 중앙 세로선 1개.
+   z-index: 면(≤550) 위, 헤더(600) 아래.
+   translateZ(0)으로 합성 레이어에 올린다. 면들이 will-change:transform으로
+   합성 레이어인데, Safari는 합성 레이어와 비합성 요소 사이에서 z-index를
+   지키지 않아 면이 구분선을 덮어버렸다. */
+.rule {
   position: fixed;
+  z-index: 560;
+  pointer-events: none;
+}
+.rule-h {
+  left: 0; right: 0;
+  top: var(--header-h);
+  height: 0;
+  border-top: 1px dashed var(--line);
+  transform: translateZ(0);
+}
+.rule-v {
   top: var(--header-h);
   bottom: 0;
   left: 50%;
-  width: 1px;                     /* border-left(width:0) 대신 실제 폭 —
-                                     Safari가 zero-width 박스의 border를
-                                     페인트하지 않는 경우를 피한다 */
-  background: var(--line);
-  z-index: 560;                   /* 면(≤550) 위, 헤더(600) 아래 */
-  pointer-events: none;
-  /* translateZ(0)으로 합성 레이어에 올린다. 면들이 will-change:transform
-     으로 합성 레이어인데, Safari는 합성 레이어와 비합성 요소 사이에서
-     z-index를 지키지 않아 면이 구분선을 덮어버렸다. 이 요소도 합성
-     레이어가 되면 z-index 순서가 지켜진다. translateX(-50%)로 중앙 정렬. */
+  width: 0;
+  border-left: 1px dashed var(--line);
   transform: translateX(-50%) translateZ(0);
 }
 
@@ -187,8 +236,8 @@ body {
 
 .panel {
   position: absolute;
-  top: 1.6rem;                    /* 뷰포트 61px = 헤더 45 + 16 */
-  bottom: 0;
+  top: 1.9rem;                    /* 뷰포트 72px = 헤더 53 + 19 */
+  bottom: 2rem;                   /* 실측 높이 988px */
   width: 92rem;                   /* 920px */
   background: var(--paper);
   overflow-x: clip;
@@ -207,104 +256,154 @@ body {
 .panel-center { display: block; }
 
 /* --------------------------------------------------------------------------
-   면 1 · identity (hero) — 좌측 캔버스 (실측 좌표, px÷10)
+   면 1 · Home 히어로 — 4슬라이드 (Figma 104:80)
+   좌: 1/4 카운터 + 아이브로 + 국문/영문 2단 + 하단 화살표
+   우: 슬라이드별 이미지(교차 페이드)
    -------------------------------------------------------------------------- */
 
-.hero-canvas {
-  position: relative;
+.hero-left { padding-right: 0; }
+
+/* 슬라이드는 겹쳐 쌓고 opacity로 교체한다 — 높이가 서로 달라도 레이아웃이
+   흔들리지 않고, 카운터/화살표 위치가 고정된다. */
+.hero-slides {
+  position: absolute;
+  left: 0; top: 0;
   width: 100%;
-  height: 366rem;                 /* 콘텐츠 전체 높이 ≈3660px */
 }
-
-.hero-intro {
+.hero-slide {
   position: absolute;
-  left: 0; top: 1rem;
-  font-family: var(--kr-spoqa);
-  font-weight: 400;
-  font-size: 3.6rem;              /* 36px */
-  line-height: 1.4;
-  letter-spacing: -0.08em;        /* -2.88px/36px */
-  white-space: nowrap;
+  left: 0; top: 0;
+  width: 100%;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--hero-fade) ease, visibility 0s linear var(--hero-fade);
+}
+.hero-slide.is-on {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--hero-fade) ease;
 }
 
-.hero-circle {
+.hero-count {
   position: absolute;
-  left: 16.8rem; top: 45.2rem;    /* (168, 452) */
-  width: 61.6rem; height: 61.6rem;
-  border: 1px solid var(--ink);
-  border-radius: 50%;
+  right: 0; top: 0;
+  font-family: var(--mono);
+  font-size: 2.6rem;              /* 26px */
+  line-height: 1;
+  z-index: 2;
 }
-
-/* 원 위 라벨 — 배경색 패치로 원 선을 가린다 (Figma 방식 그대로) */
-.circle-label {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  background: var(--paper);
-  text-align: center;
-  font-size: 4.8rem;              /* 48px */
-  line-height: 1.35;
-  padding: 0 2.4rem;
-  white-space: nowrap;
-}
-.circle-label .w1 { font-family: var(--serif-caps); margin-bottom: -0.6rem; }
-.circle-label .w2 { font-family: var(--serif-script); font-style: italic; font-weight: 700; }
-
-.label-testing { left: 47.65rem; top: 47.8rem; }
-.label-tying   { left: 18rem;    top: 87.9rem; padding: 0 1.2rem; }
-.label-three   { left: 74.1rem;  top: 87.9rem; padding: 0 1.2rem; }
 
 .hero-eyebrow {
-  position: absolute;
-  left: 38.2rem; top: 109.2rem;
-  font-family: var(--kr-noto);
-  font-weight: 350;               /* DemiLight */
-  font-size: 2.4rem;
-  line-height: 1.4;
-  letter-spacing: -0.025em;
-  white-space: pre;               /* 원본의 이중 공백 유지 */
-}
-
-.hero-headline {
-  position: absolute;
-  left: 0; top: 116.8rem;
   font-family: var(--mono);
-  font-size: 4.8rem;
-  line-height: 1.35;
-  letter-spacing: -0.025em;
+  font-size: 3rem;                /* 30px */
+  line-height: 1;
+  letter-spacing: -0.025em;       /* -0.75px/30px */
+  text-transform: uppercase;
+  color: var(--blue);
   white-space: nowrap;
 }
 
-.hero-bullets {
-  position: absolute;
-  left: -0.7rem; top: 131.2rem;
-  padding-left: 4.8rem;
-  list-style: disc;
-  /* SM JGothic10 Std(상용) 대체 — 추후 웹폰트 파일로 교체 */
+/* 국문/영문 두 단. 아이브로 아래 48px 간격에서 두 단이 같은 높이로 시작한다
+   (Figma의 영문 top=78px = 아이브로 30 + 간격 48). */
+.hero-cols {
+  display: grid;
+  grid-template-columns: 44rem 44rem;   /* 440 + 440 */
+  column-gap: 4rem;                     /* 좌측 단 시작이 50%+20 이 되도록 */
+  margin-top: 4.8rem;                   /* 48px */
+}
+
+.hero-kr {
   font-family: var(--kr-noto);
   font-weight: 400;
-  font-size: 3.2rem;
-  line-height: 1.65;
-  letter-spacing: -0.015em;
-  white-space: nowrap;
-}
-
-.hero-desc {
-  position: absolute;
-  left: 0; top: 151.7rem;
-  width: 61.2rem;
-  font-family: var(--kr-noto);
-  font-weight: 350;
-  font-size: 3.6rem;
+  font-size: 2.4rem;              /* 24px */
   line-height: 1.4;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.045em;       /* -1.08px/24px */
 }
 
-.hero-img { position: absolute; object-fit: cover; }
-.img-space    { left: 0;       top: 228.7rem; width: 44.2rem; height: 59.8rem; }
-.img-poster   { left: 0;       top: 290.4rem; width: 47.8rem; height: 71.7rem; }
-.img-namecard { left: 49.7rem; top: 290.4rem; width: 42.3rem; height: 42.8rem; }
+.hero-en {
+  font-family: "IBM Plex Sans", var(--kr-noto), sans-serif;
+  font-size: 2.5rem;              /* 25px */
+  line-height: 1.2;
+}
+.hero-en p + p { margin-top: 1.2em; }
 
-/* --- 우측: iPS 로고 정사각 — 평면 그래픽 자전 --------------------------
+/* 강조 문장 — 국문·영문 공통 */
+.hero-kr .hl, .hero-en .hl { color: var(--blue); }
+
+/* 하단 화살표 — 아래를 가리킨다(디자인은 → 를 90° 회전) */
+.hero-arrow {
+  position: absolute;
+  left: 50%;
+  bottom: 2rem;
+  transform: translateX(-50%);
+  width: 5.6rem;
+  height: 4rem;
+  color: var(--blue);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+.hero-arrow svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: rotate(90deg);
+  transition: transform 0.2s ease;
+}
+.hero-arrow:hover svg { transform: rotate(90deg) translateX(0.5rem); }
+
+/* --- 우측: 슬라이드 이미지 --- */
+.hero-right {
+  background: var(--panel-tint);
+  overflow: hidden;
+}
+.hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--hero-fade) ease, visibility 0s linear var(--hero-fade);
+}
+.hero-img.is-on {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--hero-fade) ease;
+}
+
+/* --------------------------------------------------------------------------
+   LOADER — 히어로 우측에 있던 회전 로고를 줄여서 로딩 화면으로 옮겼다
+   -------------------------------------------------------------------------- */
+
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 900;                   /* 헤더(600)보다 위 */
+  /* 로고 PNG의 바탕이 #f5f9fe라, 흰색 위에서는 유닛마다 사각형이 도드라진다.
+     같은 톤을 깔아 로고가 배경에 얹힌 것처럼 보이게 한다. */
+  background: var(--panel-tint);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12rem;                     /* 로고가 0×0 앵커라 실제 간격은 절반 */
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+/* is-loading이 빠지면 페이드아웃 — app.js가 이후 display:none 처리 */
+body:not(.is-loading) .loader { opacity: 0; pointer-events: none; }
+
+.loader-label {
+  font-family: var(--mono);
+  font-size: 1.6rem;
+  letter-spacing: 0.04em;
+  color: var(--blue);
+}
+
+/* --- iPS 로고 정사각 — 평면 그래픽 자전 --------------------------------
    유닛 4개(0/90/180/270도) 배치는 Figma 실측 그대로. 정사각 전체가
    화면 평면 안에서 시계방향으로 천천히 돈다(시곗바늘처럼). */
 
@@ -313,6 +412,16 @@ body {
   left: 50%; top: 50%;
   width: 0; height: 0;
 }
+/* 0×0 앵커 안에서는 reset의 max-width:100%가 0으로 계산돼 유닛이 사라진다.
+   면 안쪽은 .bodier img가 이미 풀어주지만, 로더는 면 밖이라 여기서 푼다. */
+.logo-square img { max-width: none; }
+/* 로딩용 축소판 — 유닛 크기·오프셋을 그대로 두고 전체를 축소한다 */
+.logo-square-sm {
+  position: relative;
+  left: auto; top: auto;
+  transform: scale(0.34);
+}
+.logo-square-sm.logo-spin { animation-name: logo-spin-sm; }
 .lu {
   position: absolute;
   width: 24.1rem; height: 24.6rem;   /* 241×246 */
@@ -334,43 +443,17 @@ body {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+/* 축소판은 scale을 유지한 채 돈다 — 위 키프레임을 쓰면 scale이 지워진다 */
+@keyframes logo-spin-sm {
+  from { transform: scale(0.34) rotate(0deg); }
+  to   { transform: scale(0.34) rotate(360deg); }
+}
 @media (prefers-reduced-motion: reduce) {
   .logo-spin { animation: none; }
 }
 
 /* --------------------------------------------------------------------------
-   면 2 · Studio
-   -------------------------------------------------------------------------- */
-
-.studio-info {
-  position: absolute;
-  left: 0; top: 1rem;
-  font-family: var(--kr-noto);
-  font-weight: 350;
-  font-size: 3.6rem;
-  line-height: 1.4;
-  letter-spacing: -0.025em;
-  white-space: nowrap;
-}
-
-.studio-map-wrap { overflow: hidden; }
-.studio-map {
-  position: absolute;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
-  width: 98.6rem; height: 109rem;    /* 986×1090 */
-  object-fit: cover;
-}
-.studio-logo {
-  position: absolute;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
-  width: 60.3rem; height: 60.3rem;   /* 603px */
-  object-fit: contain;
-}
-
-/* --------------------------------------------------------------------------
-   면 3·4 · Order / Program — 서브헤더 (면 밖 고정, 착지 후 슬라이드 다운)
+   면 2 · Order — 서브헤더 (면 밖 고정, 착지 후 슬라이드 다운)
    --------------------------------------------------------------------------
    서브헤더는 면과 함께 회전하지 않는다. 헤더 바로 아래에 고정해 두고,
    평소엔 헤더 뒤로 접혀 숨어 있다가(translateY로 위로 넣음), 해당
@@ -392,8 +475,7 @@ body {
 }
 
 /* 해당 페이지에 착지(로딩 아님)했을 때만 내려온다 */
-.switch-state-position-2:not(.flag-carrousel-loading-true) .subheader-order,
-.switch-state-position-3:not(.flag-carrousel-loading-true) .subheader-program {
+.switch-state-position-1:not(.flag-carrousel-loading-true) .subheader-order {
   transform: translate3d(0, 0, 0);
   opacity: 1;
   pointer-events: auto;
