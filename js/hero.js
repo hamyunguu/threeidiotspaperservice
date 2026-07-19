@@ -80,7 +80,10 @@
       img: 'assets/hero-3.jpg',
       alt: 'TiPS 책등',
       body:
+        /* 제도선은 중첩된 두 사각형(Figma 69:564 · 69:567)이 겹쳐 하나의
+           그리드를 이룬다. 한 장만 쓰면 선이 절반 빠진다. */
         '<div class="hero-logo">' +
+          '<img class="hero-logo-guides" src="assets/logo-guides-2.png" alt="">' +
           '<img class="hero-logo-guides" src="assets/logo-guides.png" alt="">' +
           '<img class="hero-logo-mark" src="assets/logo-lockup.png" alt="TiPS 로고">' +
         '</div>' +
@@ -203,18 +206,53 @@
   }
   slidesEl.addEventListener('scroll', onScroll, { passive: true });
 
-  /* 지정한 장으로 이동 — 스냅 컨테이너에서는 scrollIntoView가 가장
-     자연스럽게 맞아 들어간다. 이동이 끝난 뒤 상태도 한 번 맞춰 준다. */
+  /* 지정한 장으로 이동. scrollIntoView는 지속시간을 제어할 수 없어
+     직접 트윈한다 — 4/4에서 1/4로 3장을 되돌아갈 때 너무 빨랐다.
+     이동 거리(장 수)에 비례해 길어지므로 복귀는 한 장 이동의 3배다.
+     트윈 중에는 스냅을 잠시 끈다(mandatory 스냅이 중간 위치를 되당긴다). */
+  var raf = null, fallback = null;
+  var STEP_MS = 460;
+
   function goTo(i) {
     i = Math.max(0, Math.min(HERO.length - 1, i));
-    var el = slidesEl.children[i];
-    if (!el) return;
+    var to = i * slidesEl.clientHeight;
+    var from = slidesEl.scrollTop;
+    var dist = to - from;
+    if (!dist) return;
+
+    if (raf) { cancelAnimationFrame(raf); raf = null; }
+    window.clearTimeout(fallback);
+
     var reduce = window.matchMedia &&
                  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    lockUntil = Date.now() + (reduce ? 0 : 700);
-    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-    sync(i);                       /* 클릭에 즉시 반응하고, 잠금이 풀린 뒤
-                                      스크롤 핸들러가 실제 위치로 재확인한다 */
+    if (reduce) { slidesEl.scrollTop = to; sync(i); return; }
+
+    var steps = Math.max(1, Math.abs(i - index));
+    var dur = STEP_MS * steps;
+    lockUntil = Date.now() + dur + 150;
+    slidesEl.style.scrollSnapType = 'none';
+
+    function finish() {
+      if (raf) { cancelAnimationFrame(raf); raf = null; }
+      window.clearTimeout(fallback);
+      slidesEl.scrollTop = to;
+      slidesEl.style.scrollSnapType = '';
+      sync(i);
+    }
+
+    var t0 = (window.performance || Date).now();
+    (function step(now) {
+      var p = Math.min(1, ((now || (window.performance || Date).now()) - t0) / dur);
+      var e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;   /* easeInOutQuad */
+      slidesEl.scrollTop = from + dist * e;
+      if (p < 1) raf = requestAnimationFrame(step);
+      else finish();
+    })(t0);
+
+    /* rAF가 멈춘 환경(백그라운드 탭 등)에서도 상태가 어긋난 채 남지 않게 */
+    fallback = window.setTimeout(finish, dur + 250);
+
+    sync(i);                       /* 클릭에 즉시 반응 */
   }
 
   /* --- 입력 -------------------------------------------------------------- */
