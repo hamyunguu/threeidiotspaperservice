@@ -492,20 +492,36 @@ body {
   padding: 0.6rem 0 0.2rem;
 }
 
-/* 규격 사이즈 카드 */
-.opt-size-list { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+/* 규격 사이즈 카드 — 원본처럼 용지 썸네일 + 아래 라벨 */
+.opt-size-list { display: flex; flex-wrap: wrap; gap: 0.8rem; }
 .opt-size {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
   font-family: var(--mono);
-  font-size: 1.35rem;
-  color: #4a5a6d;
+  font-size: 1.2rem;
+  color: #6a86a6;
   background: transparent;
-  border: 1px solid rgba(0,0,0,0.25);
-  padding: 0.6rem 1rem;
+  border: 0;
+  padding: 0;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
-.opt-size:hover { border-color: var(--ink); }
-.opt-size.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.opt-size-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 6.4rem;
+  height: 6.4rem;
+  background: rgba(0,0,0,0.04);
+  color: #8aa0b6;
+  transition: background 0.12s, color 0.12s;
+}
+.opt-size-icon svg { width: 4.8rem; height: 4.8rem; }
+.opt-size-name { transition: color 0.12s; }
+.opt-size:hover .opt-size-icon { color: var(--ink); }
+.opt-size.is-on .opt-size-icon { background: var(--bar); color: var(--accent); }
+.opt-size.is-on .opt-size-name { color: var(--accent); }
 
 /* 가로 × 세로 mm 입력 */
 .opt-wh { display: inline-flex; align-items: center; gap: 0.5rem; }
@@ -521,8 +537,16 @@ body {
   margin-bottom: 0.9rem;
 }
 .opt-part.is-off { opacity: 0.55; }
-.opt-toggle {
+/* 파트 소계 — 원본 각 섹션 캡션의 TOTAL */
+.opt-part-total {
   margin-left: auto;
+  font-size: 1.2rem;
+  color: var(--accent-sub);
+}
+/* 계산 표시값(세네카·총페이지) — 입력이 아니라 읽기 전용 */
+.opt-readout { font-size: 1.45rem; color: #6a86a6; }
+.opt-toggle {
+  margin-left: 0.7rem;
   font-family: var(--mono);
   font-size: 1.2rem;
   color: #4a5a6d;
@@ -532,11 +556,15 @@ body {
   cursor: pointer;
 }
 .opt-toggle.is-on { background: var(--accent-sub); border-color: var(--accent-sub); color: #fff; }
+/* 미사용 파트는 TOTAL이 없으므로 토글이 오른쪽 끝을 차지한다 */
+.opt-part.is-off .opt-toggle { margin-left: auto; }
 
 /* 연동 셀렉트(용지 → 평량), 조건부 노출 블록 */
 .opt-row-sub .opt-label { color: #8aa0b6; }
 .opt-row-sub.is-off .opt-select { color: #9db4cc; }
 .opt-sub.is-off { display: none; }
+/* 조건부 행 — DOM에는 남기고 표시만 감춘다 */
+.opt-cond.is-off { display: none; }
 
 /* 견적 */
 .opt-estimate { background: var(--bar); padding: 1.4rem 1.2rem; }
