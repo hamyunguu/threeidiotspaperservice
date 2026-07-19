@@ -14,7 +14,7 @@
 <!-- ?v= 는 캐시 무효화용. 에셋을 바꾸면 이 숫자를 올려 브라우저가
      낡은 CSS를 재사용하지 않게 한다(Safari 캐시로 스타일이 빠지던 문제). -->
 <link rel="stylesheet" href="css/reset.css?v=2">
-<link rel="stylesheet" href="css/style.css?v=4">
+<link rel="stylesheet" href="css/style.css?v=5">
 
 <!-- Order 3D 프리뷰용 Three.js. importmap으로 bare specifier를 CDN에
      매핑한다. 실제 로드는 order.js가 Order 첫 진입 때 동적 import로만
@@ -135,10 +135,15 @@
     </div>
 
     <div class="panel panel-right panel-center panel-fixed">
-      <!-- iPS 로고 입방체 — 로고 벡터를 익스트루드한 입체 글리프 정사각
-           6세트로 조립한 정육면체. 커서 드래그로 자유 회전(identity3d.js,
-           Three.js + SVGLoader + ExtrudeGeometry). -->
-      <div class="logo-cube-scene" id="logoCubeScene" aria-label="TiPS 로고 입방체 — 드래그로 회전"></div>
+      <!-- iPS 로고 정사각(유닛 4개, 0/90/180/270도) — 평면 그래픽이
+           세로축으로 천천히 자전한다(CSS rotateY, 정사영 — 페이지 전환
+           모티프와 같은 결). -->
+      <div class="logo-square logo-spin" aria-label="TiPS 로고">
+        <img class="lu lu-bl" src="assets/logo-unit.png" alt="">
+        <img class="lu lu-br" src="assets/logo-unit.png" alt="">
+        <img class="lu lu-tr" src="assets/logo-unit.png" alt="">
+        <img class="lu lu-tl" src="assets/logo-unit.png" alt="">
+      </div>
     </div>
   </section>
 
@@ -205,7 +210,6 @@
 <button type="button" class="chat">Chat</button>
 
 <script src="js/app.js?v=2"></script>
-<script type="module" src="js/identity3d.js?v=3"></script>
 <script type="module" src="js/order.js?v=2"></script>
 </body>
 </html>
