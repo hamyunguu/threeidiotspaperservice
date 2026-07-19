@@ -1,97 +1,182 @@
 /* ==========================================================================
    Order 페이지 — 옵션 구성 + 실시간 3D 프리뷰
    --------------------------------------------------------------------------
-   좌: 모드별(Poster/Book/Leaflet/Print) 인쇄 옵션 폼 + 파일 업로드
+   좌: 태산인디고(t-print.co.kr) POD 주문 플로우를 그대로 옮긴 단계별 폼
    우: Three.js 파라메트릭 3D. 업로드한 이미지가 즉시 텍스처로 반영되고,
        옵션(판형·접지·제본·코팅…)이 지오메트리/재질에 실시간 반영된다.
+
+   플로우 출처 — 태산인디고 POD_goods.php 각 상품 페이지:
+     Poster  : cate 26020200 / goods 83  · 포스터
+     Book    : cate 26010100 / goods 73  · 인디고 책자인쇄
+     Leaflet : cate 26030200 / goods 121 · 일반 전단 리플렛
+     Print   : cate 26070100 / goods 114 · 명함
+   단계 순서(규격 → 기본정보 → 인쇄/용지/후가공 → 주문메모 → 견적)와 각
+   셀렉트의 선택지·플레이스홀더 문구를 원본 그대로 유지한다. 필드 key는
+   원본 폼의 name(goods_size, in_paper_group, in_lastJob4 …)을 그대로 쓴다.
 
    Three.js는 Order에 처음 들어올 때만 동적 import한다(다른 페이지 부하 0).
    활성/비활성은 body의 switch-state-position-2 클래스를 관찰해 판단하고,
    비활성일 때는 렌더 루프를 멈춘다.
    ========================================================================== */
 
-/* --- 모드별 스키마: 태산인디고 등 국내 인쇄 옵션 체계를 반영 ------------- */
+/* --- 공통 선택지(원본 셀렉트 그대로) ------------------------------------ */
+
+const WEIGHTS = ['100g', '130g', '160g', '190g', '210g', '240g'];
+
+const PAPER_FLAT = ['- 선방입고', '뉴플러스', '랑데뷰 울트라', '미색모조', '반누보',
+                    '백색모조', '스노우', '아트', '인스퍼M러프EW(구.몽블랑)'];
+const PAPER_BOOK = ['- 선방입고', '뉴플러스', '랑데뷰 울트라', '레자크연미', '미색모조',
+                    '반누보', '백색모조', '색지', '스노우', '아트', '인스퍼M러프EW(구.몽블랑)'];
+const PAPER_CARD = ['- 선방입고', '랑데뷰 울트라', '마쉬멜로우', '반누보', '스노우', '아트',
+                    '인스퍼M러프EW(구.몽블랑)'];
+
+const MUN_VALUES = ['단면출력', '양면출력'];
+const DOSU_FULL  = ['칼라 4도', '흑백 1도'];
+const DOSU_COLOR = ['칼라 4도'];
+
+/* 후가공 셀렉트 5종(포스터·리플렛 공통) */
+const LAST_COAT   = { key: 'lastJob4',  ph: '::: 코팅선택 :::',
+  options: ['단면무광코팅', '단면유광코팅', '양면무광코팅', '양면유광코팅'] };
+const LAST_CUT    = { key: 'lastJob7',  ph: '::: 재단선택 :::',
+  options: ['재단', '재단 없음'] };
+const LAST_FOLD   = { key: 'lastJob27', ph: '::: 접지-낱장선택 :::',
+  options: ['2단 접지', '3단접지', '4단접지', '3단N접지', '4단N병풍접지', '대문접지'] };
+const LAST_OSI    = { key: 'lastJob47', ph: '::: 오시-낱장선택 :::',
+  options: ['오시만 1줄', '오시만 2줄', '오시만 3줄'] };
+const LAST_OSIFLD = { key: 'lastJob54', ph: '::: 오시-접지선택 :::',
+  options: ['오시+접지 2단', '오시+접지 3단', '오시+접지 4단', '오시+접지 3단N접지',
+            '오시+4단N병풍접지', '오시+대문접지'] };
+
+/* 표지 코팅은 선택지가 다르다(원본: 코팅없음 포함, 양면 없음) */
+const LAST_COAT_COVER = { key: 'lastJob4', ph: '::: 코팅선택 :::',
+  options: ['단면무광코팅', '단면유광코팅', '코팅없음'] };
+
+/* --- 모드별 스키마 ------------------------------------------------------- */
 
 const MODES = {
   poster: {
-    label: 'Poster',
-    uploads: [{ slot: 'front', label: '포스터 이미지' }],
-    fields: [
-      { key: 'size', label: '사이즈', type: 'select',
-        options: ['A4 · 210×297', 'A3 · 297×420', 'A2 · 420×594', 'A1 · 594×841', 'B2 · 515×728'],
-        value: 'A2 · 420×594' },
-      { key: 'orient', label: '방향', type: 'radio', options: ['세로', '가로'], value: '세로' },
-      { key: 'paper', label: '용지', type: 'select',
-        options: ['스노우지 200g', '아트지 200g', '랑데뷰 210g', '몽블랑 200g', '반누보 215g'],
-        value: '스노우지 200g' },
-      { key: 'coating', label: '코팅', type: 'radio', options: ['없음', '무광', '유광'], value: '무광' },
-      { key: 'sides', label: '인쇄', type: 'radio', options: ['단면', '양면'], value: '단면' },
-      { key: 'qty', label: '수량', type: 'number', value: 10, min: 1, max: 9999, unit: '매' },
+    label: 'Poster', goods: '포스터', code: 'S0083',
+    uploads: [{ slot: 'front', label: '앞면 (인쇄면)' }, { slot: 'back', label: '뒷면' }],
+    steps: [
+      { t: 'size', label: '규격 사이즈 선택', key: 'goods_size', value: 'A2(594*420)',
+        note: '오전 11시~오후 5시 주문은 익일 오전 10시 출고, 오후 5시~익일 오전 11시 ' +
+              '주문은 익일 오후 3시 출고됩니다.',
+        options: [
+          { n: 'B2(740*510)', w: 740, h: 510 },
+          { n: 'A2(594*420)', w: 594, h: 420 },
+          { n: 'B3(360*500)', w: 360, h: 500 },
+          { n: 'A3(297*420)', w: 297, h: 420 },
+          { n: 'B4(257*364)', w: 257, h: 364 },
+          { n: '사용자입력', custom: true },
+        ] },
+      { t: 'basic', qty: [{ key: 'goods_ea', unit: '매', value: 10 },
+                          { key: 'goods_ea2', unit: '종', value: 1 }] },
+      { t: 'part', title: '포스터 인쇄', part: 'in',
+        dosu: { mun: MUN_VALUES, printer: DOSU_FULL },
+        papers: PAPER_FLAT,
+        last: [LAST_COAT, LAST_CUT, LAST_FOLD, LAST_OSI, LAST_OSIFLD],
+        notice: '해당 제품은 재단 후 출고되는 완제품입니다.' },
+      { t: 'memo' },
+      { t: 'estimate' },
     ],
   },
 
   book: {
-    label: 'Book',
+    label: 'Book', goods: '인디고 책자인쇄', code: 'S0073',
     uploads: [
       { slot: 'cover', label: '표지 (앞면)' },
       { slot: 'coverBack', label: '표지 (뒷면)' },
       { slot: 'inner', label: '내지 (펼침면)' },
     ],
-    fields: [
-      { key: 'bind', label: '제본', type: 'select',
-        options: ['중철', '무선(떡)', 'PUR(각양장)', '트윈링'], value: '무선(떡)' },
-      { key: 'trim', label: '판형', type: 'select',
-        options: ['A5 · 148×210', 'B5 · 176×250', 'A4 · 210×297', '정사각 · 190×190'],
-        value: 'A5 · 148×210' },
-      { key: 'coverPaper', label: '표지 용지', type: 'select',
-        options: ['랑데뷰 240g', '스노우 250g', '아르떼 230g', '크라프트 220g'], value: '랑데뷰 240g' },
-      { key: 'innerPaper', label: '내지 용지', type: 'select',
-        options: ['모조지 100g', '스노우 120g', '미색모조 80g', '아트지 150g'], value: '모조지 100g' },
-      { key: 'pages', label: '페이지 수', type: 'number', value: 48, min: 4, max: 400, step: 2, unit: 'p' },
-      { key: 'ink', label: '인쇄', type: 'radio', options: ['컬러', '흑백'], value: '컬러' },
-      { key: 'qty', label: '수량', type: 'number', value: 30, min: 1, max: 9999, unit: '부' },
+    steps: [
+      { t: 'size', label: '규격 사이즈 선택', key: 'goods_size', value: 'A5(148*210)',
+        options: [
+          { n: 'A4(210*297)', w: 210, h: 297 },
+          { n: 'B5(188*257)', w: 188, h: 257 },
+          { n: '신국판(150*220)', w: 150, h: 220 },
+          { n: 'A5(148*210)', w: 148, h: 210 },
+          { n: '사용자입력', custom: true },
+        ] },
+      { t: 'basic', qty: [{ key: 'goods_ea', unit: '부', value: 30 }],
+        pages: { key: 'in_page_val', value: 48 } },
+      { t: 'jebon' },
+      { t: 'part', title: '표지', part: 'cover',
+        dosu: { mun: MUN_VALUES, printer: DOSU_FULL },
+        papers: PAPER_BOOK,
+        extra: [{ key: 'cover_nalgae', label: '표지날개', options: ['날개없음', '날개있음'],
+                  value: '날개없음' }],
+        last: [LAST_COAT_COVER] },
+      { t: 'part', title: '내지', part: 'in',
+        dosu: { mun: MUN_VALUES, printer: DOSU_FULL }, papers: PAPER_BOOK },
+      { t: 'part', title: '내지 2', part: 'in2', optional: true,
+        dosu: { mun: MUN_VALUES, printer: DOSU_FULL }, papers: PAPER_BOOK },
+      { t: 'part', title: '면지', part: 'mun', optional: true,
+        papers: PAPER_BOOK,
+        extra: [
+          { key: 'mun_page_values', label: '면지 장수', options: ['앞뒤1장씩', '앞뒤2장씩'],
+            value: '앞뒤1장씩' },
+          { key: 'mun_type_mun', label: '면지인쇄', options: ['인쇄없음', '단면출력', '양면출력'],
+            value: '인쇄없음' },
+          { key: 'mun_printer', label: '인쇄 도수', options: DOSU_FULL, value: '칼라 4도' },
+        ] },
+      { t: 'part', title: '간지', part: 'ganji', optional: true,
+        papers: PAPER_BOOK,
+        extra: [
+          { key: 'ganji_type_mun', label: '간지인쇄', options: ['인쇄없음', '단면출력', '양면출력'],
+            value: '인쇄없음' },
+          { key: 'ganji_printer', label: '인쇄 도수', options: DOSU_FULL, value: '칼라 4도' },
+        ] },
+      { t: 'memo' },
+      { t: 'estimate' },
     ],
   },
 
   leaflet: {
-    label: 'Leaflet',
-    uploads: [
-      { slot: 'front', label: '앞면' },
-      { slot: 'back', label: '뒷면' },
-    ],
-    fields: [
-      { key: 'fold', label: '접지', type: 'select',
-        options: ['낱장(접지 없음)', '2단 접지', '3단 접지', '대문 접지'], value: '3단 접지' },
-      { key: 'size', label: '펼친 사이즈', type: 'select',
-        options: ['A4 · 210×297', 'A5 · 148×210', 'B5 · 176×250'], value: 'A4 · 210×297' },
-      { key: 'paper', label: '용지', type: 'select',
-        options: ['스노우지 150g', '아트지 150g', '모조지 120g'], value: '스노우지 150g' },
-      { key: 'coating', label: '코팅', type: 'radio', options: ['없음', '무광', '유광'], value: '없음' },
-      { key: 'qty', label: '수량', type: 'number', value: 100, min: 1, max: 99999, unit: '매' },
+    label: 'Leaflet', goods: '일반 전단 리플렛', code: 'S0121',
+    uploads: [{ slot: 'front', label: '앞면' }, { slot: 'back', label: '뒷면' }],
+    steps: [
+      { t: 'size', label: '규격 사이즈 선택', key: 'goods_size', value: 'A4(210*297)',
+        options: [
+          { n: 'A3(297*420)', w: 297, h: 420 },
+          { n: 'B4(257*364)', w: 257, h: 364 },
+          { n: 'A4(210*297)', w: 210, h: 297 },
+          { n: 'A5(148*210)', w: 148, h: 210 },
+          { n: '사용자입력', custom: true },
+        ] },
+      { t: 'basic', qty: [{ key: 'goods_ea', unit: '매', value: 100 },
+                          { key: 'goods_ea2', unit: '종', value: 1 }] },
+      { t: 'part', title: '리플렛 인쇄', part: 'in',
+        dosu: { mun: MUN_VALUES, printer: DOSU_FULL },
+        papers: PAPER_FLAT,
+        last: [LAST_COAT, LAST_CUT, LAST_FOLD, LAST_OSI, LAST_OSIFLD] },
+      { t: 'memo' },
+      { t: 'estimate' },
     ],
   },
 
   print: {
-    label: 'Print',
-    uploads: [
-      { slot: 'front', label: '앞면' },
-      { slot: 'back', label: '뒷면' },
-    ],
-    fields: [
-      { key: 'kind', label: '종류', type: 'select',
-        options: ['낱장 · 90×50', '엽서 · 100×148', '명함 · 90×50', '카드 · 128×182'], value: '명함 · 90×50' },
-      { key: 'paper', label: '용지', type: 'select',
-        options: ['스노우지 250g', '랑데뷰 240g', '반누보 240g', '크라프트 230g'], value: '스노우지 250g' },
-      { key: 'coating', label: '코팅', type: 'radio', options: ['없음', '무광', '유광'], value: '없음' },
-      { key: 'sides', label: '인쇄', type: 'radio', options: ['단면', '양면'], value: '양면' },
-      { key: 'qty', label: '수량', type: 'number', value: 200, min: 1, max: 99999, unit: '매' },
+    label: 'Print', goods: '명함', code: 'S0114',
+    uploads: [{ slot: 'front', label: '앞면' }, { slot: 'back', label: '뒷면' }],
+    steps: [
+      { t: 'size', label: '규격 사이즈 선택', key: 'goods_size', value: '명함(90x50)',
+        options: [{ n: '명함(90x50)', w: 90, h: 50 }] },
+      { t: 'basic',
+        /* 원본 명함은 수량이 100~1000매 셀렉트다(자유 입력이 아님) */
+        qtySelect: { key: 'goods_ea', value: '200 매',
+          options: [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000].map(n => n + ' 매') },
+        qty: [{ key: 'goods_ea2', unit: '종', value: 1 }] },
+      { t: 'part', title: '명함 인쇄', part: 'in',
+        dosu: { mun: MUN_VALUES, printer: DOSU_COLOR },
+        papers: PAPER_CARD },
+      { t: 'memo' },
+      { t: 'estimate' },
     ],
   },
 };
 
-/* 사이즈 문자열 "라벨 · W×H(mm)"에서 mm 파싱 */
+/* 사이즈 문자열 "라벨(W*H)"에서 mm 파싱 */
 function parseDim(str) {
-  const m = str.match(/(\d+)\s*[×xX]\s*(\d+)/);
+  const m = String(str || '').match(/(\d+)\s*[*×xX]\s*(\d+)/);
   return m ? { w: +m[1], h: +m[2] } : { w: 210, h: 297 };
 }
 
@@ -99,7 +184,7 @@ function parseDim(str) {
 
 const state = {
   mode: 'poster',
-  opts: {},           // 현재 폼 값
+  opts: {},           // 현재 폼 값 (key = 원본 폼 name)
   images: {},         // slot -> HTMLImageElement (업로드된 것)
 };
 
@@ -115,60 +200,235 @@ const subnav = document.querySelector('.subheader-order .subnav');
 
 /* --- 옵션 폼 렌더 -------------------------------------------------------- */
 
-function fieldId(key) { return 'opt-' + key; }
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+/* 셀렉트 한 줄 */
+function selectRow(label, key, options, value, placeholder) {
+  const opts = [];
+  if (placeholder) {
+    opts.push('<option value=""' + (value ? '' : ' selected') + '>' + esc(placeholder) + '</option>');
+  }
+  options.forEach(o => {
+    opts.push('<option' + (o === value ? ' selected' : '') + '>' + esc(o) + '</option>');
+  });
+  return '<div class="opt-row">' +
+    '<label class="opt-label" for="opt-' + key + '">' + esc(label) + '</label>' +
+    '<select class="opt-select" id="opt-' + key + '" data-key="' + key + '">' +
+    opts.join('') + '</select></div>';
+}
+
+/* 세그먼트(라디오) 한 줄 */
+function segRow(label, key, options, value) {
+  const items = options.map(o =>
+    '<button type="button" class="opt-seg-item' + (o === value ? ' is-on' : '') +
+    '" data-key="' + key + '" data-val="' + esc(o) + '">' + esc(o) + '</button>').join('');
+  return '<div class="opt-row">' +
+    '<span class="opt-label">' + esc(label) + '</span>' +
+    '<div class="opt-seg" role="radiogroup" data-key="' + key + '">' + items + '</div></div>';
+}
+
+/* 숫자 입력 한 줄 */
+function numRow(label, key, value, unit, min, max, step) {
+  return '<div class="opt-row">' +
+    '<label class="opt-label" for="opt-' + key + '">' + esc(label) + '</label>' +
+    '<span class="opt-num"><input type="number" class="opt-input" id="opt-' + key + '" ' +
+    'data-key="' + key + '" value="' + value + '" min="' + (min || 1) + '"' +
+    (max ? ' max="' + max + '"' : '') + (step ? ' step="' + step + '"' : '') + '>' +
+    (unit ? '<span class="opt-unit">' + esc(unit) + '</span>' : '') + '</span></div>';
+}
+
+/* 단계 머리글 */
+function stepHead(no, title, note) {
+  return '<div class="opt-step-head"><span class="opt-step-no">' + no + '</span>' +
+    '<span class="opt-step-title">' + esc(title) + '</span></div>' +
+    (note ? '<p class="opt-note">' + esc(note) + '</p>' : '');
+}
+
+/* 파트(표지/내지/…) 한 블록 — 단계 번호와 제목을 함께 렌더한다 */
+function renderPart(step, o, no) {
+  const p = step.part;
+  const rows = [];
+
+  if (step.dosu) {
+    rows.push(segRow('인쇄 도수', p + '_mun_values', step.dosu.mun, o[p + '_mun_values']));
+    rows.push(segRow('칼라', p + '_printer', step.dosu.printer, o[p + '_printer']));
+  }
+  (step.extra || []).forEach(x => {
+    rows.push(selectRow(x.label, x.key, x.options, o[x.key]));
+  });
+  if (step.papers) {
+    rows.push(selectRow('용지선택', p + '_paper_group', step.papers, o[p + '_paper_group'],
+      '::: 용지선택 :::'));
+    const g = o[p + '_paper_group'];
+    rows.push('<div class="opt-row opt-row-sub' + (g ? '' : ' is-off') + '">' +
+      '<span class="opt-label">평량</span>' +
+      '<select class="opt-select" data-key="' + p + '_paper"' + (g ? '' : ' disabled') + '>' +
+      (g ? WEIGHTS.map(w => '<option' + (w === o[p + '_paper'] ? ' selected' : '') + '>' + w +
+            '</option>').join('')
+         : '<option value="">용지를 먼저 선택하세요</option>') +
+      '</select></div>');
+  }
+  (step.last || []).forEach((l, i) => {
+    rows.push(selectRow(i === 0 ? '후가공' : '', p + '_' + l.key, l.options,
+      o[p + '_' + l.key], l.ph));
+  });
+  if (step.notice) rows.push('<p class="opt-notice">! ' + esc(step.notice) + '</p>');
+
+  const off = step.optional && !o['use_' + p];
+  return '<div class="opt-group opt-part' + (off ? ' is-off' : '') + '">' +
+    '<div class="opt-part-head">' +
+      '<span class="opt-step-no">' + no + '</span>' +
+      '<span class="opt-step-title">' + esc(step.title) + '</span>' +
+      (step.optional
+        ? '<button type="button" class="opt-toggle' + (off ? '' : ' is-on') +
+          '" data-toggle="use_' + p + '">' + (off ? '사용 안 함' : '사용') + '</button>'
+        : '') +
+    '</div>' + (off ? '' : rows.join('')) + '</div>';
+}
+
+/* 스키마의 기본값을 state.opts에 채운다 */
+function seedDefaults(mode) {
+  const o = {};
+  o.customer_name = '';
+  o.quick_no = '일반';
+  o.order_memo = '';
+
+  MODES[mode].steps.forEach(s => {
+    if (s.t === 'size') {
+      o[s.key] = s.value;
+      const d = parseDim(s.value);
+      o.goods_size_w = d.w; o.goods_size_h = d.h;
+      o.size_w_plus = d.w; o.size_h_plus = d.h;
+    } else if (s.t === 'basic') {
+      (s.qty || []).forEach(q => { o[q.key] = q.value; });
+      if (s.qtySelect) o[s.qtySelect.key] = s.qtySelect.value;
+      if (s.pages) o[s.pages.key] = s.pages.value;
+    } else if (s.t === 'jebon') {
+      o.goods_jebon = '무선제본';
+      o.goods_jebon_direction = '세로';
+      o.goods_opt_ring = '';
+      o.goods_opt_pp = '';
+    } else if (s.t === 'part') {
+      const p = s.part;
+      if (s.optional) o['use_' + p] = false;
+      if (s.dosu) {
+        o[p + '_mun_values'] = s.dosu.mun[0];
+        o[p + '_printer'] = s.dosu.printer[0];
+      }
+      (s.extra || []).forEach(x => { o[x.key] = x.value !== undefined ? x.value : ''; });
+      if (s.papers) { o[p + '_paper_group'] = ''; o[p + '_paper'] = ''; }
+      (s.last || []).forEach(l => { o[p + '_' + l.key] = ''; });
+    }
+  });
+  return o;
+}
 
 function renderForm(mode) {
   const schema = MODES[mode];
-  state.opts = {};
-  schema.fields.forEach(f => { state.opts[f.key] = f.value; });
-
+  const o = state.opts;
   const parts = [];
+  let no = 0;
 
-  // 업로드 그룹
-  parts.push('<div class="opt-group opt-uploads"><div class="opt-legend">파일 업로드</div>');
+  /* 상품 머리글 */
+  parts.push('<div class="opt-goods"><span class="opt-goods-name">' + esc(schema.goods) +
+    '</span><span class="opt-goods-code">' + esc(schema.code) + '</span></div>');
+
+  /* 업로드 — 원본은 웹하드 전송이지만, 여기서는 3D 반영을 위한 단계로 둔다 */
+  no++;
+  parts.push('<div class="opt-group">' + stepHead(no, '작업파일 등록') +
+    '<div class="opt-uploads">');
   schema.uploads.forEach(u => {
     parts.push(
       '<label class="opt-upload" data-slot="' + u.slot + '">' +
-        '<span class="opt-upload-label">' + u.label + '</span>' +
+        '<span class="opt-upload-label">' + esc(u.label) + '</span>' +
         '<span class="opt-upload-state" data-slot-state="' + u.slot + '">파일 선택 / 드래그</span>' +
         '<input type="file" accept="image/*" data-upload="' + u.slot + '" hidden>' +
-      '</label>'
-    );
+      '</label>');
   });
-  parts.push('</div>');
+  parts.push('</div></div>');
 
-  // 옵션 필드
-  parts.push('<div class="opt-group">');
-  schema.fields.forEach(f => {
-    parts.push('<div class="opt-row">');
-    parts.push('<label class="opt-label" for="' + fieldId(f.key) + '">' + f.label + '</label>');
-    if (f.type === 'select') {
-      parts.push('<select class="opt-select" id="' + fieldId(f.key) + '" data-key="' + f.key + '">');
-      f.options.forEach(o => {
-        parts.push('<option' + (o === f.value ? ' selected' : '') + '>' + o + '</option>');
+  schema.steps.forEach(s => {
+    if (s.t === 'size') {
+      no++;
+      parts.push('<div class="opt-group">' + stepHead(no, s.label, s.note));
+      parts.push('<div class="opt-size-list" data-key="' + s.key + '">');
+      s.options.forEach(op => {
+        parts.push('<button type="button" class="opt-size' + (op.n === o[s.key] ? ' is-on' : '') +
+          '" data-key="' + s.key + '" data-val="' + esc(op.n) + '">' + esc(op.n) + '</button>');
       });
-      parts.push('</select>');
-    } else if (f.type === 'radio') {
-      parts.push('<div class="opt-seg" role="radiogroup" data-key="' + f.key + '">');
-      f.options.forEach(o => {
-        parts.push('<button type="button" class="opt-seg-item' + (o === f.value ? ' is-on' : '') +
-          '" data-key="' + f.key + '" data-val="' + o + '">' + o + '</button>');
+      parts.push('</div></div>');
+
+    } else if (s.t === 'basic') {
+      no++;
+      parts.push('<div class="opt-group">' + stepHead(no, '기본정보'));
+      parts.push('<div class="opt-row"><label class="opt-label" for="opt-customer_name">주문제목' +
+        '</label><input type="text" class="opt-input" id="opt-customer_name" ' +
+        'data-key="customer_name" value="' + esc(o.customer_name || '') +
+        '" placeholder="주문 건을 구분할 제목"></div>');
+
+      /* 재단사이즈 / 실작업규격 — 원본과 동일하게 가로×세로 2칸 */
+      parts.push(wh('재단사이즈', 'goods_size_w', 'goods_size_h', o));
+      parts.push(wh('실작업규격', 'size_w_plus', 'size_h_plus', o));
+
+      if (s.qtySelect) {
+        parts.push(selectRow('수량', s.qtySelect.key, s.qtySelect.options, o[s.qtySelect.key]));
+      }
+      (s.qty || []).forEach(q => {
+        parts.push(numRow('수량', q.key, o[q.key], q.unit, 1, 99999));
       });
+      if (s.pages) {
+        parts.push(numRow('페이지', s.pages.key, o[s.pages.key], 'p', 4, 400, 2));
+      }
+      parts.push(segRow('작업일정', 'quick_no', ['일반', '긴급'], o.quick_no));
       parts.push('</div>');
-    } else if (f.type === 'number') {
-      parts.push('<span class="opt-num">');
-      parts.push('<input type="number" class="opt-input" id="' + fieldId(f.key) + '" data-key="' + f.key +
-        '" value="' + f.value + '" min="' + (f.min || 1) + '"' + (f.max ? ' max="' + f.max + '"' : '') +
-        (f.step ? ' step="' + f.step + '"' : '') + '>');
-      if (f.unit) parts.push('<span class="opt-unit">' + f.unit + '</span>');
-      parts.push('</span>');
+
+    } else if (s.t === 'jebon') {
+      no++;
+      parts.push('<div class="opt-group">' + stepHead(no, '제본'));
+      parts.push(segRow('제본 방식', 'goods_jebon',
+        ['무선제본', '중철제본_세로형', 'PUR 제본', '링(스프링)제본', '제본 없음'], o.goods_jebon));
+      parts.push(segRow('제본 방향', 'goods_jebon_direction', ['가로', '세로'],
+        o.goods_jebon_direction));
+      const ring = o.goods_jebon === '링(스프링)제본';
+      parts.push('<div class="opt-sub' + (ring ? '' : ' is-off') + '" data-ring-only>' +
+        selectRow('링색상', 'goods_opt_ring', ['검정색', '흰색'], o.goods_opt_ring,
+          '::: 선택하세요 :::') +
+        selectRow('투명PP 추가', 'goods_opt_pp', ['앞 1장', '앞뒤 1장씩'], o.goods_opt_pp,
+          '::: 선택하세요 :::') +
+        '</div>');
+      parts.push('</div>');
+
+    } else if (s.t === 'part') {
+      no++;
+      parts.push(renderPart(s, o, no));
+
+    } else if (s.t === 'memo') {
+      no++;
+      parts.push('<div class="opt-group">' + stepHead(no, '옵션 및 가격정보'));
+      parts.push('<div class="opt-row"><label class="opt-label" for="opt-order_memo">주문메모' +
+        '</label><textarea class="opt-input opt-textarea" id="opt-order_memo" ' +
+        'data-key="order_memo" rows="2" placeholder="요청사항을 적어 주세요">' +
+        esc(o.order_memo || '') + '</textarea></div>');
+      parts.push('</div>');
+
+    } else if (s.t === 'estimate') {
+      parts.push('<div class="opt-group opt-estimate" id="optEstimate"></div>');
     }
-    parts.push('</div>');
   });
-  parts.push('</div>');
 
   form.innerHTML = parts.join('');
   updateUploadStates();
+  renderEstimate();
+}
+
+/* 가로×세로 mm 입력 한 줄 */
+function wh(label, kw, kh, o) {
+  return '<div class="opt-row"><span class="opt-label">' + esc(label) + '</span>' +
+    '<span class="opt-wh">' +
+    '<input type="number" class="opt-input" data-key="' + kw + '" value="' + (o[kw] || '') + '">' +
+    '<span class="opt-unit">㎜ ×</span>' +
+    '<input type="number" class="opt-input" data-key="' + kh + '" value="' + (o[kh] || '') + '">' +
+    '<span class="opt-unit">㎜</span></span></div>';
 }
 
 function updateUploadStates() {
@@ -184,6 +444,63 @@ function updateUploadStates() {
   });
 }
 
+/* --- 견적 (원본 견적보기 블록의 항목 구성을 따른 참고용 추정치) ---------- */
+
+function renderEstimate() {
+  const box = document.getElementById('optEstimate');
+  if (!box) return;
+  const e = estimate();
+  const won = n => n.toLocaleString('ko-KR') + '원';
+  box.innerHTML =
+    '<div class="opt-step-head"><span class="opt-step-title">' +
+      esc(MODES[state.mode].goods) + ' 견적보기</span></div>' +
+    '<dl class="est-list">' +
+      '<div><dt>지류대</dt><dd>' + won(e.paper) + '</dd></div>' +
+      '<div><dt>인쇄비</dt><dd>' + won(e.print) + '</dd></div>' +
+      '<div><dt>제본비</dt><dd>' + won(e.bind) + '</dd></div>' +
+      '<div><dt>후가공</dt><dd>' + won(e.last) + '</dd></div>' +
+      '<div class="est-sum"><dt>공급가액 (부가세)</dt><dd>' + won(e.supply) +
+        ' (' + won(e.vat) + ')</dd></div>' +
+      '<div class="est-total"><dt>청구금액</dt><dd>' + won(e.total) + '</dd></div>' +
+    '</dl>' +
+    '<p class="opt-note">※ 실제 단가가 아닌 참고용 추정치입니다. 주문접수는 로그인 후 가능합니다.</p>' +
+    '<button type="button" class="opt-submit" data-submit>주문 접수</button>';
+}
+
+/* 면적·수량·옵션에 비례한 단순 추정 모델(실제 태산인디고 단가표가 아님) */
+function estimate() {
+  const o = state.opts;
+  const w = +o.goods_size_w || 210, h = +o.goods_size_h || 297;
+  const area = (w * h) / (210 * 297);                       // A4 = 1
+  const qty = parseInt(String(o.goods_ea).replace(/[^\d]/g, ''), 10) || 1;
+  const kinds = +o.goods_ea2 || 1;
+  const pages = +o.in_page_val || 1;
+
+  const duplex = o.in_mun_values === '양면출력' ? 1.8 : 1;
+  const mono = o.in_printer === '흑백 1도' ? 0.4 : 1;
+
+  let paper = Math.round(area * qty * kinds * 12 * (state.mode === 'book' ? pages / 2 : 1));
+  let print = Math.round(area * qty * kinds * 46 * duplex * mono *
+    (state.mode === 'book' ? pages / 2 : 1));
+  let bind = 0;
+  if (state.mode === 'book' && o.goods_jebon !== '제본 없음') {
+    const rate = { '무선제본': 700, '중철제본_세로형': 400, 'PUR 제본': 1100,
+                   '링(스프링)제본': 900 }[o.goods_jebon] || 0;
+    bind = rate * qty;
+  }
+  let last = 0;
+  ['in', 'cover'].forEach(p => {
+    if (o[p + '_lastJob4']) last += Math.round(area * qty * kinds * 18);
+    if (o[p + '_lastJob27'] || o[p + '_lastJob54']) last += Math.round(qty * kinds * 22);
+    if (o[p + '_lastJob47']) last += Math.round(qty * kinds * 10);
+  });
+  if (o.quick_no === '긴급') { print = Math.round(print * 1.3); }
+
+  const supply = paper + print + bind + last;
+  const vat = Math.round(supply * 0.1);
+  return { paper, print, bind, last, supply, vat, total: supply + vat };
+}
+
 /* --- 입력 이벤트 --------------------------------------------------------- */
 
 form.addEventListener('change', e => {
@@ -194,27 +511,81 @@ form.addEventListener('change', e => {
     return;
   }
   if (el.matches('[data-key]')) {
-    state.opts[el.getAttribute('data-key')] = el.value;
-    onOptionChange();
+    setOpt(el.getAttribute('data-key'), el.value);
   }
 });
 
 form.addEventListener('input', e => {
-  if (e.target.matches('input[type=number][data-key]')) {
-    state.opts[e.target.getAttribute('data-key')] = e.target.value;
-    onOptionChange();
+  const el = e.target;
+  if (el.matches('input[type=number][data-key], input[type=text][data-key], textarea[data-key]')) {
+    setOpt(el.getAttribute('data-key'), el.value);
   }
 });
 
 form.addEventListener('click', e => {
-  const seg = e.target.closest('.opt-seg-item');
-  if (!seg) return;
-  const key = seg.getAttribute('data-key');
-  state.opts[key] = seg.getAttribute('data-val');
-  form.querySelectorAll('.opt-seg-item[data-key="' + key + '"]').forEach(b =>
-    b.classList.toggle('is-on', b === seg));
-  onOptionChange();
+  /* 세그먼트 / 사이즈 카드 */
+  const btn = e.target.closest('.opt-seg-item, .opt-size');
+  if (btn) {
+    const key = btn.getAttribute('data-key');
+    const val = btn.getAttribute('data-val');
+    setOpt(key, val);
+    return;
+  }
+  /* 선택 파트 사용/미사용 */
+  const tog = e.target.closest('[data-toggle]');
+  if (tog) {
+    const k = tog.getAttribute('data-toggle');
+    state.opts[k] = !state.opts[k];
+    renderForm(state.mode);
+    onOptionChange();
+    return;
+  }
+  if (e.target.closest('[data-submit]')) {
+    alert('데모 화면입니다. 실제 주문 접수는 연결되어 있지 않습니다.');
+  }
 });
+
+/* 값 변경 → 연동 처리 → 3D/견적 반영 */
+function setOpt(key, value) {
+  state.opts[key] = value;
+
+  /* 규격을 고르면 재단/실작업 규격을 채운다(원본 sizeInput 동작) */
+  const sizeStep = MODES[state.mode].steps.find(s => s.t === 'size');
+  if (sizeStep && key === sizeStep.key) {
+    const op = sizeStep.options.find(x => x.n === value);
+    if (op && !op.custom) {
+      state.opts.goods_size_w = op.w; state.opts.goods_size_h = op.h;
+      state.opts.size_w_plus = op.w; state.opts.size_h_plus = op.h;
+    }
+    renderForm(state.mode);
+    onOptionChange();
+    return;
+  }
+
+  /* 용지 그룹 → 평량 셀렉트 활성화 */
+  if (/_paper_group$/.test(key)) {
+    const p = key.replace('_paper_group', '');
+    state.opts[p + '_paper'] = value ? WEIGHTS[0] : '';
+    renderForm(state.mode);
+    onOptionChange();
+    return;
+  }
+
+  /* 링제본일 때만 링 옵션 노출 */
+  if (key === 'goods_jebon') {
+    renderForm(state.mode);
+    onOptionChange();
+    return;
+  }
+
+  /* 세그먼트 즉시 반영(재렌더 없이) */
+  form.querySelectorAll('.opt-seg-item[data-key="' + key + '"]').forEach(b =>
+    b.classList.toggle('is-on', b.getAttribute('data-val') === value));
+  form.querySelectorAll('.opt-size[data-key="' + key + '"]').forEach(b =>
+    b.classList.toggle('is-on', b.getAttribute('data-val') === value));
+
+  onOptionChange();
+}
 
 /* 서브헤더 모드 전환 */
 subnav.addEventListener('click', e => {
@@ -250,7 +621,11 @@ function primarySlot() {
 ['dragenter', 'dragover'].forEach(ev =>
   stage.addEventListener(ev, e => { e.preventDefault(); stage.classList.add('is-drop'); }));
 ['dragleave', 'drop'].forEach(ev =>
-  stage.addEventListener(ev, e => { e.preventDefault(); if (ev === 'dragleave' && stage.contains(e.relatedTarget)) return; stage.classList.remove('is-drop'); }));
+  stage.addEventListener(ev, e => {
+    e.preventDefault();
+    if (ev === 'dragleave' && stage.contains(e.relatedTarget)) return;
+    stage.classList.remove('is-drop');
+  }));
 stage.addEventListener('drop', e => {
   const file = e.dataTransfer.files && e.dataTransfer.files[0];
   if (file) loadImageFile(file, primarySlot());
@@ -262,23 +637,53 @@ function switchMode(mode) {
   if (!MODES[mode]) return;
   state.mode = mode;
   state.images = {};              // 모드마다 업로드 초기화
+  state.opts = seedDefaults(mode);
   renderForm(mode);
   updateDimLabel();
-  if (engine) engine.rebuild(mode, state.opts, state.images);
+  if (engine) engine.rebuild(mode, derive(), state.images);
 }
 
 function onOptionChange() {
   updateDimLabel();
-  if (engine) engine.update(state.opts);
+  renderEstimate();
+  if (engine) engine.update(derive());
 }
 
 function updateDimLabel() {
   const o = state.opts;
-  let dim = '';
-  if (state.mode === 'poster' || state.mode === 'leaflet') dim = o.size;
-  else if (state.mode === 'book') dim = o.trim + ' · ' + o.pages + 'p';
-  else if (state.mode === 'print') dim = o.kind;
-  dimLabel.textContent = dim || '';
+  const d = o.goods_size_w + '×' + o.goods_size_h + 'mm';
+  let extra = '';
+  if (state.mode === 'book') extra = ' · ' + (o.in_page_val || 0) + 'p · ' + (o.goods_jebon || '');
+  else if (o.in_lastJob54) extra = ' · ' + o.in_lastJob54;
+  else if (o.in_lastJob27) extra = ' · ' + o.in_lastJob27;
+  dimLabel.textContent = d + extra;
+}
+
+/* 폼 값 → 3D 빌더가 쓰는 기하/재질 파라미터 */
+function derive() {
+  const o = state.opts;
+  const coatOf = s => /무광/.test(s || '') ? '무광' : /유광/.test(s || '') ? '유광' : '없음';
+  const foldStr = o.in_lastJob54 || o.in_lastJob27 || '';
+  let panels = 1;
+  if (/2단/.test(foldStr)) panels = 2;
+  else if (/3단/.test(foldStr)) panels = 3;
+  else if (/4단/.test(foldStr)) panels = 4;
+  else if (/대문/.test(foldStr)) panels = 4;
+
+  return {
+    w: +o.goods_size_w || 210,
+    h: +o.goods_size_h || 297,
+    sides: o.in_mun_values === '양면출력' ? '양면' : '단면',
+    coating: coatOf(o.in_lastJob4),
+    coverCoating: coatOf(o.cover_lastJob4),
+    paper: (o.in_paper_group || '') + ' ' + (o.in_paper || ''),
+    coverPaper: (o.cover_paper_group || '') + ' ' + (o.cover_paper || ''),
+    panels,
+    bind: o.goods_jebon || '무선제본',
+    direction: o.goods_jebon_direction || '세로',
+    pages: +o.in_page_val || 48,
+    wings: o.cover_nalgae === '날개있음',
+  };
 }
 
 /* --- 활성화 관찰: Order(위치 2)일 때만 3D를 돌린다 ---------------------- */
@@ -292,12 +697,9 @@ async function activate() {
   active = true;
   dropHint.style.display = state.images[primarySlot()] ? 'none' : '';
   if (!engine) {
-    form.querySelector('.order-loading') && (form.innerHTML = '');
-    renderForm(state.mode);
-    updateDimLabel();
     try {
       engine = await createEngine(stage);
-      engine.rebuild(state.mode, state.opts, state.images);
+      engine.rebuild(state.mode, derive(), state.images);
     } catch (err) {
       stage.innerHTML = '<p class="order-error">3D 프리뷰를 불러오지 못했습니다.<br>' +
         '네트워크 연결을 확인해 주세요.</p>';
@@ -320,10 +722,13 @@ const bodyObserver = new MutationObserver(() => {
   else deactivate();
 });
 bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+/* 첫 진입 전에도 폼은 보여준다 */
+state.opts = seedDefaults(state.mode);
+renderForm(state.mode);
+updateDimLabel();
 if (isOrderActive()) activate();
 
-/* 첫 진입 전에도 폼은 보여준다(로딩 텍스트 대체) */
-if (form.querySelector('.order-loading')) { renderForm(state.mode); updateDimLabel(); }
 window.addEventListener('resize', () => { if (engine && active) engine.resize(); });
 
 /* ==========================================================================
@@ -334,8 +739,6 @@ async function createEngine(mount) {
   const THREE = await import('three');
   const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
   const { RoomEnvironment } = await import('three/addons/environments/RoomEnvironment.js');
-
-  const PAPER = 0xf5f9fe;
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -430,10 +833,9 @@ async function createEngine(mount) {
   }
 
   /* --- 재질(용지/코팅) --- */
-  function paperMaterial(opts, map) {
-    const coating = opts.coating || '없음';
-    const uncoated = /크라프트|모조|미색|반누보|비코팅/.test((opts.paper || '') + (opts.coverPaper || ''));
-    const m = new THREE.MeshPhysicalMaterial({
+  function paperMaterial(coating, paperName, map) {
+    const uncoated = /크라프트|모조|미색|반누보|레자크|색지/.test(paperName || '');
+    return new THREE.MeshPhysicalMaterial({
       map: map || null,
       color: map ? 0xffffff : 0xf3f6fb,
       roughness: coating === '유광' ? 0.18 : coating === '무광' ? 0.5 : (uncoated ? 0.9 : 0.7),
@@ -442,7 +844,6 @@ async function createEngine(mount) {
       clearcoatRoughness: coating === '유광' ? 0.12 : 0.4,
       envMapIntensity: 0.7,
     });
-    return m;
   }
 
   const edgeMat = () => new THREE.MeshStandardMaterial({ color: 0xf4efe6, roughness: 0.95 });
@@ -458,50 +859,45 @@ async function createEngine(mount) {
     scene.add(modelRoot);
   }
 
-  // 판형/사이즈 → 정규화된 (w,h) 월드 단위(최대변 ≈ 3)
-  function worldSize(mm, orient) {
-    let { w, h } = mm;
-    if (orient === '가로') { const t = w; w = h; h = t; }
+  // mm → 정규화된 (w,h) 월드 단위(최대변 ≈ 3)
+  function worldSize(w, h) {
     const s = 3 / Math.max(w, h);
-    return { w: w * s, h: h * s, mm };
+    return { w: w * s, h: h * s };
   }
 
-  function buildFlat(opts, size, frontSlot, backSlot, frontLabel, backLabel, thick) {
+  function buildFlat(D, size, frontSlot, backSlot, frontLabel, backLabel, thick) {
     const t = thick || 0.02;
     const geo = new THREE.BoxGeometry(size.w, size.h, t);
-    const front = paperMaterial(opts, texFor(frontSlot, frontLabel));
-    const back = (opts.sides === '양면')
-      ? paperMaterial(opts, texFor(backSlot, backLabel))
-      : paperMaterial(opts, null);
+    const front = paperMaterial(D.coating, D.paper, texFor(frontSlot, frontLabel));
+    const back = (D.sides === '양면')
+      ? paperMaterial(D.coating, D.paper, texFor(backSlot, backLabel))
+      : paperMaterial(D.coating, D.paper, null);
     const edge = edgeMat();
     const mesh = new THREE.Mesh(geo, [edge, edge, edge, edge, front, back]);
     mesh.castShadow = true; mesh.receiveShadow = true;
     return mesh;
   }
 
-  function buildPoster(opts) {
-    const size = worldSize(parseDim(opts.size), opts.orient);
-    const mesh = buildFlat(opts, size, 'front', 'front', '포스터', '뒷면', 0.02);
+  function buildPoster(D) {
+    const size = worldSize(D.w, D.h);
+    const mesh = buildFlat(D, size, 'front', 'back', '앞면', '뒷면', 0.02);
     mesh.position.y = size.h / 2 - 1.1;   // 바닥에 서 있게
     modelRoot.add(mesh);
-    controls.target.set(0, size.h / 2 - 1.1, 0);
   }
 
-  function buildPrint(opts) {
-    const size = worldSize(parseDim(opts.kind), '가로'); // 명함류는 가로
-    const mesh = buildFlat(opts, size, 'front', 'back', '앞면', '뒷면', 0.03);
+  function buildPrint(D) {
+    const size = worldSize(D.w, D.h);
+    const mesh = buildFlat(D, size, 'front', 'back', '앞면', '뒷면', 0.03);
     mesh.rotation.x = -Math.PI / 2;         // 바닥에 눕힘
     mesh.position.y = -1.1 + 0.02;
     mesh.rotation.z = 0.15;
     modelRoot.add(mesh);
-    controls.target.set(0, -0.4, 0);
   }
 
-  function buildLeaflet(opts) {
-    const fold = opts.fold || '3단 접지';
-    const panels = fold === '낱장(접지 없음)' ? 1 : fold === '2단 접지' ? 2 : fold === '대문 접지' ? 4 : 3;
-    const size = worldSize(parseDim(opts.size), '세로');
-    const pw = size.w / Math.max(panels, 1);
+  function buildLeaflet(D) {
+    const panels = Math.max(1, D.panels);
+    const size = worldSize(D.w, D.h);
+    const pw = size.w / panels;
     const group = new THREE.Group();
     const frontTex = texFor('front', '앞면');
     let x = -size.w / 2;
@@ -509,8 +905,8 @@ async function createEngine(mount) {
       const geo = new THREE.BoxGeometry(pw, size.h, 0.015);
       // 각 패널이 전체 앞면 텍스처의 한 구획을 보이도록 UV 조정
       adjustUV(geo, i / panels, (i + 1) / panels);
-      const front = paperMaterial(opts, frontTex.clone ? cloneTex(frontTex) : frontTex);
-      const back = paperMaterial(opts, null);
+      const front = paperMaterial(D.coating, D.paper, cloneTex(frontTex));
+      const back = paperMaterial(D.coating, D.paper, null);
       const edge = edgeMat();
       const panel = new THREE.Mesh(geo, [edge, edge, edge, edge, front, back]);
       panel.castShadow = true; panel.receiveShadow = true;
@@ -526,7 +922,6 @@ async function createEngine(mount) {
     }
     group.position.y = size.h / 2 - 1.1;
     modelRoot.add(group);
-    controls.target.set(0, size.h / 2 - 1.1, 0);
   }
 
   function cloneTex(t) { const c = t.clone(); c.needsUpdate = true; return c; }
@@ -544,18 +939,12 @@ async function createEngine(mount) {
     uv.needsUpdate = true;
   }
 
-  function buildBook(opts) {
-    const size = worldSize(parseDim(opts.trim), '세로');
-    const pages = Math.max(4, +opts.pages || 48);
+  function buildBook(D) {
+    const size = worldSize(D.w, D.h);
+    const pages = Math.max(4, D.pages);
     const thick = Math.min(0.5, 0.006 + pages * 0.0016);   // 페이지 수 → 두께
-    const bind = opts.bind || '무선(떡)';
-    const coverMat = (slot, label) => {
-      const m = new THREE.MeshPhysicalMaterial({
-        map: texFor(slot, label), roughness: 0.55, clearcoat: 0.3, clearcoatRoughness: 0.4,
-        envMapIntensity: 0.6,
-      });
-      return m;
-    };
+    const coverMat = (slot, label) =>
+      paperMaterial(D.coverCoating, D.coverPaper, texFor(slot, label));
     const innerMat = () => new THREE.MeshStandardMaterial({
       map: texFor('inner', '내지'), roughness: 0.92, color: 0xffffff,
     });
@@ -586,8 +975,8 @@ async function createEngine(mount) {
     book.add(leaf('cover', '표지', +1));
     book.add(leaf('coverBack', '뒷표지', -1));
 
-    // 스파인/제본 표현
-    if (bind === '트윈링') {
+    // 제본 방식 표현
+    if (D.bind === '링(스프링)제본') {
       const rings = Math.max(6, Math.round(size.h / 0.12));
       const ringMat = new THREE.MeshStandardMaterial({ color: 0x8a8f96, metalness: 0.8, roughness: 0.35 });
       for (let i = 0; i < rings; i++) {
@@ -597,9 +986,9 @@ async function createEngine(mount) {
         r.castShadow = true;
         book.add(r);
       }
-    } else {
+    } else if (D.bind !== '제본 없음') {
       const spineW = Math.max(0.02, thick);
-      const spineMat = bind === '중철'
+      const spineMat = D.bind === '중철제본_세로형'
         ? new THREE.MeshStandardMaterial({ color: 0xdfe7f0, roughness: 0.6 })
         : coverMat('cover', '표지');
       const spine = new THREE.Mesh(new THREE.BoxGeometry(spineW, size.h, 0.02), spineMat);
@@ -609,16 +998,17 @@ async function createEngine(mount) {
     }
 
     book.position.y = size.h / 2 - 1.1;
+    // 가로(좌철) 제본이면 눕혀서 보여준다
+    if (D.direction === '가로') book.rotation.z = Math.PI / 2;
     modelRoot.add(book);
-    controls.target.set(0, size.h / 2 - 1.1, 0);
   }
 
-  function build(mode, opts) {
+  function build(mode, D) {
     disposeModel();
-    if (mode === 'poster') buildPoster(opts);
-    else if (mode === 'print') buildPrint(opts);
-    else if (mode === 'leaflet') buildLeaflet(opts);
-    else if (mode === 'book') buildBook(opts);
+    if (mode === 'poster') buildPoster(D);
+    else if (mode === 'print') buildPrint(D);
+    else if (mode === 'leaflet') buildLeaflet(D);
+    else if (mode === 'book') buildBook(D);
     fitCamera();
   }
 
@@ -641,7 +1031,7 @@ async function createEngine(mount) {
   }
 
   /* --- 렌더 루프 --- */
-  let raf = null, running = false, currentMode = 'poster', currentOpts = {};
+  let raf = null, running = false, currentMode = 'poster', currentD = {};
 
   function loop() {
     if (!running) return;
@@ -663,21 +1053,21 @@ async function createEngine(mount) {
 
   /* --- 외부 API --- */
   return {
-    rebuild(mode, opts, images) {
-      currentMode = mode; currentOpts = opts;
+    rebuild(mode, D, images) {
+      currentMode = mode; currentD = D;
       // 이미지 텍스처 갱신
       for (const slot in texCache) { texCache[slot].dispose(); delete texCache[slot]; }
       for (const slot in images) texCache[slot] = imageTexture(images[slot]);
-      build(mode, opts);
+      build(mode, D);
     },
-    update(opts) {
-      currentOpts = opts;
-      build(currentMode, opts);    // 옵션 변경은 재빌드(간단·안전)
+    update(D) {
+      currentD = D;
+      build(currentMode, D);    // 옵션 변경은 재빌드(간단·안전)
     },
     setTexture(slot, img) {
       if (texCache[slot]) texCache[slot].dispose();
       texCache[slot] = imageTexture(img);
-      build(currentMode, currentOpts);
+      build(currentMode, currentD);
       if (slot === MODES[state.mode].uploads[0].slot) dropHint.style.display = 'none';
     },
     resetView() {

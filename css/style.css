@@ -449,6 +449,120 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* 상품 머리글 — 원본 상세 상단(상품명 + 코드) */
+.opt-goods {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  padding-bottom: 1.2rem;
+}
+.opt-goods-name { font-size: 1.9rem; }
+.opt-goods-code { font-size: 1.25rem; color: #9db4cc; }
+
+/* 단계 머리글 — 번호 + 제목 */
+.opt-step-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.9rem;
+}
+.opt-step-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  font-size: 1.15rem;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 50%;
+  flex: none;
+}
+.opt-step-title { font-size: 1.55rem; }
+
+.opt-note {
+  font-size: 1.2rem;
+  line-height: 1.5;
+  color: #6a86a6;
+  margin-bottom: 0.9rem;
+}
+.opt-notice {
+  font-size: 1.2rem;
+  color: var(--accent-sub);
+  padding: 0.6rem 0 0.2rem;
+}
+
+/* 규격 사이즈 카드 */
+.opt-size-list { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.opt-size {
+  font-family: var(--mono);
+  font-size: 1.35rem;
+  color: #4a5a6d;
+  background: transparent;
+  border: 1px solid rgba(0,0,0,0.25);
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.opt-size:hover { border-color: var(--ink); }
+.opt-size.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* 가로 × 세로 mm 입력 */
+.opt-wh { display: inline-flex; align-items: center; gap: 0.5rem; }
+.opt-wh .opt-input { width: 7rem; }
+
+.opt-textarea { resize: vertical; line-height: 1.5; }
+
+/* 파트(표지/내지/면지/간지) 블록 */
+.opt-part-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.9rem;
+}
+.opt-part.is-off { opacity: 0.55; }
+.opt-toggle {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 1.2rem;
+  color: #4a5a6d;
+  background: transparent;
+  border: 1px solid rgba(0,0,0,0.25);
+  padding: 0.3rem 0.8rem;
+  cursor: pointer;
+}
+.opt-toggle.is-on { background: var(--accent-sub); border-color: var(--accent-sub); color: #fff; }
+
+/* 연동 셀렉트(용지 → 평량), 조건부 노출 블록 */
+.opt-row-sub .opt-label { color: #8aa0b6; }
+.opt-row-sub.is-off .opt-select { color: #9db4cc; }
+.opt-sub.is-off { display: none; }
+
+/* 견적 */
+.opt-estimate { background: var(--bar); padding: 1.4rem 1.2rem; }
+.est-list { font-size: 1.35rem; }
+.est-list > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+}
+.est-list dt { color: #4a5a6d; }
+.est-sum { border-top: 1px solid rgba(0,0,0,0.12); margin-top: 0.5rem; padding-top: 0.7rem !important; }
+.est-total { font-size: 1.6rem; color: var(--accent); }
+
+.opt-submit {
+  width: 100%;
+  margin-top: 1rem;
+  font-family: var(--mono);
+  font-size: 1.45rem;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  padding: 0.9rem 0;
+  cursor: pointer;
+}
+.opt-submit:hover { background: var(--ink); }
+
 /* 업로드 */
 .opt-uploads { display: flex; flex-direction: column; gap: 0.8rem; }
 .opt-upload {
