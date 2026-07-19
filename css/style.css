@@ -261,15 +261,20 @@ body {
    우: 슬라이드별 이미지(교차 페이드)
    -------------------------------------------------------------------------- */
 
-.hero-left { padding-right: 0; }
+/* 카운터와 화살표가 본문 스크롤에 끌려가지 않도록, 스크롤은 .hero-slides가
+   맡고 패널 자체는 고정한다. (전역 .bodier.is-current .panel 규칙을 덮는다) */
+.hero-left,
+.bodier.is-current .panel.hero-left { overflow: hidden; }
 
 /* 슬라이드는 겹쳐 쌓고 opacity로 교체한다 — 높이가 서로 달라도 레이아웃이
    흔들리지 않고, 카운터/화살표 위치가 고정된다. */
 .hero-slides {
   position: absolute;
-  left: 0; top: 0;
-  width: 100%;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: clip;
 }
+.hero-slides::-webkit-scrollbar { width: 0; }
 .hero-slide {
   position: absolute;
   left: 0; top: 0;
@@ -330,6 +335,89 @@ body {
 /* 강조 문장 — 국문·영문 공통 */
 .hero-kr .hl, .hero-en .hl { color: var(--blue); }
 
+/* 2/4 우측 단 — 행간이 더 넓고 자간이 좁다 */
+.hero-kr-loose { line-height: 1.5; letter-spacing: -0.025em; }
+.hero-kr-loose p + p { margin-top: 0; }
+
+/* --- 2/4 · 값 다이어그램 -----------------------------------------------
+   원 위에 라벨을 얹고, 라벨의 흰 배경으로 원 선을 가른다(Figma 방식). */
+.hero-circle-wrap { position: absolute; left: 0; top: 0; width: 100%; }
+.hero-circle {
+  position: absolute;
+  left: 16.35rem; top: 43.3rem;
+  width: 61.6rem; height: 61.6rem;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+}
+.circle-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: var(--paper);
+  text-align: center;
+  font-size: 4.8rem;
+  line-height: 1.35;
+  padding: 0 2.4rem;
+  white-space: nowrap;
+}
+.circle-label .w1 { font-family: var(--serif-caps); margin-bottom: -0.6rem; }
+.circle-label .w2 { font-family: var(--serif-script); font-style: italic; font-weight: 700; }
+
+.label-testing { left: 47.2rem;  top: 45.9rem; }
+.label-tying   { left: 17.55rem; top: 86rem; padding: 0 1.2rem; }
+.label-three   { left: 73.65rem; top: 86rem; padding: 0 1.2rem; }
+
+/* --- 3/4 · 로고 락업 + 워드마크 ---------------------------------------- */
+.hero-logo {
+  position: absolute;
+  left: 46.6rem; top: 42.6rem;
+  transform: translate(-50%, -50%);
+  width: 67.35rem; height: 68.3rem;
+}
+.hero-logo-guides,
+.hero-logo-mark {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  object-fit: contain;
+}
+.hero-logo-guides { width: 67.35rem; height: 68.3rem; }
+.hero-logo-mark   { width: 48.2rem;  height: 49.3rem; }
+
+.hero-wordmark {
+  position: absolute;
+  left: 46rem; top: 76.5rem;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  white-space: nowrap;
+}
+.hero-wordmark .w-script {
+  font-family: var(--serif-script);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 4.44rem;
+  line-height: 1.4;
+  letter-spacing: -0.025em;
+}
+.hero-wordmark .w-caps {
+  /* Futura(상용) 대체 — 기하학적 산세리프 계열로 떨어뜨린다 */
+  font-family: Futura, "Century Gothic", Avenir, var(--kr-noto), sans-serif;
+  font-size: 3.55rem;
+  line-height: 1.4;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+}
+
+/* --- 4/4 · Idiots info ------------------------------------------------- */
+.hero-info { font-family: var(--mono); font-size: 2.4rem; line-height: 1.4; }
+.hero-info > div + div { margin-top: 0.7rem; }   /* Contact는 7px 아래에서 시작 */
+.info-key { margin-bottom: 3rem; }
+.info-val { margin-bottom: 3.1rem; letter-spacing: -0.025em; }
+.info-val:last-child { margin-bottom: 0; }
+.info-val .sep { padding: 0 0.4rem; }
+
 /* 하단 화살표 — 아래를 가리킨다(디자인은 → 를 90° 회전) */
 .hero-arrow {
   position: absolute;
@@ -344,14 +432,14 @@ body {
   cursor: pointer;
   z-index: 2;
 }
+/* 각도는 hero.js가 인라인으로 쓴다(누적 회전). 여기서는 전환만 선언한다 —
+   3/4→4/4에서 시계방향 반바퀴, 4/4→1/4에서 같은 방향으로 이어 돈다. */
 .hero-arrow svg {
   display: block;
   width: 100%;
   height: 100%;
-  transform: rotate(90deg);
-  transition: transform 0.2s ease;
+  transition: transform 0.5s var(--easing);
 }
-.hero-arrow:hover svg { transform: rotate(90deg) translateX(0.5rem); }
 
 /* --- 우측: 슬라이드 이미지 --- */
 .hero-right {
