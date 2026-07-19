@@ -306,9 +306,7 @@ body {
 
 /* --- 우측: iPS 로고 정사각 — 평면 그래픽 자전 --------------------------
    유닛 4개(0/90/180/270도) 배치는 Figma 실측 그대로. 정사각 전체가
-   세로축으로 천천히 돈다. 정사영(원근 없음)이라 가로 축소로만 렌더 —
-   페이지 전환(책장 넘김)과 같은 결. 90°/270°에서 잠깐 선으로 접히고
-   뒤집힌 면은 거울상으로 보인다(실제 인쇄물 뒷면처럼). */
+   화면 평면 안에서 시계방향으로 천천히 돈다(시곗바늘처럼). */
 
 .logo-square {
   position: absolute;
@@ -330,9 +328,11 @@ body {
   animation: logo-spin 16s linear infinite;
   will-change: transform;
 }
+/* 화면 평면 회전(시계방향). 유닛들이 translate/rotate 인라인 transform을
+   가지므로, 여기서는 정사각 컨테이너만 돌린다 — 유닛은 그대로 따라 돈다. */
 @keyframes logo-spin {
-  from { transform: rotateY(0deg); }
-  to   { transform: rotateY(360deg); }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 @media (prefers-reduced-motion: reduce) {
   .logo-spin { animation: none; }
