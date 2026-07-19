@@ -3,16 +3,18 @@
    --------------------------------------------------------------------------
    Figma: 1/4 104:80, 2/4 69:1881, 3/4 69:1061, 4/4 116:142
 
-   좌: 슬라이드별 본문, 우: 슬라이드별 이미지. 둘 다 교차 페이드로 바뀐다.
-   카운터(n/4)와 화살표는 슬라이드 바깥에 고정돼 있어 전환 중에도 자리가
-   움직이지 않는다 — 본문만 갈아끼운다.
+   좌: 실제로 세로 스크롤된다(스크롤 스냅으로 한 장씩 맞춤).
+   우: 좌측 스크롤에 맞춰 이미지만 디졸브로 바뀐다.
+   카운터(n/4)와 화살표는 스크롤 컨테이너 바깥에 있어 자리가 고정된다.
 
-   화살표 방향: 1~3은 아래(다음), 4는 위(1로 복귀). 방향이 바뀔 때마다
-   누적 각도에 +180을 더해 항상 시계방향으로 돈다. 4→1도 되감지 않고
-   같은 방향으로 이어 돈다.
+   스크롤 위치가 상태의 원천이다. 휠·트랙패드·스와이프는 네이티브에
+   맡기므로, 마지막 장(4/4)에서 아래로 더 내려도 처음으로 순환하지
+   않는다 — 위로 올려야 되돌아간다.
 
-   Home 면이 정면(position 0)일 때만 입력을 받는다. 다른 면에서 스크롤이
-   히어로를 넘기면 안 되기 때문이다.
+   화살표 방향: 1~3은 아래(다음), 4는 위(처음으로). 방향이 바뀔 때마다
+   누적 각도에 +180을 더해 항상 시계방향으로 돈다(되감지 않는다).
+
+   Home 면이 정면(position 0)일 때만 화살표·방향키를 받는다.
    ========================================================================== */
 
 (function () {
@@ -124,7 +126,6 @@
   if (!slidesEl || !rightEl) return;
 
   var index = 0;
-  var busy = false;
   var arrowDeg = 90;               /* 아래를 가리키는 기본 각도 */
 
   /* --- 렌더 -------------------------------------------------------------- */
@@ -132,27 +133,28 @@
   function build() {
     var left = '', right = '';
     HERO.forEach(function (s, i) {
-      var on = i === 0 ? ' is-on' : '';
       left +=
-        '<article class="hero-slide' + on + '" data-slide="' + i + '" ' +
-                 'aria-hidden="' + (i === 0 ? 'false' : 'true') + '">' +
+        '<article class="hero-slide" data-slide="' + i + '">' +
           '<p class="hero-eyebrow">' + s.eyebrow + '</p>' +
           s.body +
         '</article>';
       right +=
-        '<img class="hero-img' + on + '" data-slide="' + i + '" ' +
+        '<img class="hero-img' + (i === 0 ? ' is-on' : '') + '" data-slide="' + i + '" ' +
              'src="' + s.img + '" alt="' + s.alt + '" ' +
              (i === 0 ? '' : 'loading="lazy" ') + '>';
     });
     slidesEl.innerHTML = left;
     rightEl.innerHTML = right;
     if (totalEl) totalEl.textContent = HERO.length;
-    applyArrow(0);
+    setArrow(0);
+    Array.prototype.forEach.call(slidesEl.children, function (el, i) {
+      el.setAttribute('aria-hidden', i === 0 ? 'false' : 'true');
+    });
   }
 
   /* 화살표는 자리를 지키고 각도만 바뀐다. 방향이 달라지면 +180씩 누적해
-     언제나 시계방향으로 돈다(4→1 복귀도 되감지 않는다). */
-  function applyArrow(next) {
+     언제나 시계방향으로 돈다(되감지 않는다). */
+  function setArrow(next) {
     if (!arrowSvg) return;
     var wasUp = !!HERO[index].arrowUp;
     var willUp = !!HERO[next].arrowUp;
@@ -161,28 +163,58 @@
     arrowEl.setAttribute('aria-label', willUp ? '처음 슬라이드로' : '다음 슬라이드');
   }
 
-  function show(next) {
-    next = ((next % HERO.length) + HERO.length) % HERO.length;
-    if (next === index || busy) return;
-    busy = true;
+  /* 스크롤 위치가 상태의 원천이다. 좌측은 실제로 스크롤되고, 그에 맞춰
+     카운터·화살표·우측 이미지만 갱신한다(우측만 디졸브). */
+  function sync(next) {
+    next = Math.max(0, Math.min(HERO.length - 1, next));
+    if (next === index) return;
 
-    applyArrow(next);
-
-    var prev = index;
+    setArrow(next);
     index = next;
 
-    [slidesEl, rightEl].forEach(function (root) {
-      var out = root.querySelector('[data-slide="' + prev + '"]');
-      var into = root.querySelector('[data-slide="' + next + '"]');
-      if (out) { out.classList.remove('is-on'); out.setAttribute('aria-hidden', 'true'); }
-      if (into) { into.classList.add('is-on'); into.setAttribute('aria-hidden', 'false'); }
-    });
-
     if (countEl) countEl.textContent = index + 1;
-    slidesEl.scrollTop = 0;
 
-    /* 페이드가 끝나기 전 연속 입력을 막는다(CSS --hero-fade와 맞춘다) */
-    window.setTimeout(function () { busy = false; }, 420);
+    var on = rightEl.querySelector('.hero-img.is-on');
+    var into = rightEl.querySelector('.hero-img[data-slide="' + index + '"]');
+    if (on && on !== into) on.classList.remove('is-on');
+    if (into) into.classList.add('is-on');
+
+    Array.prototype.forEach.call(slidesEl.children, function (el, i) {
+      el.setAttribute('aria-hidden', i === index ? 'false' : 'true');
+    });
+  }
+
+  /* 스크롤 위치를 훑어 현재 장을 판단한다. 관성/스냅 중에도 마지막
+     이벤트가 최종 위치를 담으므로 짧은 지연으로 한 번 더 확인한다. */
+  var throttle = null, settle = null, lockUntil = 0;
+  function onScroll() {
+    /* 화살표·방향키로 이동하는 중에는 중간 위치가 상태를 되돌리지 않게
+       잠근다(카운터가 2→1→2로 깜빡이던 문제). */
+    if (Date.now() < lockUntil) return;
+    if (throttle) return;
+    throttle = window.setTimeout(function () {
+      throttle = null;
+      sync(Math.round(slidesEl.scrollTop / (slidesEl.clientHeight || 1)));
+    }, 60);
+    window.clearTimeout(settle);
+    settle = window.setTimeout(function () {
+      sync(Math.round(slidesEl.scrollTop / (slidesEl.clientHeight || 1)));
+    }, 140);
+  }
+  slidesEl.addEventListener('scroll', onScroll, { passive: true });
+
+  /* 지정한 장으로 이동 — 스냅 컨테이너에서는 scrollIntoView가 가장
+     자연스럽게 맞아 들어간다. 이동이 끝난 뒤 상태도 한 번 맞춰 준다. */
+  function goTo(i) {
+    i = Math.max(0, Math.min(HERO.length - 1, i));
+    var el = slidesEl.children[i];
+    if (!el) return;
+    var reduce = window.matchMedia &&
+                 window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    lockUntil = Date.now() + (reduce ? 0 : 700);
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    sync(i);                       /* 클릭에 즉시 반응하고, 잠금이 풀린 뒤
+                                      스크롤 핸들러가 실제 위치로 재확인한다 */
   }
 
   /* --- 입력 -------------------------------------------------------------- */
@@ -193,53 +225,27 @@
            !document.body.classList.contains('flag-carrousel-loading-true');
   }
 
+  /* 스크롤(휠·트랙패드·스와이프)은 네이티브에 맡긴다 — 마지막 장에서
+     아래로 더 내려도 처음으로 돌아가지 않는다. 위로 올려야 되돌아간다.
+     화살표는 1~3에서 다음 장, 4에서는 위를 가리키며 처음으로 돌아간다. */
   if (arrowEl) {
     arrowEl.addEventListener('click', function () {
-      if (homeActive()) show(index + 1);
+      if (!homeActive()) return;
+      goTo(HERO[index].arrowUp ? 0 : index + 1);
     });
   }
-
-  /* 휠 — 한 번의 제스처가 여러 이벤트를 쏟아내므로 잠금으로 걸러낸다.
-     본문이 패널보다 길면(2/4의 원 다이어그램) 먼저 스크롤하고, 끝에
-     닿았을 때만 슬라이드를 넘긴다. */
-  var wheelLock = false;
-  window.addEventListener('wheel', function (e) {
-    if (!homeActive()) return;
-    if (Math.abs(e.deltaY) < 8) return;
-
-    var down = e.deltaY > 0;
-    var max = slidesEl.scrollHeight - slidesEl.clientHeight;
-    var atEnd = down ? slidesEl.scrollTop >= max - 1 : slidesEl.scrollTop <= 1;
-    if (max > 1 && !atEnd) return;          /* 패널 내부 스크롤에 양보 */
-
-    e.preventDefault();
-    if (wheelLock || busy) return;
-    wheelLock = true;
-    show(index + (down ? 1 : -1));
-    window.setTimeout(function () { wheelLock = false; }, 480);
-  }, { passive: false });
-
-  /* 세로 스와이프 — 가로 스와이프는 app.js의 면 전환이 가져간다 */
-  var touchY = null, touchX0 = null;
-  window.addEventListener('touchstart', function (e) {
-    touchY = e.changedTouches[0].clientY;
-    touchX0 = e.changedTouches[0].clientX;
-  }, { passive: true });
-
-  window.addEventListener('touchend', function (e) {
-    if (touchY === null || !homeActive()) { touchY = null; return; }
-    var dy = e.changedTouches[0].clientY - touchY;
-    var dx = e.changedTouches[0].clientX - touchX0;
-    touchY = null;
-    if (Math.abs(dy) < 60 || Math.abs(dy) < Math.abs(dx)) return;
-    show(index + (dy < 0 ? 1 : -1));
-  }, { passive: true });
 
   /* 위/아래 방향키 — 좌우는 app.js가 면 전환에 쓴다 */
   document.addEventListener('keydown', function (e) {
     if (!homeActive() || e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); show(index + 1); }
-    if (e.key === 'ArrowUp')   { e.preventDefault(); show(index - 1); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); goTo(index + 1); }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); goTo(index - 1); }
+  });
+
+  /* 창 크기가 바뀌면 스냅 기준이 달라진다 — 현재 장에 다시 맞춘다.
+     애니메이션 없이 즉시 맞춰야 스냅이 어긋난 채 남지 않는다. */
+  window.addEventListener('resize', function () {
+    slidesEl.scrollTo({ top: index * slidesEl.clientHeight, behavior: 'instant' });
   });
 
   build();

@@ -266,27 +266,25 @@ body {
 .hero-left,
 .bodier.is-current .panel.hero-left { overflow: hidden; }
 
-/* 슬라이드는 겹쳐 쌓고 opacity로 교체한다 — 높이가 서로 달라도 레이아웃이
-   흔들리지 않고, 카운터/화살표 위치가 고정된다. */
+/* 좌측은 실제 세로 스크롤이다(디졸브 아님). 슬라이드를 패널 높이로 쌓고
+   스크롤 스냅으로 한 장씩 맞춘다. 마지막 장에서 아래로 더 내려도 처음으로
+   돌아가지 않는 것은 네이티브 스크롤의 끝이기 때문 — 순환시키지 않는다.
+   본문이 패널보다 긴 슬라이드(2/4의 원 다이어그램)는 Figma처럼 잘린다. */
 .hero-slides {
   position: absolute;
   inset: 0;
-  overflow-y: auto;
+  overflow-y: scroll;
   overflow-x: clip;
+  scroll-snap-type: y mandatory;
+  overscroll-behavior: contain;
 }
 .hero-slides::-webkit-scrollbar { width: 0; }
 .hero-slide {
-  position: absolute;
-  left: 0; top: 0;
+  position: relative;
   width: 100%;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--hero-fade) ease, visibility 0s linear var(--hero-fade);
-}
-.hero-slide.is-on {
-  opacity: 1;
-  visibility: visible;
-  transition: opacity var(--hero-fade) ease;
+  height: 100%;
+  overflow: hidden;
+  scroll-snap-align: start;
 }
 
 .hero-count {
@@ -477,19 +475,11 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12rem;                     /* 로고가 0×0 앵커라 실제 간격은 절반 */
   opacity: 1;
   transition: opacity 0.5s ease;
 }
 /* is-loading이 빠지면 페이드아웃 — app.js가 이후 display:none 처리 */
 body:not(.is-loading) .loader { opacity: 0; pointer-events: none; }
-
-.loader-label {
-  font-family: var(--mono);
-  font-size: 1.6rem;
-  letter-spacing: 0.04em;
-  color: var(--blue);
-}
 
 /* --- iPS 로고 정사각 — 평면 그래픽 자전 --------------------------------
    유닛 4개(0/90/180/270도) 배치는 Figma 실측 그대로. 정사각 전체가
