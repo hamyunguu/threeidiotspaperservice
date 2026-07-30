@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TiPS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css?v=16" />
+</head>
+<body class="hero2">
+
+<!-- loading page — CMYK registration logo spins clockwise (~1.5s on entry) -->
+<div class="loader" id="loader"><img class="loader-logo" src="assets/loader.svg?v=16" alt="로딩 중" /></div>
+
+<div class="viewport" id="viewport">
+  <div class="stage" id="stage">
+
+    <!-- ===== header ===== -->
+    <img class="logo" src="assets/logo.svg?v=16" alt="TiPS" />
+    <nav class="nav">
+      <a class="nav-item" style="left:304px; top:20px; --nav:#029bed" href="identity.html">Identity</a>
+      <a class="nav-item" style="left:304px; top:56px; --nav:#ed028c" href="program.html">Program</a>
+      <a class="nav-item" style="left:304px; top:92px; --nav:#302929" href="service.html">Service</a>
+      <a class="nav-item" style="left:970px;  top:20px">Search</a>
+      <a class="nav-item" style="left:1580px; top:20px">Cart</a>
+      <a class="nav-item" style="left:1780px; top:20px">Login</a>
+    </nav>
+    <div class="header-rule"></div>
+
+    <!-- ===== registration / crop marks (exact — Figma 291:688–745) ===== -->
+    <div class="regmarks" aria-hidden="true">
+      <!-- L crop marks (reg-cross) -->
+      <img class="mk" src="assets/reg-cross.svg" style="left:907px;  top:1012px">
+      <img class="mk" src="assets/reg-cross.svg" style="left:20px;   top:1012px">
+      <img class="mk" src="assets/reg-cross.svg" style="left:1449px; top:623px">
+      <img class="mk" src="assets/reg-cross.svg" style="left:1449px; top:1012px">
+      <img class="mk" src="assets/reg-cross.svg" style="left:907px;  top:155px; transform:scaleY(-1)">
+      <img class="mk" src="assets/reg-cross.svg" style="left:20px;   top:155px; transform:scaleY(-1)">
+      <img class="mk" src="assets/reg-cross.svg" style="left:1449px; top:155px; transform:scaleY(-1)">
+      <img class="mk" src="assets/reg-cross.svg" style="left:1438px; top:155px; transform:rotate(180deg)">
+      <img class="mk" src="assets/reg-cross.svg" style="left:822px;  top:155px; transform:rotate(180deg)">
+      <img class="mk" src="assets/reg-cross.svg" style="left:1852px; top:155px; transform:rotate(180deg)">
+      <img class="mk" src="assets/reg-cross.svg" style="left:1438px; top:1012px; transform:scaleX(-1)">
+      <img class="mk" src="assets/reg-cross.svg" style="left:822px;  top:1012px; transform:scaleX(-1)">
+      <img class="mk" src="assets/reg-cross.svg" style="left:1852px; top:623px; transform:scaleX(-1)">
+      <img class="mk" src="assets/reg-cross.svg" style="left:1852px; top:1012px; transform:scaleX(-1)">
+      <!-- bullseye targets (reg-corner) at the four outer corners -->
+      <img class="mk" src="assets/reg-corner.svg" style="left:20px;   top:155px">
+      <img class="mk" src="assets/reg-corner.svg" style="left:1852px; top:155px">
+      <img class="mk" src="assets/reg-corner.svg" style="left:20px;   top:1012px">
+      <img class="mk" src="assets/reg-corner.svg" style="left:1852px; top:1012px">
+    </div>
+
+    <!-- ===== left: auto-dissolving poster carousel ===== -->
+    <p class="poster-label">TIPS Brand<br />Poster</p>
+    <div class="carousel" id="carousel">
+      <div class="slide is-active"><img src="assets/poster.jpg?v=16" alt="TIPS 브랜드 포스터" /></div>
+      <div class="slide"><img src="assets/card-hand.jpg?v=16" alt="TIPS 제본 작업" /></div>
+      <div class="slide"><img src="assets/gal-wood-a.jpg?v=16" alt="TIPS 목판 작업" /></div>
+    </div>
+    <div class="pager" id="pager">
+      <button class="pg is-active" data-i="0" aria-label="사진 1">1</button>
+      <button class="pg" data-i="1" aria-label="사진 2">2</button>
+      <button class="pg" data-i="2" aria-label="사진 3">3</button>
+    </div>
+
+    <!-- ===== centre: copy ===== -->
+    <div class="hero-copy">
+      <p class="copy-ko2">인쇄 앞에서는 우리 모두가 조금은 얼간이가<br />됩니다. 어떤 종이를 고를지, 어떤 방법으로<br />묶을지, 무엇을 물어봐야 할지 몰라 매번 묻고,<br />찾고, 다시 확인합니다.<br /><br />팁스는 그 경험에서 시작합니다.<br />인쇄 앞에서 얼간이가 되는 사람들을 위해.</p>
+      <div class="copy-en2">
+        <p>In front of a printing press, we all become a bit of a idiots. Not knowing which paper to choose, how to bind it, or even what to ask, we find ourselves questioning, searching, and double-checking every single time.</p>
+        <p>TiPS starts from that very experience. For everyone who feels like a fool in front of print.</p>
+      </div>
+    </div>
+
+    <!-- ===== right-top: program list (hover fills accent + reveals detail) ===== -->
+    <div class="proglist" id="proglist">
+      <button class="prow" style="--accent:#029bed; top:203.49px" data-href="program.html">
+        <span class="prow-bar"></span>
+        <span class="prow-text">
+          <span class="prow-label">Program 1</span>
+          <span class="prow-title">꿰기 세션.</span>
+          <span class="prow-desc">제본과는 멀어 보이는 재료까지 자유롭게 연결합니다.</span>
+        </span>
+      </button>
+      <button class="prow" style="--accent:#ffee00; top:345px" data-href="program.html">
+        <span class="prow-bar"></span>
+        <span class="prow-text">
+          <span class="prow-label">Program 2</span>
+          <span class="prow-title">묶기 세션.</span>
+          <span class="prow-desc">손에 잡히는 다양한 재료를 이용해 새로운 책의 구조를 만들어 봅니다.</span>
+        </span>
+      </button>
+      <button class="prow" style="--accent:#ed028c; top:487px" data-href="program.html">
+        <span class="prow-bar"></span>
+        <span class="prow-text">
+          <span class="prow-label">Program 3</span>
+          <span class="prow-title">풀기 세션.</span>
+          <span class="prow-desc">하나의 책이 어떤 순서와 방식으로 만들어졌는지 발견합니다.</span>
+        </span>
+      </button>
+    </div>
+    <a class="prog-more" href="program.html">프로그램 더 보기 →</a>
+
+    <!-- ===== right-bottom: AI chatbot ===== -->
+    <div class="chat" id="chat">
+      <div class="chat-log" id="chatLog" aria-live="polite"></div>
+      <form class="chat-input" id="chatForm">
+        <input id="chatField" type="text" autocomplete="off" placeholder="무엇이든 물어보세요." />
+        <button type="submit" class="chat-send" id="chatSend" aria-label="보내기"></button>
+      </form>
+    </div>
+
+    <!-- ===== floating spheres. tap to follow the letter, drag to throw. ===== -->
+    <div class="balls" id="balls">
+      <div class="ball" data-x="816"  data-y="281" data-rot="-48.65" data-href="program.html"  title="Program"><img src="assets/ball-p.svg?v=16"   alt="Program" /></div>
+      <div class="ball" data-x="252"  data-y="793" data-rot="29.82"  data-href="index.html"    title="Home"><img src="assets/ball-hammer.svg?v=16" alt="Home" /></div>
+      <div class="ball" data-x="1785" data-y="606" data-rot="-42.5"  data-href="identity.html" title="Identity"><img src="assets/ball-pen.svg?v=16"  alt="Identity" /></div>
+      <div class="ball" data-x="1251" data-y="978" data-rot="-13.21" data-href="service.html"  title="Service"><img src="assets/ball-s.svg?v=16"    alt="Service" /></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="hero.js?v=16"></script>
+<script src="script.js?v=16"></script>
+<script src="cursor.js?v=16"></script>
+</body>
+</html>
