@@ -266,7 +266,8 @@ const BALL_META = {
 
 function metaFor(ballEl) {
   const src = ballEl.querySelector('img').getAttribute('src') || '';
-  const key = Object.keys(BALL_META).find((k) => src.includes(k));
+  // match on the full "ball-xxx.svg" so 'ball-p' doesn't also swallow 'ball-pen'
+  const key = Object.keys(BALL_META).find((k) => src.includes(k + '.svg'));
   return BALL_META[key] || BALL_META['ball-p'];
 }
 
@@ -309,21 +310,25 @@ function openTip(b) {
 
   // grow from the sphere's on-screen position to the centred circle
   const br = b.el.getBoundingClientRect();
-  const cr = circle.getBoundingClientRect();
+  const cr = circle.getBoundingClientRect();      // measured while untransformed (centred)
   const dx = (br.left + br.width / 2) - (cr.left + cr.width / 2);
   const dy = (br.top + br.height / 2) - (cr.top + cr.height / 2);
   const s0 = br.width / cr.width;
+  // start small, at the sphere; flush layout; then transition to full/centre so
+  // the browser actually animates instead of jumping straight to the end state
+  circle.style.transition = 'none';
   circle.style.transform = `translate(${dx}px, ${dy}px) scale(${s0})`;
   circle.style.opacity = '0';
+  void circle.offsetWidth;                        // force reflow to register the start
+  circle.style.transition = '';                   // back to the CSS transition
   requestAnimationFrame(() => {
-    circle.classList.add('is-in');
     circle.style.transform = 'translate(0, 0) scale(1)';
     circle.style.opacity = '1';
   });
 
-  // re-roll on the circle, dismiss on the backdrop
+  // keep the tip while open (clicking the circle no longer re-rolls); dismiss on backdrop
   circle.addEventListener('pointerdown', (e) => { e.stopPropagation(); });
-  circle.addEventListener('click', (e) => { e.stopPropagation(); fillTip(circle); });
+  circle.addEventListener('click', (e) => { e.stopPropagation(); });
   overlay.addEventListener('pointerdown', closeTip);
 }
 
