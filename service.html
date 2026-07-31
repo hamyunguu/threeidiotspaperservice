@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=20" />
+<link rel="stylesheet" href="styles.css?v=21" />
 </head>
 <body class="hero2 order">
 
@@ -15,7 +15,7 @@
   <div class="stage" id="stage">
 
     <!-- ===== header — same as the hero page ===== -->
-    <img class="logo" src="assets/logo.svg?v=20" alt="TiPS 홈으로" data-href="index.html" title="홈" />
+    <img class="logo" src="assets/logo.svg?v=21" alt="TiPS 홈으로" data-href="index.html" title="홈" />
     <nav class="nav">
       <a class="nav-item" style="left:304px; top:20px; --nav:#029bed" href="identity.html">Identity</a>
       <a class="nav-item" style="left:304px; top:56px; --nav:#ed028c" href="program.html">Program</a>
@@ -26,7 +26,7 @@
     </nav>
     <div class="header-rule"></div>
 
-    <!-- ===== product tabs ===== -->
+    <!-- ===== product tabs — one order flow each ===== -->
     <nav class="ord-tabs" id="ordTabs">
       <button type="button" class="ord-tab is-on" data-mode="poster">Poster</button>
       <button type="button" class="ord-tab" data-mode="book">Book</button>
@@ -37,238 +37,23 @@
     <!-- the dashed rule splits the order form from the preview -->
     <div class="ord-split" aria-hidden="true"></div>
 
-    <!-- ===== left: order form ===== -->
-    <form class="ord-form" id="ordForm">
-
-      <div class="ord-goods">
-        <span class="ord-goods-name">포스터</span>
-        <span class="ord-goods-code">S0083</span>
-      </div>
-
-      <!-- 1 -->
-      <section class="ord-step">
-        <h2 class="ord-step-head"><span class="ord-no" style="--no:#0196ff">1</span>작업파일 등록</h2>
-        <div class="ord-uploads">
-          <label class="ord-upload">
-            <span class="ord-upload-label">앞면 (인쇄면)</span>
-            <span class="ord-upload-state" data-state="front">파일 선택 / 드래그</span>
-            <input type="file" accept="image/*,.pdf" data-upload="front" />
-          </label>
-          <label class="ord-upload">
-            <span class="ord-upload-label">뒷면</span>
-            <span class="ord-upload-state" data-state="back">파일 선택 / 드래그</span>
-            <input type="file" accept="image/*,.pdf" data-upload="back" />
-          </label>
-        </div>
-      </section>
-
-      <!-- 2 -->
-      <section class="ord-step">
-        <h2 class="ord-step-head"><span class="ord-no" style="--no:#ffe710">2</span>규격 사이즈 선택</h2>
-        <p class="ord-note">오전 11시~오후 5시 주문은 익일 오전 10시 출고, 오후 5시~익일 오전 11시 주문은 익일 오후 3시 출고됩니다.</p>
-        <div class="ord-sizes" id="ordSizes">
-          <button type="button" class="ord-size" data-w="740" data-h="510"><span class="ord-size-icon">B2</span><span class="ord-size-name">B2(740*510)</span></button>
-          <button type="button" class="ord-size is-on" data-w="594" data-h="420"><span class="ord-size-icon">A2</span><span class="ord-size-name">A2(594*420)</span></button>
-          <button type="button" class="ord-size" data-w="360" data-h="500"><span class="ord-size-icon">B3</span><span class="ord-size-name">B3(360*500)</span></button>
-          <button type="button" class="ord-size" data-w="297" data-h="420"><span class="ord-size-icon">A3</span><span class="ord-size-name">A3(297*420)</span></button>
-          <button type="button" class="ord-size" data-w="257" data-h="364"><span class="ord-size-icon">B4</span><span class="ord-size-name">B4(257*364)</span></button>
-          <button type="button" class="ord-size" data-custom="1"><span class="ord-size-icon is-free">Free</span><span class="ord-size-name">사용자입력</span></button>
-        </div>
-      </section>
-
-      <!-- 3 -->
-      <section class="ord-step">
-        <h2 class="ord-step-head"><span class="ord-no" style="--no:#f85485">3</span>기본정보</h2>
-
-        <div class="ord-row">
-          <label class="ord-label" for="ordTitle">주문제목</label>
-          <input class="ord-input is-wide" id="ordTitle" name="title" type="text" placeholder="주문 건을 구분할 제목" />
-        </div>
-
-        <div class="ord-row">
-          <span class="ord-label">재단사이즈</span>
-          <span class="ord-wh">
-            <input class="ord-input" id="ordCutW" name="cutW" type="number" min="1" value="594" /><span class="ord-unit">㎜ ×</span>
-            <input class="ord-input" id="ordCutH" name="cutH" type="number" min="1" value="420" /><span class="ord-unit">㎜</span>
-          </span>
-        </div>
-
-        <div class="ord-row">
-          <span class="ord-label">실작업규격</span>
-          <span class="ord-wh">
-            <input class="ord-input" id="ordJobW" name="jobW" type="number" min="1" value="594" /><span class="ord-unit">㎜ ×</span>
-            <input class="ord-input" id="ordJobH" name="jobH" type="number" min="1" value="420" /><span class="ord-unit">㎜</span>
-          </span>
-        </div>
-
-        <div class="ord-row">
-          <label class="ord-label" for="ordQty">수량</label>
-          <span class="ord-wh">
-            <input class="ord-input" id="ordQty" name="qty" type="number" min="1" value="10" /><span class="ord-unit">매</span>
-          </span>
-        </div>
-
-        <div class="ord-row">
-          <label class="ord-label" for="ordKinds">수량</label>
-          <span class="ord-wh">
-            <input class="ord-input" id="ordKinds" name="kinds" type="number" min="1" value="1" /><span class="ord-unit">종</span>
-          </span>
-        </div>
-
-        <div class="ord-row">
-          <span class="ord-label">작업일정</span>
-          <div class="ord-seg" data-name="quick">
-            <button type="button" class="ord-seg-item is-on" data-value="일반">일반</button>
-            <button type="button" class="ord-seg-item" data-value="긴급">긴급</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- 4 -->
-      <section class="ord-step">
-        <h2 class="ord-step-head">
-          <span class="ord-no" style="--no:#302929">4</span>포스터
-          <span class="ord-part-total" id="ordPartTotal">TOTAL 2,320원</span>
-        </h2>
-
-        <div class="ord-row">
-          <span class="ord-label">인쇄 도수</span>
-          <div class="ord-seg" data-name="mun">
-            <button type="button" class="ord-seg-item is-on" data-value="단면출력">단면출력</button>
-            <button type="button" class="ord-seg-item" data-value="양면출력">양면출력</button>
-          </div>
-        </div>
-
-        <div class="ord-row">
-          <span class="ord-label">칼라</span>
-          <div class="ord-seg" data-name="printer">
-            <button type="button" class="ord-seg-item is-on" data-value="칼라 4도">칼라 4도</button>
-            <button type="button" class="ord-seg-item" data-value="흑백 1도">흑백 1도</button>
-          </div>
-        </div>
-
-        <div class="ord-row">
-          <label class="ord-label" for="ordPaper">용지선택</label>
-          <select class="ord-select" id="ordPaper" name="paper">
-            <option value="">::: 용지선택 :::</option>
-            <option>- 선방입고</option>
-            <option>뉴플러스</option>
-            <option>랑데뷰 울트라</option>
-            <option>미색모조</option>
-            <option>반누보</option>
-            <option>백색모조</option>
-            <option>스노우</option>
-            <option>아트</option>
-            <option>인스퍼M러프EW(구.몽블랑)</option>
-          </select>
-        </div>
-
-        <div class="ord-row is-sub is-off" id="ordGsmRow">
-          <label class="ord-label" for="ordGsm">평량</label>
-          <select class="ord-select" id="ordGsm" name="gsm" disabled>
-            <option value="">용지를 먼저 선택하세요</option>
-          </select>
-        </div>
-
-        <div class="ord-row">
-          <label class="ord-label" for="ordCoat">후가공</label>
-          <select class="ord-select" id="ordCoat" name="coat">
-            <option value="">::: 코팅선택 :::</option>
-            <option>단면무광코팅</option>
-            <option>단면유광코팅</option>
-            <option>양면무광코팅</option>
-            <option>양면유광코팅</option>
-          </select>
-        </div>
-
-        <div class="ord-row">
-          <span class="ord-label"></span>
-          <select class="ord-select" id="ordCut" name="cut">
-            <option value="">::: 재단선택 :::</option>
-            <option>재단</option>
-            <option>재단 없음</option>
-          </select>
-        </div>
-
-        <div class="ord-row">
-          <span class="ord-label"></span>
-          <select class="ord-select" id="ordFold" name="fold">
-            <option value="">::: 접지-낱장선택 :::</option>
-            <option>2단 접지</option>
-            <option>3단접지</option>
-            <option>4단접지</option>
-            <option>3단N접지</option>
-            <option>4단N병풍접지</option>
-            <option>대문접지</option>
-          </select>
-        </div>
-
-        <div class="ord-row">
-          <span class="ord-label"></span>
-          <select class="ord-select" id="ordOsi" name="osi">
-            <option value="">::: 오시-낱장선택 :::</option>
-            <option>오시만 1줄</option>
-            <option>오시만 2줄</option>
-            <option>오시만 3줄</option>
-          </select>
-        </div>
-
-        <div class="ord-row">
-          <span class="ord-label"></span>
-          <select class="ord-select" id="ordOsiFold" name="osiFold">
-            <option value="">::: 오시-접지선택 :::</option>
-            <option>오시+접지 2단</option>
-            <option>오시+접지 3단</option>
-            <option>오시+접지 4단</option>
-            <option>오시+접지 3단N접지</option>
-            <option>오시+4단N병풍접지</option>
-            <option>오시+대문접지</option>
-          </select>
-        </div>
-
-        <p class="ord-notice">! 해당 제품은 재단 후 출고되는 완제품입니다.</p>
-      </section>
-
-      <!-- 5 -->
-      <section class="ord-step">
-        <h2 class="ord-step-head"><span class="ord-no" style="--no:#0196ff">5</span>옵션 및 가격정보</h2>
-
-        <div class="ord-row is-top">
-          <label class="ord-label" for="ordMemo">주문메모</label>
-          <textarea class="ord-input is-wide" id="ordMemo" name="memo" rows="3" placeholder="요청 사항이 있으면 적어 주세요."></textarea>
-        </div>
-
-        <h3 class="ord-est-head">포스터 견적보기</h3>
-        <dl class="ord-est" id="ordEstimate">
-          <div><dt>지류대</dt><dd data-est="paper">0원</dd></div>
-          <div><dt>인쇄비</dt><dd data-est="print">0원</dd></div>
-          <div><dt>제본비</dt><dd data-est="bind">0원</dd></div>
-          <div><dt>후가공</dt><dd data-est="last">0원</dd></div>
-          <div class="ord-est-sum"><dt>공급가액 (부가세)</dt><dd data-est="supply">0원</dd></div>
-          <div class="ord-est-total"><dt>청구금액</dt><dd data-est="total">0원</dd></div>
-        </dl>
-
-        <p class="ord-note">※ 실제 단가가 아닌 참고용 추정치입니다. 주문접수는 로그인 후 가능합니다.</p>
-        <button type="button" class="ord-submit" id="ordSubmit">주문 접수</button>
-      </section>
-    </form>
+    <!-- ===== left: order form — order.js renders it from the mode schema ===== -->
+    <form class="ord-form" id="ordForm" autocomplete="off"></form>
 
     <!-- ===== right: sheet preview ===== -->
-    <div class="ord-preview">
+    <div class="ord-preview" id="ordPreview">
       <div class="ord-paper-wrap">
-        <div class="ord-paper" id="ordPaperView">
-          <span class="ord-paper-face" id="ordPaperFace">앞면</span>
-        </div>
+        <div class="ord-paper" id="ordPaperView"></div>
       </div>
-      <p class="ord-drop-hint" id="ordDropHint">1번에서 파일을 올리면<br />여기에 미리보기가 들어갑니다</p>
-      <p class="ord-dim" id="ordDim">594×420mm</p>
+      <p class="ord-drop-hint" id="ordDropHint">1번에서 파일을 올리거나<br />여기에 끌어다 놓으면 미리보기가 들어갑니다</p>
+      <p class="ord-dim" id="ordDim"></p>
     </div>
 
   </div>
 </div>
 
-<script src="script.js?v=20"></script>
-<script src="order.js?v=20"></script>
-<script src="cursor.js?v=20"></script>
+<script src="script.js?v=21"></script>
+<script src="order.js?v=21"></script>
+<script src="cursor.js?v=21"></script>
 </body>
 </html>

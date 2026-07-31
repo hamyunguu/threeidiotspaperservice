@@ -871,11 +871,9 @@ body.order { --stage-h: 1080; background: #fff; }
 .ord-form::-webkit-scrollbar { width: 6px; }
 .ord-form::-webkit-scrollbar-thumb { background: #ccc; }
 
-.ord-goods { display: flex; align-items: baseline; gap: 12px; padding-bottom: 14px; }
-.ord-goods-name { font-family: 'Noto Sans KR', sans-serif; font-weight: 600; font-size: 26px; letter-spacing: -0.6px; }
-.ord-goods-code { font-family: 'IBM Plex Mono', monospace; font-size: 15px; color: #9a9a9a; }
-
+/* the tabs already name the product, so the form opens straight on step 1 */
 .ord-step { border-top: 1px solid #000; padding: 20px 0 26px; }
+.ord-step:first-child { border-top: none; padding-top: 0; }
 
 .ord-step-head {
   display: flex;
@@ -918,6 +916,37 @@ body.order { --stage-h: 1080; background: #fff; }
   color: #305673;
 }
 
+/* optional parts (추가내지 / 면지 / 간지) switch off to just their heading */
+.ord-toggle {
+  margin-left: auto;
+  border: 1px solid #000;
+  background: #fff;
+  padding: 5px 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: #302929;
+  cursor: pointer;
+  transition: background .18s, color .18s;
+}
+.ord-part-total + .ord-toggle { margin-left: 14px; }
+.ord-toggle:hover { background: #f0f0f0; }
+.ord-toggle.is-on { background: #000; color: #fff; }
+.ord-toggle.is-on:hover { background: #302929; }
+
+.ord-step.is-off { padding-bottom: 20px; }
+.ord-step.is-off .ord-step-head { margin-bottom: 0; color: #9a9a9a; }
+.ord-step.is-off .ord-no { background: #e0e0e0; }
+
+/* rows the original only shows for certain values (면지·간지 인쇄 도수) */
+.ord-cond.is-off { display: none; }
+
+/* a computed figure, not an input — 세네카, 총페이지 */
+.ord-readout {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 16px;
+  color: #000;
+}
+
 /* ---- 1. uploads ---- */
 
 .ord-uploads { display: flex; flex-direction: column; gap: 10px; }
@@ -957,6 +986,12 @@ body.order { --stage-h: 1080; background: #fff; }
   transition: background .18s, color .18s;
 }
 .ord-size-icon.is-free { border-style: dashed; }
+/* 신국판 · 명함 — a Korean abbreviation needs the smaller setting to fit */
+.ord-size-icon.is-long {
+  font-family: 'IBM Plex Mono', 'Noto Sans KR', sans-serif;
+  font-size: 12px;
+  letter-spacing: -0.5px;
+}
 .ord-size-name {
   display: block;
   margin-top: 7px;
@@ -1108,6 +1143,49 @@ textarea.ord-input { resize: vertical; line-height: 1.5; }
   color: #b4b4b4;
 }
 .ord-paper.has-file .ord-paper-face { display: none; }
+
+/* ---- what the sheet turns into per product ----
+   Leaflet: the chosen 접지 drawn as fold lines.
+   Book: a spine down the left at the calculated 세네카 width, the page
+   block peeking out on the fore edge, and ring holes when it is 링제본. */
+
+.ord-fold {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dashed #302929;
+  opacity: .5;
+}
+
+.ord-spine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-right: 1px solid #000;
+  background: #f0f0f0;
+}
+.ord-leaves {
+  position: absolute;
+  left: 100%;
+  top: 4px;
+  bottom: 4px;
+  background: repeating-linear-gradient(to right, #302929 0 1px, transparent 1px 3px);
+  opacity: .45;
+}
+.ord-ring {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border: 1px solid #302929;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* dropping artwork straight onto the preview */
+.ord-preview.is-drop .ord-paper { outline: 2px solid #0196ff; outline-offset: 8px; }
 
 .ord-drop-hint {
   position: absolute;
