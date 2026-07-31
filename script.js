@@ -311,48 +311,46 @@ if (balls.length) ensureLoop();
    it back to the sphere. Rendered in screen space (not the scaled stage)
    so it centres on the real viewport. */
 
-const TIPS = [
-  ['재단선보다 3mm 더 채우기', '배경 이미지나 색은 완성 사이즈에서 끝내지 말고 사방으로 약 3mm씩 더 연장해 주세요. 재단 오차가 나도 흰 여백이 드러나지 않습니다.'],
-  ['이미지는 300dpi로 준비하기', '웹에서 선명해 보여도 인쇄하면 흐릿해질 수 있어요. 실제 출력 크기 기준 300dpi를 권장하며, 작은 이미지를 억지로 확대해도 화질은 좋아지지 않습니다.'],
-  ['넓은 검정은 리치블랙으로', 'K100만 쓴 큰 검정 면은 흐린 회색처럼 보일 수 있어요. C40 M30 Y30 K100 같은 리치블랙이 더 깊습니다. 단, 얇은 글자엔 K100만 쓰세요.'],
-  ['RGB로 만들면 색이 변한다', '화면(RGB)과 인쇄(CMYK)는 색 영역이 달라요. 형광 초록·쨍한 파랑은 인쇄 시 탁해집니다. 처음부터 CMYK로 작업하면 색 사고를 줄일 수 있어요.'],
-  ['중요한 건 안전선 안으로', '글자·로고는 재단선에서 안쪽으로 최소 3~5mm 여유를 두세요. 가장자리에 붙으면 재단 오차로 잘려나갈 수 있습니다.'],
-  ['폰트는 윤곽선화 또는 임베드', '내 컴퓨터에만 있는 폰트는 인쇄소에서 다른 글꼴로 바뀔 수 있어요. 글자를 깨거나(윤곽선화) PDF에 폰트를 포함해 넘기면 안전합니다.'],
-  ['선은 0.25pt보다 굵게', '화면에선 보이던 가는 선이 인쇄에선 끊기거나 사라질 수 있어요. 최소 0.25pt(약 0.09mm) 이상을 권장합니다.'],
-  ['모니터 색을 100% 믿지 말 것', '모니터마다 밝기·색온도가 달라 같은 파일도 다르게 보입니다. 색이 중요하다면 실제 출력한 색 견본(교정)을 꼭 확인하세요.'],
-  ['종이에 따라 색이 달라진다', '같은 잉크도 코팅지(스노우·아트지)에선 선명하게, 비코팅지(모조·문켄)에선 스며들어 차분하게 나와요. 종이를 먼저 정하고 색을 보세요.'],
-  ['두꺼운 종이는 접으면 터진다', '두꺼운 종이를 접으면 접지선이 갈라져 흰 속이 보일 수 있어요(크랙). 미리 눌러주는 오시(누름선) 가공을 넣으면 깔끔합니다.'],
-  ['형광·금은색은 별색으로', '쨍한 형광이나 금·은은 CMYK 조합으로 재현되지 않아요. 별색(팬톤/스팟) 잉크를 따로 지정해야 그 색이 나옵니다.'],
-  ['진한 검정 표지엔 무광 주의', '무광 코팅은 고급스럽지만 진한 검정 표지에선 지문·스크래치가 유독 잘 보여요. 유광이나 코팅 후 보호막을 함께 고려하세요.'],
-  ['책 페이지는 4의 배수로', '책자는 큰 종이에 여러 쪽을 앉혀 접고 재단해요. 보통 4쪽 단위로 맞아야 빈 페이지 낭비가 없습니다.'],
-  ['흰색은 인쇄되지 않는다', '인쇄에서 흰색은 잉크가 아니라 종이 색이에요. 색지나 투명 소재에 흰색을 넣으려면 별도의 화이트 인쇄를 지정해야 합니다.'],
-  ['검정 글자는 오버프린트로', '검정 글자 위에 다른 색이 겹칠 때 인쇄 핀이 조금만 틀어져도 테두리가 보여요. 오버프린트로 설정하면 밀림이 눈에 띄지 않습니다.'],
-  ['재단은 1mm씩 밀린다고 생각', '대량 재단은 칼이 눌리며 미세하게 밀려요. 테두리 라인이나 좌우 대칭 여백은 1mm 오차를 감안해 디자인하세요.'],
-  ['작은 글씨엔 4도 겹침 금지', '아주 작은 글자를 CMYK 여러 도로 만들면 핀이 틀어져 흐릿하게 겹쳐 보여요. 작은 글자는 단일 색(K100 등)으로 쓰세요.'],
-  ['유광 코팅 위엔 필기 안 됨', '유광 코팅된 명함·엽서는 볼펜 글씨가 미끄러져 안 써져요. 메모 공간이 필요하면 그 부분만 코팅을 빼면 됩니다.'],
-  ['파일은 PDF/X로 넘기기', '편집 원본보다 인쇄 규격인 PDF/X로 저장하면 폰트·색상·재단 정보가 함께 담겨 사고가 줄어요.'],
-  ['종이 결(지목) 방향도 중요', '종이엔 결이 있어 결과 나란히 접으면 매끈, 직각으로 접으면 거칠어요. 책은 결이 제본 방향과 같아야 잘 펼쳐집니다.'],
-];
-
-const BALL_META = {
-  'ball-p':      { letter: 'P', color: '#f85485', dark: false },
-  'ball-hammer': { letter: 'T', color: '#ffe710', dark: false },
-  'ball-pen':    { letter: 'i', color: '#0196ff', dark: false },
-  'ball-s':      { letter: 'S', color: '#302929', dark: true },
+/* Figma Tips-T / Tips-I / Tips-P / Tips-S (428:187, 428:275, 428:287, 428:292).
+   Each letter owns one tip and one process colour; `gh` is the glyph's own
+   height, which is what puts it in the circle at the size Figma drew it. */
+const LETTERS = {
+  T: { file: 'glyph-t.svg', gh: 62, color: '#00a0ff', dark: false,
+       title: '이미지는 300dpi로 준비하기',
+       body: '웹에서 선명해 보이는 이미지도\n인쇄하면 흐릿해질 수 있습니다.\n실제 출력 크기를 기준으로 300dpi를\n권장하며, 작은 이미지를 억지로\n확대하면 화질이 개선되지\n않습니다.' },
+  i: { file: 'glyph-i.svg', gh: 64, color: '#ffff00', dark: false,
+       title: '재단선보다 3mm 더 채우기',
+       body: '배경 이미지나 색상은 완성 사이즈에서\n끝내지 말고, 사방으로 약 3mm씩 더\n연장해 주세요. 재단 시 생길 수 있는\n미세한 오차에도 흰 여백이\n드러나지 않습니다.' },
+  P: { file: 'glyph-p.svg', gh: 57.304, color: '#ec008c', dark: false,
+       title: '제본 방식에 맞춰 페이지를 설계하기',
+       body: '중철은 보통 전체 페이지가\n4의 배수여야 하며, 무선제본은\n페이지 수와 종이 두께에 따라 책등\n너비가 달라집니다.' },
+  S: { file: 'glyph-s.svg', gh: 60.496, color: '#000000', dark: true,
+       title: 'RGB보다 CMYK로 확인하기',
+       body: '모니터는 빛으로 색을 표현하고,\n인쇄물은 잉크로 색을 표현합니다.\n형광빛이나 선명한 파란색처럼 일부\nRGB 색상은 인쇄 시 탁해질 수 있으니\nCMYK 변환 후 색감을\n다시 확인하세요.' },
 };
 
+/* dress each sphere in its letter once, at load */
+document.querySelectorAll('.ball[data-letter]').forEach((el) => {
+  const m = LETTERS[el.dataset.letter];
+  if (!m) return;
+  el.style.setProperty('--tip', m.color);
+  el.style.setProperty('--gh', `${m.gh}px`);
+  el.classList.toggle('is-dark', m.dark);
+  const img = document.createElement('img');
+  img.src = `assets/${m.file}?v=40`;
+  img.alt = '';
+  el.appendChild(img);
+});
+
 function metaFor(ballEl) {
-  const src = ballEl.querySelector('img').getAttribute('src') || '';
-  // match on the full "ball-xxx.svg" so 'ball-p' doesn't also swallow 'ball-pen'
-  const key = Object.keys(BALL_META).find((k) => src.includes(k + '.svg'));
-  return BALL_META[key] || BALL_META['ball-p'];
+  return LETTERS[ballEl.dataset.letter] || LETTERS.T;
 }
 
 let tipEl = null;        // the overlay currently open
 let tipBall = null;      // the sphere it grew from
 
-function fillTip(circle) {
-  const [title, body] = TIPS[Math.floor(Math.random() * TIPS.length)];
+function fillTip(circle, meta) {
+  const { title, body } = meta;
   const t = circle.querySelector('.tip-title');
   const b = circle.querySelector('.tip-body');
   // brief fade so a re-roll reads as a change
@@ -374,16 +372,22 @@ function openTip(b) {
   const overlay = document.createElement('div');
   overlay.className = 'tip-overlay';
   overlay.innerHTML =
-    `<div class="tip-circle${meta.dark ? ' is-dark' : ''}" style="--tip:${meta.color}">
-       <div class="tip-letter">${meta.letter}</div>
-       <div class="tip-title"></div>
-       <div class="tip-body"></div>
+    `<div class="tip-circle${meta.dark ? ' is-dark' : ''}" style="--tip:${meta.color}; --gh:${meta.gh}px">
+       <img class="tip-letter" src="assets/${meta.file}?v=40" alt="">
+       <div class="tip-copy">
+         <div class="tip-title"></div>
+         <div class="tip-body"></div>
+       </div>
      </div>`;
   document.body.appendChild(overlay);
   tipEl = overlay;
 
   const circle = overlay.querySelector('.tip-circle');
-  fillTip(circle);
+  fillTip(circle, meta);
+  /* the circle is drawn at its real 385, so shrink the whole thing rather than
+     any of its parts when the window cannot hold it */
+  const room = Math.min(window.innerWidth, window.innerHeight) * 0.86;
+  circle.dataset.fit = String(Math.min(1, room / 385));
 
   // grow from the sphere's on-screen position to the centred circle
   const br = b.el.getBoundingClientRect();
@@ -399,7 +403,7 @@ function openTip(b) {
   void circle.offsetWidth;                        // force reflow to register the start
   circle.style.transition = '';                   // back to the CSS transition
   requestAnimationFrame(() => {
-    circle.style.transform = 'translate(0, 0) scale(1)';
+    circle.style.transform = `translate(0, 0) scale(${circle.dataset.fit})`;
     circle.style.opacity = '1';
   });
 

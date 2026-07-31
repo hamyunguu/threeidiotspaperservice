@@ -293,7 +293,16 @@ body.order .nav-item { font-size: 24px; }
 
 .ball.is-held { cursor: grabbing; }
 
-.ball img { display: block; width: 100%; height: 100%; pointer-events: none; }
+/* Figma Tips-T/I/P/S (428:187 …): a 105 circle in its process colour with the
+   Optima letter sitting 23.85 from the top at its own natural size. */
+.ball { background: var(--tip); }
+.ball img {
+  position: absolute; left: 50%; top: 22.71%;
+  height: var(--gh); width: auto; display: block;
+  transform: translateX(-50%); pointer-events: none;
+}
+/* no recolouring here: Figma exports S already white, because its circle is
+   the black one — the other three come out black for their bright circles */
 
 /* ---------------- program cards ---------------- */
 
@@ -615,8 +624,15 @@ body.hero2.is-head-open { --shift: 65px; }
   font-family: 'IBM Plex Mono', monospace; font-size: 18px; line-height: 1; color: #000;
 }
 
-/* the wordmark is a single Optima T until the header opens */
-.hd-t { left: 20px; font-family: Optima, 'IBM Plex Mono', serif; }
+/* The wordmark is a single letter until the header opens, cycling T → i → P
+   → S. Optima is a licensed face with no webfont, so these are the glyph
+   outlines Figma exports — which is also exact rather than approximate. */
+.hd-t {
+  left: 20px; height: 18px; display: flex; align-items: flex-end;
+}
+.hd-t img { display: block; width: auto; }
+/* the S is exported white for its black circle; on the white page it flips */
+.hd-t img[src*="glyph-s"] { filter: invert(1); }
 .hd-mark {
   position: absolute; left: 20px; top: 20px; width: 83px; height: 83px; z-index: 7;
   display: block; opacity: 0; transform: scale(.34); transform-origin: 0 0;
@@ -639,7 +655,9 @@ body.hero2.is-head-open { --shift: 65px; }
 .hd-nav a { color: #000; text-decoration: none; width: 100%; }
 .hd-nav a:hover { text-decoration: underline; text-underline-offset: 4px; }
 
-.hd-search { left: 965px; border: none; background: none; padding: 0; cursor: pointer; font: inherit; }
+/* no `font: inherit` here — it is a shorthand, so it would wipe the family and
+   size the rule above sets and leave the label in the page default */
+.hd-search { left: 965px; border: none; background: none; padding: 0; cursor: pointer; }
 .hd-cart  { left: 1721px; text-decoration: none; }
 .hd-login { left: 1900px; transform: translateX(-100%); text-decoration: none; }
 .hd-cart:hover, .hd-login:hover, .hd-search:hover { text-decoration: underline; text-underline-offset: 4px; }
@@ -724,7 +742,11 @@ body.hero2.is-head-open { --shift: 65px; }
 .numbering button:nth-child(1) { left: 0; }
 .numbering button:nth-child(2) { left: 37px; }
 .numbering button:nth-child(3) { left: 74px; }
+/* the frame showing now is black; the one under the cursor greys (Figma
+   417:1355 variants — active #000/white, hover #D9D9D9/black) */
+.numbering button:hover { background: #d9d9d9; }
 .numbering button.is-on { background: #000; color: #fff; }
+.numbering button.is-on:hover { background: #d9d9d9; color: #000; }
 
 /* ---- right-top: the four programme bars ---- */
 
@@ -734,10 +756,13 @@ body.hero2.is-head-open { --shift: 65px; }
   transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 .prog-bar {
-  width: 40px; height: 356px; padding: 7px; flex: none;
-  display: flex; align-items: flex-start; border: none; cursor: pointer;
-  background: var(--bar);
+  position: relative; width: 40px; height: 356px; padding: 7px 7px 321px; flex: none;
+  display: flex; gap: 10px; align-items: flex-start; border: none; cursor: pointer;
+  background: var(--bar); overflow: hidden; text-align: left;
+  transition: width .42s cubic-bezier(.4, 0, .2, 1);
 }
+.prog-bar:hover, .prog-bar:focus-visible { width: 221px; }
+
 .prog-dot {
   width: 26px; height: 26px; flex: none; border: 1px solid #000; border-radius: 30px;
   display: flex; align-items: center; justify-content: center;
@@ -746,6 +771,30 @@ body.hero2.is-head-open { --shift: 65px; }
 }
 .prog-bar.is-plus { --bar: #000; }
 .prog-bar.is-plus .prog-dot { background: #fff; color: #000; }
+
+/* the copy and the arrow only exist once the bar has room for them */
+.prog-text {
+  width: 171px; flex: none; display: flex; flex-direction: column; gap: 32px;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 20px;
+  letter-spacing: -0.5px; color: #000;
+  opacity: 0; transition: opacity .2s ease;
+}
+.prog-bar:hover .prog-text,
+.prog-bar:focus-visible .prog-text { opacity: 1; transition-delay: .14s; }
+/* the copy breaks where Figma breaks it, so it must not re-wrap — the longest
+   line ("자유롭게 연결합니다.") measures 170.1 against the 171 it is given */
+.prog-title { display: block; line-height: 1.35; white-space: nowrap; }
+.prog-body { display: block; line-height: 1.4; white-space: nowrap; }
+.prog-bar.is-plus .prog-text { color: #fff; }
+
+.prog-arrow {
+  position: absolute; left: 43px; top: 276px; width: 141px; height: 68px;
+  display: block; opacity: 0; transition: opacity .2s ease;
+}
+.prog-bar:hover .prog-arrow,
+.prog-bar:focus-visible .prog-arrow { opacity: 1; transition-delay: .14s; }
+/* the artwork is a black stroke; the black bar needs it the other way round */
+.prog-bar.is-plus .prog-arrow { filter: invert(1); }
 
 /* ---- right-bottom: chatbot ---- */
 
@@ -798,7 +847,11 @@ body.hero2.is-head-open { --shift: 65px; }
 /* the send disc is the three process inks overprinting inside a ring */
 .cb-send { position: relative; width: 30px; height: 30px; flex: none; border: none; background: none; padding: 0; cursor: pointer; }
 .cb-send img { position: absolute; display: block; }
-.cb-send .ink-ring { left: 0; top: 0; width: 30px; height: 30px; }
+/* the ring is grey at rest and black under the cursor (Figma 428:365) */
+.cb-send .ink-ring { left: 0; top: 0; width: 30px; height: 30px; transition: opacity .18s ease; }
+.cb-send .ink-ring.is-on { opacity: 0; }
+.cb-send:hover .ink-ring { opacity: 0; }
+.cb-send:hover .ink-ring.is-on { opacity: 1; }
 .cb-send .ink-c { left: 7.67px; top: 3px; width: 14.66px; height: 14.66px; mix-blend-mode: multiply; }
 .cb-send .ink-m { left: 11.33px; top: 10.33px; width: 14.67px; height: 14.67px; mix-blend-mode: multiply; }
 .cb-send .ink-y { left: 4px; top: 10.33px; width: 14.67px; height: 14.67px; mix-blend-mode: multiply; }
@@ -860,15 +913,15 @@ html.has-cursor * { cursor: none !important; }
   display: flex; align-items: center; justify-content: center;
 }
 
+/* The opened tip is Figma's "More Info" variant at its real size — 385
+   circle, letter at 24, copy block 317 wide starting at 121. JS scales the
+   whole thing down on small windows so every inner value stays exact. */
 .tip-circle {
-  width: min(460px, 82vw, 82vh);
-  aspect-ratio: 1 / 1;
+  position: relative;
+  width: 385px; height: 385px; flex: none;
   border-radius: 50%;
-  background: var(--tip, #f85485);
-  color: #111;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  text-align: center;
-  padding: 0 62px;
+  background: var(--tip, #00a0ff);
+  color: #000;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
   transform-origin: center center;
   transition: transform .46s cubic-bezier(.34, 1.2, .5, 1), opacity .3s ease;
@@ -877,18 +930,25 @@ html.has-cursor * { cursor: none !important; }
 .tip-circle.is-dark { color: #fff; }
 
 .tip-letter {
-  font-family: 'IBM Plex Mono', monospace; font-weight: 600;
-  font-size: 58px; line-height: 1; margin-bottom: 18px;
+  position: absolute; left: 50%; top: 24px;
+  height: var(--gh, 62px); width: auto; display: block;
+  transform: translateX(-50%);
+}
+
+.tip-copy {
+  position: absolute; left: 50%; top: 121px; width: 317px;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 20px;
+  text-align: center; letter-spacing: -0.5px;
 }
 .tip-title {
   font-family: 'Noto Sans KR', sans-serif; font-weight: 700;
-  font-size: 23px; line-height: 1.35; letter-spacing: -0.6px;
-  margin-bottom: 14px; transition: opacity .2s ease;
+  font-size: 20px; line-height: 1.4; transition: opacity .2s ease;
 }
 .tip-body {
   font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
-  font-size: 17px; line-height: 1.55; letter-spacing: -0.4px;
-  max-width: 320px; transition: opacity .2s ease;
+  font-size: 20px; line-height: 1.4; transition: opacity .2s ease;
+  white-space: pre-line;            /* the copy breaks where Figma breaks it */
 }
 
 @media (prefers-reduced-motion: reduce) {

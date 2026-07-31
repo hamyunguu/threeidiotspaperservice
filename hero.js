@@ -77,12 +77,51 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && isSearchOpen()) closeSearch();
 });
 
+/* ---------------- the closed header's letter turns through the wordmark ----------------
+   T → i → P → S, each glyph at its own natural height so the four keep the
+   proportions Figma drew them at (scaled to an 18px T). */
+
+const GLYPHS = [
+  { file: 'glyph-t.svg', h: 62 },
+  { file: 'glyph-i.svg', h: 64 },
+  { file: 'glyph-p.svg', h: 57.304 },
+  { file: 'glyph-s.svg', h: 60.496 },
+];
+const GLYPH_SCALE = 13 / 62;        // an 18px Optima cap is about 13px tall
+const LETTER_MS = 2200;
+
+const letterBox = document.getElementById('hdLetter');
+const letterImg = letterBox.querySelector('img');
+let glyph = 0;
+
+function paintGlyph() {
+  const g = GLYPHS[glyph];
+  letterImg.src = `assets/${g.file}?v=40`;
+  letterImg.style.height = `${(g.h * GLYPH_SCALE).toFixed(2)}px`;
+}
+paintGlyph();
+
+/* the swap fades on its own animation rather than a class-driven transition,
+   which cannot be left half-applied if a frame is missed */
+let letterFade = null;
+if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  setInterval(() => {
+    glyph = (glyph + 1) % GLYPHS.length;
+    paintGlyph();
+    /* drop the previous fade first — a backgrounded tab freezes the timeline,
+       and without this they would pile up unfinished */
+    if (letterFade) letterFade.cancel();
+    letterFade = letterImg.animate([{ opacity: 0 }, { opacity: 1 }],
+      { duration: 240, easing: 'ease' });
+  }, LETTER_MS);
+}
+
 /* ---------------- left: the poster the numbering pages through ---------------- */
 
 const POSTERS = [
-  'assets/fig-poster.jpg?v=34',
-  'assets/card-hand.jpg?v=34',
-  'assets/gal-wood-a.jpg?v=34',
+  'assets/fig-poster.jpg?v=40',
+  'assets/card-hand.jpg?v=40',
+  'assets/gal-wood-a.jpg?v=40',
 ];
 
 const posterImg = document.getElementById('posterImg');
