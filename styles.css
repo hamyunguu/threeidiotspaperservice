@@ -3,8 +3,9 @@
      hero page    : node 244:842
      program page : node 244:700  (+ expanded states 244:984 / 700 / 1035)
 
-   Design frame is 1920 x 1080; script.js sets --scale so the frame
-   always spans the browser width. All values below are design px.
+   Design frame is 1920 x 1080; script.js sets --scale so the whole frame
+   fits inside the window (contain, never cropped). All values below are
+   design px.
 
    V3 palette — CMYK concept on a white page. TiPS letters carry the
    process colours in order:
@@ -24,9 +25,13 @@ html, body {
 body { --stage-h: 1080; }
 body.is-expanded { --stage-h: 1218; }   /* tallest expanded card ends at 1198 */
 
+/* Sized to the scaled frame and centred, so when the window is wider than the
+   frame's 16:9 the leftover width becomes an even margin instead of stretching
+   or cropping the composition. */
 .viewport {
   position: relative;
-  width: 100%;
+  width: calc(1920 * var(--scale) * 1px);
+  margin: 0 auto;
   height: calc(var(--stage-h) * var(--scale) * 1px);
   overflow: hidden;
   transition: height .45s cubic-bezier(.4, 0, .2, 1);
@@ -796,4 +801,336 @@ html.has-cursor * { cursor: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .tip-circle { transition: opacity .2s ease; }
+}
+
+/* ===============================================================
+   SERVICE / ORDER PAGE
+   The print-order form, ported from the earlier order page into this
+   site's system: black hairlines instead of pale blue, IBM Plex Mono
+   for labels and numbers, CMYK step markers, filled-black segmented
+   buttons. Left column scrolls inside the 1080 frame so the header and
+   the sheet preview stay put.
+   =============================================================== */
+
+body.order { --stage-h: 1080; background: #fff; }
+
+/* ---- product tabs ---- */
+
+.ord-tabs {
+  position: absolute;
+  left: 20px;
+  top: 158px;
+  display: flex;
+  gap: 44px;
+  z-index: 5;
+}
+.ord-tab {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 30px;
+  line-height: 1;
+  color: #b4b4b4;
+  cursor: pointer;
+  transition: color .18s;
+}
+.ord-tab:hover { color: #302929; }
+.ord-tab.is-on {
+  color: #000;
+  text-decoration: underline;
+  text-underline-offset: 8px;
+}
+
+/* dashed rule between the form and the preview */
+.ord-split {
+  position: absolute;
+  left: 960px;
+  top: 136px;
+  width: 1px;
+  height: 944px;
+  border-left: 1px dashed #000;
+  z-index: 2;
+}
+
+/* ---- left column ---- */
+
+.ord-form {
+  position: absolute;
+  left: 20px;
+  top: 214px;
+  width: 900px;
+  height: 846px;
+  padding-right: 26px;
+  overflow-y: auto;
+  z-index: 4;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 400;
+  color: #000;
+}
+.ord-form::-webkit-scrollbar { width: 6px; }
+.ord-form::-webkit-scrollbar-thumb { background: #ccc; }
+
+.ord-goods { display: flex; align-items: baseline; gap: 12px; padding-bottom: 14px; }
+.ord-goods-name { font-family: 'Noto Sans KR', sans-serif; font-weight: 600; font-size: 26px; letter-spacing: -0.6px; }
+.ord-goods-code { font-family: 'IBM Plex Mono', monospace; font-size: 15px; color: #9a9a9a; }
+
+.ord-step { border-top: 1px solid #000; padding: 20px 0 26px; }
+
+.ord-step-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -0.5px;
+}
+/* the step number sits in a CMYK disc, set per step via --no */
+.ord-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--no, #302929);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  color: #000;
+}
+.ord-part-total {
+  margin-left: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 16px;
+  font-weight: 400;
+  color: #302929;
+}
+
+.ord-note {
+  margin-bottom: 14px;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.6;
+  letter-spacing: -0.35px;
+  color: #305673;
+}
+
+/* ---- 1. uploads ---- */
+
+.ord-uploads { display: flex; flex-direction: column; gap: 10px; }
+.ord-upload {
+  display: block;
+  padding: 14px 16px;
+  border: 1px dashed #000;
+  cursor: pointer;
+  transition: background .18s;
+}
+.ord-upload:hover { background: #f5f5f5; }
+.ord-upload input { display: none; }
+.ord-upload-label { display: block; font-size: 17px; letter-spacing: -0.4px; }
+.ord-upload-state {
+  display: block;
+  margin-top: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  color: #9a9a9a;
+}
+.ord-upload-state.is-set { color: #0196ff; }
+
+/* ---- 2. sizes ---- */
+
+.ord-sizes { display: flex; flex-wrap: wrap; gap: 18px; }
+.ord-size { border: none; background: none; padding: 0; cursor: pointer; text-align: center; }
+.ord-size-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 62px;
+  height: 74px;
+  border: 1px solid #000;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  color: #302929;
+  transition: background .18s, color .18s;
+}
+.ord-size-icon.is-free { border-style: dashed; }
+.ord-size-name {
+  display: block;
+  margin-top: 7px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: #302929;
+}
+.ord-size:hover .ord-size-icon { background: #f0f0f0; }
+.ord-size.is-on .ord-size-icon { background: #000; color: #fff; }
+.ord-size.is-on .ord-size-name { color: #000; text-decoration: underline; text-underline-offset: 4px; }
+
+/* ---- rows ---- */
+
+.ord-row { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.ord-row.is-top { align-items: flex-start; }
+.ord-row.is-sub.is-off { opacity: .45; pointer-events: none; }
+
+.ord-label {
+  flex: none;
+  width: 108px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  color: #302929;
+}
+
+.ord-input,
+.ord-select {
+  border: 1px solid #000;
+  background: #fff;
+  padding: 8px 10px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 16px;
+  letter-spacing: -0.4px;
+  color: #000;
+  outline: none;
+}
+.ord-input { width: 96px; }
+.ord-input.is-wide { flex: 1; width: auto; }
+.ord-input:focus, .ord-select:focus { outline: 2px solid #0196ff; outline-offset: -2px; }
+.ord-input::placeholder { color: #b4b4b4; }
+textarea.ord-input { resize: vertical; line-height: 1.5; }
+.ord-select { flex: 1; cursor: pointer; }
+.ord-select:disabled { color: #b4b4b4; cursor: default; }
+
+.ord-wh { display: flex; align-items: center; gap: 8px; }
+.ord-unit { font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #302929; }
+
+/* segmented pair — the chosen half fills black, like the carousel pager */
+.ord-seg { display: flex; border: 1px solid #000; }
+.ord-seg-item {
+  border: none;
+  background: #fff;
+  padding: 8px 22px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 16px;
+  letter-spacing: -0.4px;
+  color: #000;
+  cursor: pointer;
+  transition: background .18s, color .18s;
+}
+.ord-seg-item + .ord-seg-item { border-left: 1px solid #000; }
+.ord-seg-item:hover { background: #f0f0f0; }
+.ord-seg-item.is-on { background: #000; color: #fff; }
+
+.ord-notice {
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 300;
+  letter-spacing: -0.35px;
+  color: #f85485;
+}
+
+/* ---- 5. estimate ---- */
+
+.ord-est-head {
+  margin: 22px 0 12px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.45px;
+}
+.ord-est { border-top: 1px solid #000; }
+.ord-est > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 2px;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 16px;
+  letter-spacing: -0.4px;
+}
+.ord-est dt { font-family: 'IBM Plex Mono', monospace; font-size: 15px; color: #302929; }
+.ord-est dd { font-family: 'IBM Plex Mono', monospace; }
+.ord-est .ord-est-sum { border-bottom: 1px solid #000; }
+.ord-est .ord-est-total { border-bottom: 1px solid #000; font-weight: 600; }
+.ord-est .ord-est-total dt,
+.ord-est .ord-est-total dd { color: #000; font-size: 18px; }
+
+.ord-submit {
+  width: 100%;
+  margin-top: 16px;
+  padding: 15px 0;
+  border: none;
+  background: #000;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 18px;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity .18s;
+}
+.ord-submit:hover { opacity: .85; }
+.ord-submit.is-done { background: #0196ff; }
+
+/* ---- right: sheet preview ---- */
+
+.ord-preview {
+  position: absolute;
+  left: 1000px;
+  top: 214px;
+  width: 900px;
+  height: 846px;
+  z-index: 4;
+}
+
+.ord-paper-wrap {
+  position: absolute;
+  inset: 0 0 120px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* the sheet itself — JS sets width/height from the chosen size in mm */
+.ord-paper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid #000;
+  box-shadow: 14px 16px 0 rgba(0, 0, 0, .07);
+  background-size: cover;
+  background-position: center;
+  transition: width .3s cubic-bezier(.4, 0, .2, 1), height .3s cubic-bezier(.4, 0, .2, 1);
+}
+.ord-paper.has-file { border-style: solid; }
+.ord-paper-face {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 22px;
+  color: #b4b4b4;
+}
+.ord-paper.has-file .ord-paper-face { display: none; }
+
+.ord-drop-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 62px;
+  text-align: center;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 300;
+  font-size: 15px;
+  line-height: 1.6;
+  letter-spacing: -0.35px;
+  color: #9a9a9a;
+}
+.ord-dim {
+  position: absolute;
+  left: 0;
+  bottom: 18px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  color: #302929;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ord-paper { transition: none; }
 }

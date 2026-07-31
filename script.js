@@ -6,6 +6,7 @@
    --------------------------------------------------------------- */
 
 const STAGE_W = 1920;
+const STAGE_H = 1080;      // base frame; taller states scroll (see fit())
 const BALL_R  = 52.393;    // sphere radius in design px
 const THROW_MAX = 2600;    // cap on release speed, design px/s
 const SETTLE = 0.3;        // per-second decay of speed back towards cruise
@@ -18,8 +19,14 @@ const stage = document.getElementById('stage');
    so the expand transition and the resize share one source of truth. */
 let resizeTimer;
 
+/* Contain-fit: the frame is sized to whichever axis runs out first, so a wide
+   or short window letterboxes instead of cropping. The design frame is 16:9,
+   so a 16:9 window fills exactly. Measured against the base 1080 height —
+   states that are deliberately taller (expanded cards, detail pages) keep this
+   scale and scroll, as they always have. */
 function fit() {
-  document.documentElement.style.setProperty('--scale', window.innerWidth / STAGE_W);
+  const scale = Math.min(window.innerWidth / STAGE_W, window.innerHeight / STAGE_H);
+  document.documentElement.style.setProperty('--scale', scale);
 }
 
 function onResize() {
