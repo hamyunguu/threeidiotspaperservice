@@ -104,6 +104,77 @@ function step(b, dt, maxY) {
   b.rot += b.spin * dt;
 }
 
+/* ---------------- sphere-to-sphere collisions ---------------- */
+
+const BALL_D = BALL_R * 2;
+
+/* heading+speed is the polar form the drift uses; collisions are easier in
+   cartesian, so convert on the way out */
+function setVel(b, vx, vy) {
+  const s = Math.hypot(vx, vy);
+  if (s > 0.001) b.heading = Math.atan2(vy, vx);
+  b.speed = s;
+}
+
+/* equal-mass elastic bounce. A sphere being held counts as immovable, so you
+   can shove the others around with the one in your hand. */
+function collide(a, b) {
+  if (a.frozen || b.frozen) return;          // hidden behind an open tip
+  let dx = b.x - a.x;
+  let dy = b.y - a.y;
+  let d = Math.hypot(dx, dy);
+  if (d >= BALL_D) return;
+  if (d < 0.001) { dx = 1; dy = 0; d = 0.001; }   // exactly stacked: pick an axis
+
+  const nx = dx / d;
+  const ny = dy / d;
+  const aFixed = !!a.drag;
+  const bFixed = !!b.drag;
+
+  // unstack them first, so the pair can't sink into each other over frames
+  if (!(aFixed && bFixed)) {
+    const overlap = BALL_D - d;
+    const aShare = aFixed ? 0 : bFixed ? 1 : 0.5;
+    a.x -= nx * overlap * aShare;
+    a.y -= ny * overlap * aShare;
+    b.x += nx * overlap * (1 - aShare);
+    b.y += ny * overlap * (1 - aShare);
+  }
+
+  const avx = Math.cos(a.heading) * a.speed;
+  const avy = Math.sin(a.heading) * a.speed;
+  const bvx = Math.cos(b.heading) * b.speed;
+  const bvy = Math.sin(b.heading) * b.speed;
+
+  const vn = (bvx - avx) * nx + (bvy - avy) * ny;
+  if (vn > 0) return;                        // already moving apart
+
+  // equal masses swap their velocity along the contact normal; against a held
+  // sphere the free one reflects off it instead, so double the exchange
+  const k = aFixed || bFixed ? 2 : 1;
+  if (!aFixed) setVel(a, avx + k * vn * nx, avy + k * vn * ny);
+  if (!bFixed) setVel(b, bvx - k * vn * nx, bvy - k * vn * ny);
+
+  // a glancing hit sets them spinning
+  if (!reduceMotion) {
+    const vt = (bvx - avx) * -ny + (bvy - avy) * nx;
+    if (!aFixed) a.spin = clamp(a.spin - vt / 8, -260, 260);
+    if (!bFixed) b.spin = clamp(b.spin + vt / 8, -260, 260);
+  }
+}
+
+function resolveCollisions(maxY) {
+  for (let i = 0; i < balls.length; i++) {
+    for (let j = i + 1; j < balls.length; j++) collide(balls[i], balls[j]);
+  }
+  // a shove can push a sphere past the frame edge — pull it back inside
+  balls.forEach((b) => {
+    if (b.drag || b.frozen) return;
+    b.x = clamp(b.x, BALL_R, STAGE_W - BALL_R);
+    b.y = clamp(b.y, BALL_R, maxY - BALL_R);
+  });
+}
+
 /* ---------------- grab / drag / throw ---------------- */
 
 /* client px -> design px, reading the live scale off the stage itself */
@@ -205,10 +276,9 @@ function frame(now) {
   last = now;
   const maxY = stageH();
 
-  balls.forEach((b) => {
-    if (!b.drag && !b.frozen) step(b, dt, maxY);
-    draw(b);
-  });
+  balls.forEach((b) => { if (!b.drag && !b.frozen) step(b, dt, maxY); });
+  resolveCollisions(maxY);
+  balls.forEach(draw);
 
   // with reduced motion the spheres settle to a stop, so let the loop idle out
   if (balls.some((b) => b.drag || b.speed > 0.5 || b.cruise > 0)) {

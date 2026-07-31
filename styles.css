@@ -162,10 +162,12 @@ body.is-expanded { --stage-h: 1218; }   /* tallest expanded card ends at 1198 */
 
 /* ---------------- floating spheres ---------------- */
 
+/* above everything inside the stage (proglist/chat sit at 7) so the spheres
+   always float on top; the tip overlay and cursor still cover them */
 .balls {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  z-index: 8;
   pointer-events: none;
 }
 
@@ -594,6 +596,11 @@ body.hero2 .nav-item { font-size: 24px; }
   font-family: 'IBM Plex Mono', monospace; font-size: 15px; cursor: pointer;
 }
 .msg .navbtn:hover { opacity: .88; }
+
+/* waiting on the first token from the chat proxy */
+.msg.bot.is-typing .bubble::after { content: '···'; letter-spacing: 2px; animation: blink 1.2s ease-in-out infinite; }
+@keyframes blink { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .msg.bot.is-typing .bubble::after { animation: none; } }
 
 /* seeded example prompts — 18px light, 29px line rhythm (Figma 291:676–678) */
 .chat-seed { font-family: 'Noto Sans KR', sans-serif; font-weight: 300; font-size: 18px; line-height: 29px; letter-spacing: -0.45px; color: #000; }

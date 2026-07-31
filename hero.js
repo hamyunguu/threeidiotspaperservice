@@ -46,11 +46,13 @@ pages.forEach((p) => p.addEventListener('click', () => { show(Number(p.dataset.i
 show(0);
 play();
 
-/* ---------------- AI chatbot (local intent responder) ----------------
-   A real LLM needs a backend/API key this static page can't hold, so
-   replies come from a small printing-domain intent map. Each answer can
-   offer a button that navigates to the most relevant page. Swapping in a
-   real endpoint later means replacing replyFor() with a fetch(). */
+/* ---------------- AI chatbot ----------------
+   Answers come from Claude via the Cloudflare Worker in worker/ — the API
+   key lives there, never on this page. Paste the deployed Worker URL into
+   CHAT_API below. Leave it empty (or let a call fail) and the chat falls
+   back to the local keyword map underneath, so the site never breaks. */
+
+const CHAT_API = ''; // ← 배포한 Worker 주소. 예: 'https://tips-chat.내계정.workers.dev'
 
 const log = document.getElementById('chatLog');
 const form = document.getElementById('chatForm');
@@ -73,6 +75,7 @@ const INTENTS = [
   { re: /(아이덴티티|브랜드|identity|로고)/, text: 'TiPS의 브랜드 아이덴티티는 Identity 페이지에서 확인할 수 있어요.', to: 'identity.html', label: 'Identity →' },
 ];
 
+/* offline fallback — used when CHAT_API is unset or the call fails */
 function replyFor(q) {
   const hit = INTENTS.find((i) => i.re.test(q));
   return hit || { text: '인쇄·제본·종이 무엇이든 물어보세요. 관련 프로그램으로 안내해드릴게요.', to: 'program.html', label: '프로그램 보기 →' };
@@ -111,27 +114,95 @@ function bubble(role, text, hint) {
   return m;
 }
 
-function send(text) {
+function navbtn(m, to, label) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'navbtn';
+  btn.textContent = label;
+  btn.addEventListener('click', () => { window.location.href = to; });
+  m.appendChild(btn);
+  log.scrollTop = log.scrollHeight;
+}
+
+/* the model may close an answer with [[link:page.html|버튼 문구 →]] — the tag is
+   parsed into a button and never shown, so hide anything from '[[' while typing */
+const LINK = /\[\[link:([^|\]]+)\|([^\]]+)\]\]/;
+const shown = (s) => s.split('[[')[0];
+
+const history = [];
+const MAX_TURNS = 12;
+let busy = false;
+
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function askLocal(q) {
+  await wait(350); // brief "typing" beat
+  const r = replyFor(q);
+  const m = bubble('bot', r.text);
+  if (r.to) navbtn(m, r.to, r.label);
+}
+
+async function askClaude(q) {
+  history.push({ role: 'user', content: q });
+
+  const m = bubble('bot', '');
+  m.classList.add('is-typing');
+  const b = m.querySelector('.bubble');
+  let full = '';
+
+  try {
+    const res = await fetch(CHAT_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: history.slice(-MAX_TURNS) }),
+    });
+    if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      full += decoder.decode(value, { stream: true });
+      m.classList.remove('is-typing');
+      b.textContent = shown(full);
+      log.scrollTop = log.scrollHeight;
+    }
+    if (!full.trim()) throw new Error('empty response');
+  } catch (err) {
+    console.warn('chat proxy failed, using local answers:', err);
+    history.pop();
+    m.remove();
+    await askLocal(q);
+    return;
+  }
+
+  const text = shown(full).trim();
+  b.textContent = text;
+  history.push({ role: 'assistant', content: text });
+
+  const hit = full.match(LINK);
+  if (hit) navbtn(m, hit[1].trim(), hit[2].trim());
+  log.scrollTop = log.scrollHeight;
+}
+
+async function send(text) {
   const q = text.trim();
-  if (!q) return;
+  if (!q || busy) return;
   document.getElementById('chatSeed')?.remove();
   bubble('user', q);
   field.value = '';
 
-  // brief "typing" beat, then answer
-  setTimeout(() => {
-    const r = replyFor(q);
-    const m = bubble('bot', r.text);
-    if (r.to) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'navbtn';
-      btn.textContent = r.label;
-      btn.addEventListener('click', () => { window.location.href = r.to; });
-      m.appendChild(btn);
-      log.scrollTop = log.scrollHeight;
-    }
-  }, 350);
+  busy = true;
+  field.disabled = true;
+  try {
+    if (CHAT_API) await askClaude(q);
+    else await askLocal(q);
+  } finally {
+    busy = false;
+    field.disabled = false;
+    field.focus();
+  }
 }
 
 form.addEventListener('submit', (e) => { e.preventDefault(); send(field.value); });

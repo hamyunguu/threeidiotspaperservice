@@ -1,0 +1,18 @@
+name = "tips-chat"
+main = "worker.js"
+compatibility_date = "2026-07-31"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# 사이트 주소만 호출을 허용한다. 로컬에서 테스트할 주소도 함께 적어 둔다.
+# (비워 두면 아무 도메인에서나 호출할 수 있다 — 배포 후에는 채워 두는 편이 좋다.)
+ALLOWED_ORIGINS = "https://hamyunguu.github.io,http://localhost:5178,http://127.0.0.1:5178"
+
+# 모델을 바꾸고 싶으면 여기만 고치면 된다.
+#   claude-opus-5     : 가장 똑똑함 (기본값, $5/$25 per 1M tokens)
+#   claude-sonnet-5   : 더 저렴하고 빠름 ($3/$15)
+#   claude-haiku-4-5  : 가장 저렴 ($1/$5)
+MODEL = "claude-opus-5"
+
+# API 키는 여기에 적지 않는다. 아래 명령으로 시크릿에 저장한다:
+#   npx wrangler secret put ANTHROPIC_API_KEY
