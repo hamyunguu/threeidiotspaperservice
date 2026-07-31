@@ -1,7 +1,13 @@
 /* ---------------------------------------------------------------
-   Hero v2 (Figma 291:655): poster carousel + AI chatbot.
-   The program-list hover/fill is pure CSS; sphere physics and the
-   data-href navigation live in script.js (loaded after this).
+   Hero (Figma 393:531 · header open 453:1075 · search 393:341).
+
+   Three states of one layout. The header opens on hover — the T grows
+   into the full mark and the menu unfolds — which pushes the rule from
+   58 to 123 and everything under it down 65px; the CSS does that move,
+   this file only sets the class. Search opens the same header plus its
+   own field row.
+
+   data-href navigation lives in script.js (loaded after this).
    --------------------------------------------------------------- */
 
 /* ---------------- loading page (shown deliberately ~1.5s on entry) ---------------- */
@@ -22,18 +28,73 @@ if (loader) {
   setTimeout(dismiss, 2600);
 }
 
-/* ---------------- auto-dissolving poster carousel ---------------- */
+/* ---------------- header: hover opens it, Search opens the field ----------------
+   The open header is a hover state in Figma, so it is one here too — but it
+   also latches while the search field is up, otherwise moving the pointer to
+   the field would collapse the header out from under it. */
 
-const slides = [...document.querySelectorAll('.carousel .slide')];
-const pages = [...document.querySelectorAll('.pg')];
+const menu = document.getElementById('hdMenu');
+const searchBtn = document.getElementById('hdSearch');
+const searchField = document.getElementById('hdField');
+const searchInput = document.getElementById('hdInput');
+const closeBtn = document.getElementById('hdClose');
+
+const HEAD_ZONE = 123;            // the open header's own height
+
+function setHead(open) {
+  document.body.classList.toggle('is-head-open', open || isSearchOpen());
+}
+function isSearchOpen() {
+  return document.body.classList.contains('is-search-open');
+}
+
+/* the whole band across the top is the hover target, not just the words */
+document.addEventListener('pointermove', (e) => {
+  if (isSearchOpen()) return;
+  const scale = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
+  const stage = document.getElementById('stage');
+  if (!stage) return;
+  const box = stage.getBoundingClientRect();
+  const y = (e.clientY - box.top) / scale;
+  const x = (e.clientX - box.left) / scale;
+  setHead(y >= 0 && y <= HEAD_ZONE && x >= 0 && x <= 1920);
+});
+menu.addEventListener('pointerenter', () => setHead(true));
+
+function openSearch() {
+  document.body.classList.add('is-search-open', 'is-head-open');
+  searchInput.focus();
+}
+function closeSearch() {
+  document.body.classList.remove('is-search-open');
+  searchInput.value = '';
+  setHead(false);
+}
+searchBtn.addEventListener('click', openSearch);
+closeBtn.addEventListener('click', closeSearch);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && isSearchOpen()) closeSearch();
+});
+
+/* ---------------- left: the poster the numbering pages through ---------------- */
+
+const POSTERS = [
+  'assets/fig-poster.jpg?v=34',
+  'assets/card-hand.jpg?v=34',
+  'assets/gal-wood-a.jpg?v=34',
+];
+
+const posterImg = document.getElementById('posterImg');
+const pages = [...document.querySelectorAll('.numbering button')];
 const AUTO_MS = 4500;
 let current = 0;
 let timer;
 
 function show(i) {
-  current = (i + slides.length) % slides.length;
-  slides.forEach((s, n) => s.classList.toggle('is-active', n === current));
-  pages.forEach((p, n) => p.classList.toggle('is-active', n === current));
+  current = (i + POSTERS.length) % POSTERS.length;
+  posterImg.src = POSTERS[current];
+  pages.forEach((p, n) => p.classList.toggle('is-on', n === current));
 }
 
 function play() {
@@ -84,7 +145,7 @@ function replyFor(q) {
 /* faint, tappable example prompts shown before the first message */
 function seed() {
   const wrap = document.createElement('div');
-  wrap.className = 'chat-seed';
+  wrap.className = 'cb-seed';
   wrap.id = 'chatSeed';
   SEEDS.forEach((s) => {
     const p = document.createElement('p');
