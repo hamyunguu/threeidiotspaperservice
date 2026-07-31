@@ -7,7 +7,19 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=21" />
+<link rel="stylesheet" href="styles.css?v=22" />
+
+<!-- The sheet preview is a live 3D model. order.js only pulls three.js in
+     once, on this page; the import map is what lets its add-ons resolve the
+     bare "three" specifier they import internally. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
 </head>
 <body class="hero2 order">
 
@@ -15,7 +27,7 @@
   <div class="stage" id="stage">
 
     <!-- ===== header — same as the hero page ===== -->
-    <img class="logo" src="assets/logo.svg?v=21" alt="TiPS 홈으로" data-href="index.html" title="홈" />
+    <img class="logo" src="assets/logo.svg?v=22" alt="TiPS 홈으로" data-href="index.html" title="홈" />
     <nav class="nav">
       <a class="nav-item" style="left:304px; top:20px; --nav:#029bed" href="identity.html">Identity</a>
       <a class="nav-item" style="left:304px; top:56px; --nav:#ed028c" href="program.html">Program</a>
@@ -40,20 +52,21 @@
     <!-- ===== left: order form — order.js renders it from the mode schema ===== -->
     <form class="ord-form" id="ordForm" autocomplete="off"></form>
 
-    <!-- ===== right: sheet preview ===== -->
+    <!-- ===== right: live 3D preview ===== -->
     <div class="ord-preview" id="ordPreview">
-      <div class="ord-paper-wrap">
-        <div class="ord-paper" id="ordPaperView"></div>
+      <div class="ord-stage" id="ordStage">
+        <p class="ord-stage-note" id="ordStageNote">3D 미리보기를 불러오는 중…</p>
       </div>
-      <p class="ord-drop-hint" id="ordDropHint">1번에서 파일을 올리거나<br />여기에 끌어다 놓으면 미리보기가 들어갑니다</p>
+      <p class="ord-drop-hint" id="ordDropHint">1번에서 파일을 올리거나 여기에 끌어다 놓으면 바로 3D에 반영됩니다</p>
       <p class="ord-dim" id="ordDim"></p>
+      <button type="button" class="ord-view-reset" id="ordViewReset">시점 초기화</button>
     </div>
 
   </div>
 </div>
 
-<script src="script.js?v=21"></script>
-<script src="order.js?v=21"></script>
-<script src="cursor.js?v=21"></script>
+<script src="script.js?v=22"></script>
+<script type="module" src="order.js?v=22"></script>
+<script src="cursor.js?v=22"></script>
 </body>
 </html>

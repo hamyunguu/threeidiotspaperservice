@@ -204,7 +204,6 @@ const state = {
 const form = document.getElementById('ordForm');
 const tabs = document.getElementById('ordTabs');
 const preview = document.getElementById('ordPreview');
-const paperView = document.getElementById('ordPaperView');
 const dropHint = document.getElementById('ordDropHint');
 const dimLabel = document.getElementById('ordDim');
 
@@ -599,12 +598,7 @@ function estimate() {
   return { paper, print, bind, last, supply, vat, total: supply + vat };
 }
 
-/* ---------------- sheet preview ----------------
-   Flat, to scale, and shaped by the product: a leaflet shows its fold
-   lines, a book its spine and page block, a card lies in landscape. */
-
-const PREVIEW_W = 700;    // design px the sheet may span
-const PREVIEW_H = 600;
+/* ---------------- what the form describes, in numbers the model can build --- */
 
 /* how many panels the chosen 접지 folds the sheet into */
 function foldPanels() {
@@ -615,74 +609,50 @@ function foldPanels() {
   return 1;
 }
 
-function paintPreview() {
+const coatOf = (s) => (/무광/.test(s || '') ? '무광' : /유광/.test(s || '') ? '유광' : '없음');
+
+function derive() {
   const o = state.opts;
-  const mode = state.mode;
-  const w = Math.max(1, +o.goods_size_w || 210);
-  const h = Math.max(1, +o.goods_size_h || 297);
+  const bind = o.goods_jebon || '무선제본';
+  return {
+    mode: state.mode,
+    w: Math.max(1, +o.goods_size_w || 210),
+    h: Math.max(1, +o.goods_size_h || 297),
+    sides: o.in_mun_values === '양면출력' ? '양면' : '단면',
+    coverSides: o.cover_mun_values === '양면출력' ? '양면' : '단면',
+    coating: coatOf(o.in_lastJob4),
+    coverCoating: coatOf(o.cover_lastJob4),
+    paper: `${o.in_paper_group || ''} ${o.in_paper || ''}`,
+    coverPaper: `${o.cover_paper_group || ''} ${o.cover_paper || ''}`,
+    panels: foldPanels(),
+    bind,
+    spine: bind === '제본 없음' ? 0 : senecaMm(o),
+    direction: o.goods_jebon_direction || '세로',
+    pages: totalPages(o),
+    wings: o.cover_nalgae === '날개있음',
+    cover: Boolean(o.use_cover),
+    ringColor: o.goods_opt_ring === '흰색' ? 0xf2f2f2 : 0x2b2b2b,
+  };
+}
 
-  /* a book carries its spine beside the cover, so it needs the extra width */
-  const ringed = o.goods_jebon === '링(스프링)제본';
-  const spineMm = (mode === 'book' && o.goods_jebon !== '제본 없음') ? senecaMm(o) : 0;
-  const scale = Math.min(PREVIEW_W / (w + spineMm), PREVIEW_H / h);
-
-  const pw = Math.round(w * scale);
-  const ph = Math.round(h * scale);
-  const ps = spineMm ? Math.max(4, Math.round(spineMm * scale)) : 0;
-
-  paperView.style.width = `${pw + ps}px`;
-  paperView.style.height = `${ph}px`;
-  paperView.classList.toggle('is-book', mode === 'book');
-
-  const bits = [];
-
-  if (ps) {
-    bits.push(`<span class="ord-spine" style="width:${ps}px"></span>`);
-    /* the page block shows on the fore edge, opposite the spine */
-    bits.push(`<span class="ord-leaves" style="width:${Math.max(3, ps - 1)}px"></span>`);
-    if (ringed) {
-      const rings = Math.max(5, Math.round(ph / 34));
-      for (let i = 0; i < rings; i++) {
-        const top = ((i + 0.5) / rings) * 100;
-        bits.push(`<span class="ord-ring" style="left:${ps / 2}px; top:${top}%"></span>`);
-      }
-    }
-  }
-
-  /* fold lines sit on the printed area only, so they start after the spine */
-  const panels = (mode === 'poster' || mode === 'leaflet') ? foldPanels() : 1;
-  for (let i = 1; i < panels; i++) {
-    bits.push(`<span class="ord-fold" style="left:${(i / panels) * 100}%"></span>`);
-  }
-
-  const primary = MODES[mode].uploads[0].slot;
-  if (!state.images[primary]) {
-    const duplex = (o[mode === 'book' ? 'cover_mun_values' : 'in_mun_values'] === '양면출력');
-    const face = mode === 'book' ? '표지' : '앞면';
-    bits.push(`<span class="ord-paper-face">${duplex ? face + ' / 뒷면' : face}</span>`);
-  }
-
-  paperView.innerHTML = bits.join('');
-  paperView.style.backgroundImage = state.images[primary]
-    ? `url("${state.images[primary]}")` : '';
-  paperView.classList.toggle('has-file', Boolean(state.images[primary]));
-  /* the artwork must not run under the spine */
-  paperView.style.backgroundPosition = ps ? `${ps}px center` : 'center';
-  paperView.style.backgroundSize = ps ? `${pw}px ${ph}px` : 'cover';
-
-  dropHint.textContent = state.images[primary]
-    ? `${MODES[mode].uploads[0].label} 미리보기`
-    : '1번에서 파일을 올리거나 여기에 끌어다 놓으면 미리보기가 들어갑니다';
-
-  /* the caption reads back what the form is currently describing */
+/* the caption under the stage reads back what is on screen */
+function paintCaption() {
+  const o = state.opts;
+  const D = derive();
   let extra = '';
-  if (mode === 'book') {
-    extra = ` · ${totalPages(o)}p · ${o.goods_jebon}` +
-      (spineMm ? ` · 세네카 ${senecaMm(o)}㎜` : '');
-  } else if (panels > 1) {
+  if (state.mode === 'book') {
+    extra = ` · ${D.pages}p · ${D.bind}` + (D.spine ? ` · 세네카 ${D.spine}㎜` : '');
+  } else if (D.panels > 1) {
     extra = ` · ${o.in_lastJob54 || o.in_lastJob27}`;
+  } else if (D.sides === '양면') {
+    extra = ' · 양면';
   }
-  dimLabel.textContent = `${w}×${h}mm${extra}`;
+  dimLabel.textContent = `${D.w}×${D.h}mm${extra}`;
+
+  const primary = MODES[state.mode].uploads[0].slot;
+  dropHint.textContent = state.images[primary]
+    ? '드래그로 돌려 보세요 · 휠로 확대'
+    : '1번에서 파일을 올리거나 여기에 끌어다 놓으면 바로 3D에 반영됩니다';
 }
 
 /* ---------------- live refresh, without rebuilding the form ---------------- */
@@ -719,7 +689,8 @@ function refreshDynamic() {
 
 function onOptionChange() {
   refreshDynamic();
-  paintPreview();
+  paintCaption();
+  if (engine) engine.update(derive());
 }
 
 /* ---------------- inputs ---------------- */
@@ -822,12 +793,21 @@ form.addEventListener('click', (e) => {
 
 /* ---------------- artwork ---------------- */
 
+/* the model wants a decoded image, so the file is read before it lands */
 function takeFile(file, slot) {
   if (!file || !file.type.startsWith('image/')) return;
-  if (state.images[slot]) URL.revokeObjectURL(state.images[slot]);
-  state.images[slot] = URL.createObjectURL(file);
-  paintUploads();
-  paintPreview();
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      state.images[slot] = img;
+      paintUploads();
+      paintCaption();
+      if (engine) engine.setTexture(slot, img);
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 /* dropping on the preview feeds the first slot of the current product */
@@ -844,6 +824,10 @@ preview.addEventListener('drop', (e) => {
   if (file) takeFile(file, MODES[state.mode].uploads[0].slot);
 });
 
+document.getElementById('ordViewReset').addEventListener('click', () => {
+  if (engine) engine.resetView();
+});
+
 /* ---------------- product tabs ---------------- */
 
 tabs.addEventListener('click', (e) => {
@@ -855,13 +839,498 @@ tabs.addEventListener('click', (e) => {
 
 function switchMode(mode) {
   if (!MODES[mode]) return;
-  Object.values(state.images).forEach((url) => URL.revokeObjectURL(url));
   state.mode = mode;
   state.images = {};                 // artwork is per product
   state.opts = seedDefaults(mode);
   renderForm(mode);
-  onOptionChange();
+  refreshDynamic();
+  paintCaption();
+  if (engine) engine.rebuild(derive(), state.images);
   form.scrollTop = 0;
 }
 
+/* ---------------- 3D stage ----------------
+   three.js is pulled in once, here, and only on this page. Until it lands
+   the form is already usable; if it never lands the page says so rather
+   than leaving an empty right half. */
+
+const stage = document.getElementById('ordStage');
+const stageNote = document.getElementById('ordStageNote');
+let engine = null;
+
 switchMode('poster');
+
+createEngine(stage).then((eng) => {
+  engine = eng;
+  stageNote.remove();
+  engine.rebuild(derive(), state.images);
+  engine.start();
+}).catch((err) => {
+  stageNote.textContent = '3D 미리보기를 불러오지 못했습니다. 네트워크 연결을 확인해 주세요.';
+  stageNote.classList.add('is-error');
+  console.error('[order] 3D init failed:', err);
+});
+
+window.addEventListener('resize', () => { if (engine) engine.resize(); });
+
+/* ==========================================================================
+   The model — one paper object, rebuilt whenever the form changes.
+
+   Everything is measured in mm off the form and normalised so the longest
+   edge of the product spans 3 world units, which keeps a name card and a
+   B2 poster equally readable in the same frame.
+   ========================================================================== */
+
+async function createEngine(mount) {
+  const THREE = await import('three');
+  const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+  const { RoomEnvironment } = await import('three/addons/environments/RoomEnvironment.js');
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setClearColor(0x000000, 0);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.domElement.className = 'ord-canvas';
+  mount.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+  const fitCenter = new THREE.Vector3();
+  let fitDist = 6;
+
+  /* A sheet or a book stands up and is read from a low three-quarter on the
+     left, which is where its spine and fold are. A card lies down, so it has
+     to be looked at from above or it disappears edge-on. */
+  const viewDir = (mode) => (mode === 'print'
+    ? new THREE.Vector3(-0.3, 0.9, 0.85).normalize()
+    : new THREE.Vector3(-0.38, 0.22, 1).normalize());
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.enablePan = false;
+  controls.minPolarAngle = 0.15;
+  controls.maxPolarAngle = Math.PI * 0.52;
+
+  /* white stock on a white page only reads through its own shading, so the
+     fill stays low and the key comes in steeply from the left */
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xdedede, 0.32));
+  const key = new THREE.DirectionalLight(0xffffff, 1.5);
+  key.position.set(-3, 10, 4.5);      // steep, so a standing sheet casts a short shadow
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.near = 1;
+  key.shadow.camera.far = 24;
+  key.shadow.camera.left = -5;
+  key.shadow.camera.right = 5;
+  key.shadow.camera.top = 5;
+  key.shadow.camera.bottom = -5;
+  key.shadow.bias = -0.0005;
+  key.shadow.radius = 8;
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.35);
+  fill.position.set(4, 1.5, -2);
+  scene.add(fill);
+
+  /* the environment is only there to give coated stock something to reflect */
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+  /* the object sits on this; nothing but its shadow is drawn */
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(60, 60),
+    new THREE.ShadowMaterial({ opacity: 0.2 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.004;      // clear of the object's own bottom face
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  let root = new THREE.Group();
+  scene.add(root);
+
+  /* ---- textures ---- */
+
+  const texCache = {};
+
+  /* an unfilled face reads as blank stock with its name on it — the same
+     grey the flat preview used, so nothing jumps when the model appears */
+  function placeholder(label) {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 724;
+    const g = c.getContext('2d');
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, 0, c.width, c.height);
+    g.strokeStyle = '#d6d6d6';
+    g.lineWidth = 4;
+    g.strokeRect(16, 16, c.width - 32, c.height - 32);
+    g.fillStyle = '#b4b4b4';
+    g.font = '34px "IBM Plex Mono", monospace';
+    g.textAlign = 'center';
+    g.fillText(label || '', c.width / 2, c.height / 2 + 12);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+
+  function fromImage(img) {
+    const t = new THREE.Texture(img);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    t.needsUpdate = true;
+    return t;
+  }
+
+  /* blank stock is drawn once per label and shared; per-panel clones are
+     tracked so a rebuild does not leave textures behind */
+  const blanks = {};
+  const perBuild = [];
+
+  function texFor(slot, label) {
+    if (texCache[slot]) return texCache[slot];
+    if (!blanks[label]) blanks[label] = placeholder(label);
+    return blanks[label];
+  }
+
+  function cloneTex(t) {
+    if (!t) return null;
+    const c = t.clone();
+    c.needsUpdate = true;
+    perBuild.push(c);
+    return c;
+  }
+
+  /* ---- materials ---- */
+
+  /* coating is the whole difference between a matt and a glossy sheet, and
+     uncoated stock (모조·반누보·레자크…) never gets a sheen at all */
+  function paperMat(coating, paperName, map) {
+    const uncoated = /모조|미색|반누보|레자크|색지|크라프트|마쉬멜로우/.test(paperName || '');
+    return new THREE.MeshPhysicalMaterial({
+      map: map || null,
+      color: map ? 0xffffff : 0xfafafa,
+      roughness: coating === '유광' ? 0.15 : coating === '무광' ? 0.46 : (uncoated ? 0.92 : 0.72),
+      metalness: 0,
+      clearcoat: coating === '유광' ? 1 : coating === '무광' ? 0.3 : 0,
+      clearcoatRoughness: coating === '유광' ? 0.1 : 0.42,
+      envMapIntensity: 0.6,
+    });
+  }
+
+  /* the cut edge is what makes a sheet look like paper and not a plane */
+  const cutEdge = () => new THREE.MeshStandardMaterial({ color: 0xe4ddcd, roughness: 0.95 });
+  const pageBlock = () => new THREE.MeshStandardMaterial({ color: 0xf2ebdb, roughness: 0.96 });
+
+  /* ---- helpers ---- */
+
+  function clear() {
+    root.traverse((o) => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
+    });
+    perBuild.splice(0).forEach((t) => t.dispose());
+    scene.remove(root);
+    root = new THREE.Group();
+    scene.add(root);
+  }
+
+  /* mm -> world, longest edge of the product spanning 3 units */
+  function unit(D) {
+    return 3 / Math.max(D.w, D.h);
+  }
+
+  /* map the ±z faces of a box onto the [u0,u1] slice of its texture, so a
+     folded sheet shows one continuous artwork across its panels */
+  function sliceUV(geo, u0, u1) {
+    const uv = geo.attributes.uv;
+    for (const base of [16, 20]) {
+      for (let i = 0; i < 4; i++) {
+        uv.setX(base + i, u0 + uv.getX(base + i) * (u1 - u0));
+      }
+    }
+    uv.needsUpdate = true;
+  }
+
+  function sheet(w, h, t, frontMat, backMat) {
+    const edge = cutEdge();
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, t),
+      [edge, edge, edge, edge, frontMat, backMat]);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    return m;
+  }
+
+  /* ---- the four products ---- */
+
+  /* Poster and leaflet are the same object; only the 접지 differs. Standing
+     upright is how you would hold a sheet up to look at it. */
+  function buildSheet(D) {
+    const s = unit(D);
+    const w = D.w * s;
+    const h = D.h * s;
+    const t = 0.018;
+    const panels = Math.max(1, D.panels);
+
+    const front = texFor('front', '앞면');
+    const back = D.sides === '양면' ? texFor('back', '뒷면') : null;
+
+    if (panels === 1) {
+      const m = sheet(w, h, t, paperMat(D.coating, D.paper, front),
+        paperMat(D.coating, D.paper, back));
+      m.position.y = h / 2;
+      root.add(m);
+      return;
+    }
+
+    /* an accordion: each panel turns ±angle about the fold before the next */
+    const pw = w / panels;
+    const angle = 0.5;
+    const g = new THREE.Group();
+    let x = 0;
+    let z = 0;
+    for (let i = 0; i < panels; i++) {
+      const rot = (i % 2 === 0 ? 1 : -1) * angle;
+      const geo = new THREE.BoxGeometry(pw, h, t);
+      sliceUV(geo, i / panels, (i + 1) / panels);
+      const edge = cutEdge();
+      const panel = new THREE.Mesh(geo, [edge, edge, edge, edge,
+        paperMat(D.coating, D.paper, cloneTex(front)),
+        paperMat(D.coating, D.paper, cloneTex(back))]);
+      panel.castShadow = true;
+      panel.receiveShadow = true;
+      const dx = Math.cos(rot) * pw;
+      const dz = -Math.sin(rot) * pw;
+      panel.position.set(x + dx / 2, h / 2, z + dz / 2);
+      panel.rotation.y = rot;
+      g.add(panel);
+      x += dx;
+      z += dz;
+    }
+    centre(g);
+    root.add(g);
+  }
+
+  /* A card is looked at lying down. 양면 shows both, one turned over. */
+  function buildCard(D) {
+    const s = unit(D);
+    const w = D.w * s;
+    const h = D.h * s;
+    const t = 0.032;
+
+    const face = sheet(w, h, t, paperMat(D.coating, D.paper, texFor('front', '앞면')),
+      paperMat(D.coating, D.paper, null));
+    face.rotation.x = -Math.PI / 2;
+    face.position.set(0, t / 2, 0);
+
+    if (D.sides !== '양면') {
+      face.rotation.z = 0.12;
+      root.add(face);
+      return;
+    }
+
+    const g = new THREE.Group();
+    face.position.x = -w * 0.56;
+    g.add(face);
+
+    const flip = sheet(w, h, t, paperMat(D.coating, D.paper, texFor('back', '뒷면')),
+      paperMat(D.coating, D.paper, null));
+    flip.rotation.x = -Math.PI / 2;
+    flip.position.set(w * 0.56, t / 2, 0);
+    g.add(flip);
+
+    g.rotation.y = 0.1;
+    root.add(g);
+  }
+
+  /* A book, closed, seen from the spine side: cover, page block, spine —
+     with rings, staples or a glued back depending on 제본 방식. */
+  function buildBook(D) {
+    const s = unit(D);
+    const w = D.w * s;
+    const h = D.h * s;
+    /* a 0-page book would be a plane; give the block a floor so it reads */
+    const d = Math.max(0.02, D.spine * s);
+    const cover = 0.006;
+
+    const g = new THREE.Group();
+    const coverMat = (slot, label) =>
+      paperMat(D.coverCoating, D.coverPaper, D.cover ? texFor(slot, label) : null);
+
+    /* the pages, inset a hair so the cover overhangs like a real trim */
+    const block = new THREE.Mesh(new THREE.BoxGeometry(w * 0.985, h * 0.985, d), pageBlock());
+    block.castShadow = true;
+    block.receiveShadow = true;
+    g.add(block);
+
+    const front = sheet(w, h, cover, coverMat('cover', '표지'), pageBlock());
+    front.position.z = d / 2 + cover / 2;
+    g.add(front);
+
+    const back = sheet(w, h, cover, pageBlock(), coverMat('coverBack', '뒷표지'));
+    back.position.z = -(d / 2 + cover / 2);
+    g.add(back);
+
+    if (D.bind === '링(스프링)제본') {
+      const ringMat = new THREE.MeshStandardMaterial({
+        color: D.ringColor, metalness: 0.55, roughness: 0.4,
+      });
+      /* the coil has to clear the block front and back, and sit right on the
+         edge, or at this size it disappears inside the covers */
+      const r = Math.max(0.055, (d / 2 + cover) * 1.5);
+      const count = Math.max(8, Math.round(h / (r * 2.1)));
+      for (let i = 0; i < count; i++) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.2, 8, 22), ringMat);
+        ring.position.set(-w / 2 + r * 0.25, -h / 2 + ((i + 0.5) / count) * h, 0);
+        ring.rotation.y = Math.PI / 2;
+        ring.castShadow = true;
+        g.add(ring);
+      }
+    } else if (D.bind !== '제본 없음') {
+      /* 무선·PUR wrap the cover around the back; 중철 folds and staples it */
+      const spineMat = D.bind === '중철제본_세로형'
+        ? pageBlock()
+        : coverMat('cover', '표지');
+      const spine = new THREE.Mesh(new THREE.BoxGeometry(cover, h, d + cover * 2), spineMat);
+      spine.position.x = -(w / 2 + cover / 2);
+      spine.castShadow = true;
+      g.add(spine);
+
+      if (D.bind === '중철제본_세로형') {
+        const steel = new THREE.MeshStandardMaterial({
+          color: 0x9aa0a6, metalness: 0.85, roughness: 0.3,
+        });
+        [-h * 0.22, h * 0.22].forEach((y) => {
+          const st = new THREE.Mesh(new THREE.BoxGeometry(cover * 1.6, h * 0.08, d * 0.5), steel);
+          st.position.set(-(w / 2 + cover / 2), y, 0);
+          st.castShadow = true;
+          g.add(st);
+        });
+      }
+    }
+
+    /* 표지날개 — the cover folds back in at the fore edge */
+    if (D.wings && D.cover) {
+      [1, -1].forEach((side) => {
+        const wing = sheet(w * 0.4, h, cover, coverMat('cover', '표지'), pageBlock());
+        const pivot = new THREE.Group();
+        pivot.position.set(w / 2, 0, side * (d / 2 + cover / 2));
+        wing.position.x = -w * 0.2;
+        wing.rotation.y = side * 0.55;
+        pivot.add(wing);
+        g.add(pivot);
+      });
+    }
+
+    /* 가로 제본 is bound on the long edge, so the whole thing turns */
+    if (D.direction === '가로') g.rotation.z = -Math.PI / 2;
+
+    centre(g);
+    root.add(g);
+  }
+
+  /* drop a group onto the ground and centre it over the origin */
+  function centre(g) {
+    g.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(g);
+    const c = new THREE.Vector3();
+    box.getCenter(c);
+    g.position.x -= c.x;
+    g.position.z -= c.z;
+    g.position.y -= box.min.y;
+  }
+
+  function build(D) {
+    clear();
+    if (D.mode === 'book') buildBook(D);
+    else if (D.mode === 'print') buildCard(D);
+    else buildSheet(D);
+    root.updateMatrixWorld(true);
+    fitCamera();
+  }
+
+  /* Frame by the bounding sphere rather than by width and height: the object
+     is orbited, so what has to fit is the same from every angle. keepAngle
+     holds whatever the user has turned to across an option change. */
+  function fitCamera(keepAngle) {
+    const box = new THREE.Box3().setFromObject(root);
+    if (box.isEmpty()) return;
+    const sphere = box.getBoundingSphere(new THREE.Sphere());
+    fitCenter.copy(sphere.center);
+
+    const vFov = (camera.fov * Math.PI) / 180;
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+    fitDist = Math.max(sphere.radius / Math.sin(vFov / 2),
+      sphere.radius / Math.sin(hFov / 2)) * 1.06;
+    controls.minDistance = fitDist * 0.35;
+    controls.maxDistance = fitDist * 2.2;
+
+    const dir = keepAngle
+      ? camera.position.clone().sub(controls.target).normalize()
+      : viewDir(current ? current.mode : state.mode);
+    controls.target.copy(fitCenter);
+    camera.position.copy(fitCenter).add(dir.multiplyScalar(fitDist));
+    controls.update();
+  }
+
+  /* ---- loop ---- */
+
+  let raf = null;
+  let running = false;
+  let current = null;
+
+  function frame() {
+    if (!running) return;
+    controls.update();
+    renderer.render(scene, camera);
+    raf = requestAnimationFrame(frame);
+  }
+
+  /* the stage lives inside the scaled 1920 frame, so the drawing buffer is
+     sized by the frame's own px and then multiplied by the page scale —
+     otherwise the canvas softens as the window grows */
+  function resize() {
+    const w = mount.clientWidth || 1;
+    const h = mount.clientHeight || 1;
+    const scale = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio * scale, 2.5));
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    fitCamera(true);
+  }
+
+  return {
+    rebuild(D, images) {
+      Object.keys(texCache).forEach((slot) => { texCache[slot].dispose(); delete texCache[slot]; });
+      Object.keys(images).forEach((slot) => { texCache[slot] = fromImage(images[slot]); });
+      current = D;
+      build(D);
+    },
+    update(D) {
+      current = D;
+      clear();
+      if (D.mode === 'book') buildBook(D);
+      else if (D.mode === 'print') buildCard(D);
+      else buildSheet(D);
+      root.updateMatrixWorld(true);
+      fitCamera(true);              // an option change must not steal the view
+    },
+    setTexture(slot, img) {
+      if (texCache[slot]) texCache[slot].dispose();
+      texCache[slot] = fromImage(img);
+      if (current) this.update(current);
+    },
+    resetView() { fitCamera(false); },
+    resize,
+    start() {
+      if (running) return;
+      running = true;
+      resize();
+      frame();
+    },
+  };
+}

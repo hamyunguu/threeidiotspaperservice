@@ -1115,77 +1115,44 @@ textarea.ord-input { resize: vertical; line-height: 1.5; }
   z-index: 4;
 }
 
-.ord-paper-wrap {
+/* the 3D stage — the canvas is transparent, so the product sits on the
+   page itself with nothing but its own contact shadow under it */
+.ord-stage {
   position: absolute;
   inset: 0 0 120px 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: grab;
 }
+.ord-stage:active { cursor: grabbing; }
+.ord-canvas { display: block; width: 100%; height: 100%; }
 
-/* the sheet itself — JS sets width/height from the chosen size in mm */
-.ord-paper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #fff;
-  border: 1px solid #000;
-  box-shadow: 14px 16px 0 rgba(0, 0, 0, .07);
-  background-size: cover;
-  background-position: center;
-  transition: width .3s cubic-bezier(.4, 0, .2, 1), height .3s cubic-bezier(.4, 0, .2, 1);
-}
-.ord-paper.has-file { border-style: solid; }
-.ord-paper-face {
+.ord-stage-note {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 22px;
+  font-size: 15px;
   color: #b4b4b4;
 }
-.ord-paper.has-file .ord-paper-face { display: none; }
+.ord-stage-note.is-error { color: #f85485; }
 
-/* ---- what the sheet turns into per product ----
-   Leaflet: the chosen 접지 drawn as fold lines.
-   Book: a spine down the left at the calculated 세네카 width, the page
-   block peeking out on the fore edge, and ring holes when it is 링제본. */
-
-.ord-fold {
+/* 시점 초기화 — same hairline button as the part switches */
+.ord-view-reset {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 0;
-  border-left: 1px dashed #302929;
-  opacity: .5;
-}
-
-.ord-spine {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  border-right: 1px solid #000;
-  background: #f0f0f0;
-}
-.ord-leaves {
-  position: absolute;
-  left: 100%;
-  top: 4px;
-  bottom: 4px;
-  background: repeating-linear-gradient(to right, #302929 0 1px, transparent 1px 3px);
-  opacity: .45;
-}
-.ord-ring {
-  position: absolute;
-  width: 7px;
-  height: 7px;
-  margin: -3.5px 0 0 -3.5px;
-  border: 1px solid #302929;
-  border-radius: 50%;
+  right: 0;
+  bottom: 14px;
+  border: 1px solid #000;
   background: #fff;
+  padding: 6px 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: #302929;
+  cursor: pointer;
+  transition: background .18s, color .18s;
 }
+.ord-view-reset:hover { background: #000; color: #fff; }
 
 /* dropping artwork straight onto the preview */
-.ord-preview.is-drop .ord-paper { outline: 2px solid #0196ff; outline-offset: 8px; }
+.ord-preview.is-drop .ord-stage { outline: 2px solid #0196ff; outline-offset: -2px; }
 
 .ord-drop-hint {
   position: absolute;
@@ -1209,6 +1176,3 @@ textarea.ord-input { resize: vertical; line-height: 1.5; }
   color: #302929;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .ord-paper { transition: none; }
-}
