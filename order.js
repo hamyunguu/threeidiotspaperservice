@@ -190,6 +190,18 @@ const MODES = {
   },
 };
 
+/* 제본 방식 — 사철은 실로 대장을 꿰는 방식이라 링·중철과 함께 늘 걸려 있어야 한다 */
+const BINDINGS = ['무선제본', '사철제본', '중철제본_세로형', 'PUR 제본', '링(스프링)제본', '제본 없음'];
+
+/* 참고용 추정치의 부당 제본 단가 */
+const BIND_RATE = {
+  '무선제본': 700,
+  '사철제본': 1400,
+  '중철제본_세로형': 400,
+  'PUR 제본': 1100,
+  '링(스프링)제본': 900,
+};
+
 /* step discs run through the CMYK marks the rest of the site uses */
 const NO_COLORS = ['#0196ff', '#ffe710', '#f85485', '#302929'];
 
@@ -198,7 +210,8 @@ const NO_COLORS = ['#0196ff', '#ffe710', '#f85485', '#302929'];
 const state = {
   mode: 'poster',
   opts: {},      // current form values, keyed by the original form names
-  images: {},    // slot -> object URL of the uploaded artwork
+  images: {},    // slot -> decoded artwork the model textures itself from
+  files: {},     // slot -> { label, busy } for the upload row
 };
 
 const form = document.getElementById('ordForm');
@@ -236,8 +249,10 @@ function segRow(label, key, options, value) {
   const items = options.map((o) =>
     `<button type="button" class="ord-seg-item${o === value ? ' is-on' : ''}" ` +
     `data-key="${key}" data-val="${esc(o)}">${esc(o)}</button>`).join('');
+  /* 제본 방식처럼 항목이 많은 줄은 좁혀야 한 줄에 들어간다 */
+  const tight = options.length > 4 ? ' is-tight' : '';
   return `<div class="ord-row">${labelCell(label)}` +
-    `<div class="ord-seg" role="radiogroup" data-key="${key}">${items}</div></div>`;
+    `<div class="ord-seg${tight}" role="radiogroup" data-key="${key}">${items}</div></div>`;
 }
 
 function numRow(label, key, value, unit, min, max, step) {
@@ -392,7 +407,21 @@ function renderForm(mode) {
           `${short.length > 2 ? ' is-long' : ''}">${esc(short)}</span>` +
           `<span class="ord-size-name">${esc(op.n)}</span></button>`);
       });
-      out.push('</div></section>');
+      out.push('</div>');
+
+      /* 사용자입력을 고르면 바로 그 자리에서 치수를 받는다 — 아래 기본정보까지
+         내려가서 재단사이즈를 찾아야 할 이유가 없다 */
+      const custom = s.options.find((op) => op.custom);
+      if (custom && o[s.key] === custom.n) {
+        out.push('<div class="ord-custom">' +
+          `<div class="ord-row"><span class="ord-label">직접 입력</span><span class="ord-wh">` +
+          `<input type="number" class="ord-input" data-key="custom_w" value="${esc(o.goods_size_w)}" min="1" />` +
+          '<span class="ord-unit">㎜ ×</span>' +
+          `<input type="number" class="ord-input" data-key="custom_h" value="${esc(o.goods_size_h)}" min="1" />` +
+          '<span class="ord-unit">㎜</span></span></div>' +
+          '<p class="ord-note">재단사이즈와 실작업규격에 함께 반영됩니다.</p></div>');
+      }
+      out.push('</section>');
 
     } else if (s.t === 'basic') {
       out.push(`<section class="ord-step">${stepHead('기본정보')}`);
@@ -415,8 +444,7 @@ function renderForm(mode) {
 
     } else if (s.t === 'jebon') {
       out.push(`<section class="ord-step">${stepHead('제본')}`);
-      out.push(segRow('제본 방식', 'goods_jebon',
-        ['무선제본', '중철제본_세로형', 'PUR 제본', '링(스프링)제본', '제본 없음'], o.goods_jebon));
+      out.push(segRow('제본 방식', 'goods_jebon', BINDINGS, o.goods_jebon));
       out.push(segRow('제본 방향', 'goods_jebon_direction', ['가로', '세로'], o.goods_jebon_direction));
       out.push(selectRow('링제본 시 링색상', 'goods_opt_ring', ['검정색', '흰색'],
         o.goods_opt_ring, '::: 선택하세요 :::'));
@@ -461,10 +489,16 @@ function totalPages(o) {
 function paintUploads() {
   form.querySelectorAll('[data-slot-state]').forEach((el) => {
     const slot = el.getAttribute('data-slot-state');
-    const set = Boolean(state.images[slot]);
-    el.textContent = set ? '등록됨 · 바꾸려면 클릭' : '파일 선택 / 드래그';
-    el.classList.toggle('is-set', set);
+    const f = state.files[slot];
+    el.textContent = f ? f.label : '파일 선택 / 드래그';
+    el.classList.toggle('is-set', Boolean(f) && !f.busy);
+    el.classList.toggle('is-busy', Boolean(f && f.busy));
   });
+}
+
+function markUpload(slot, label, busy) {
+  state.files[slot] = { label, busy: Boolean(busy) };
+  paintUploads();
 }
 
 /* ---------------- defaults ---------------- */
@@ -576,9 +610,7 @@ function estimate() {
 
   let bind = 0;
   if (state.mode === 'book' && o.goods_jebon !== '제본 없음') {
-    const rate = { '무선제본': 700, '중철제본_세로형': 400, 'PUR 제본': 1100,
-                   '링(스프링)제본': 900 }[o.goods_jebon] || 0;
-    bind = rate * qty;
+    bind = (BIND_RATE[o.goods_jebon] || 0) * qty;
     if (o.goods_opt_pp) bind += 300 * qty;                  // 투명PP
     if (o.cover_nalgae === '날개있음') bind += 250 * qty;
   }
@@ -713,6 +745,19 @@ function setOpt(key, value) {
     return;
   }
 
+  /* the 사용자입력 boxes drive both size rows at once, the way a preset does */
+  if (key === 'custom_w' || key === 'custom_h') {
+    const mm = Math.max(1, parseInt(value, 10) || 1);
+    if (key === 'custom_w') { state.opts.goods_size_w = mm; state.opts.size_w_plus = mm; }
+    else { state.opts.goods_size_h = mm; state.opts.size_h_plus = mm; }
+    form.querySelectorAll('[data-key="goods_size_w"], [data-key="size_w_plus"]')
+      .forEach((el) => { el.value = state.opts.goods_size_w; });
+    form.querySelectorAll('[data-key="goods_size_h"], [data-key="size_h_plus"]')
+      .forEach((el) => { el.value = state.opts.goods_size_h; });
+    onOptionChange();
+    return;
+  }
+
   /* 평량 only opens once a paper is chosen */
   if (/_paper_group$/.test(key)) {
     state.opts[key.replace('_paper_group', '') + '_paper'] = value ? WEIGHTS[0] : '';
@@ -733,6 +778,9 @@ function setOpt(key, value) {
         form.querySelectorAll(`.ord-size[data-key="${sizeStep.key}"]`).forEach((b) =>
           b.classList.toggle('is-on', b.getAttribute('data-val') === hit.n));
       }
+      /* keep the 사용자입력 boxes in step when the size is typed further down */
+      const twin = form.querySelector(`[data-key="custom_${key === 'goods_size_w' ? 'w' : 'h'}"]`);
+      if (twin) twin.value = state.opts[key];
     }
     onOptionChange();
     return;
@@ -793,21 +841,89 @@ form.addEventListener('click', (e) => {
 
 /* ---------------- artwork ---------------- */
 
-/* the model wants a decoded image, so the file is read before it lands */
+/* the model wants a decoded image, so whatever comes in is turned into one */
 function takeFile(file, slot) {
-  if (!file || !file.type.startsWith('image/')) return;
+  if (!file) return;
+  if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+    takePdf(file, slot);
+    return;
+  }
+  if (!file.type.startsWith('image/')) return;
+
   const reader = new FileReader();
   reader.onload = () => {
     const img = new Image();
     img.onload = () => {
-      state.images[slot] = img;
-      paintUploads();
-      paintCaption();
-      if (engine) engine.setTexture(slot, img);
+      landArtwork(slot, img, file.name);
     };
     img.src = reader.result;
   };
   reader.readAsDataURL(file);
+}
+
+function landArtwork(slot, img, label) {
+  state.images[slot] = img;
+  markUpload(slot, label);
+  paintCaption();
+  if (engine) engine.setTexture(slot, img);
+}
+
+/* pdf.js is pulled in only when a PDF is actually handed over */
+let pdfjs = null;
+function loadPdfJs() {
+  if (!pdfjs) {
+    const base = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/';
+    pdfjs = import(/* @vite-ignore */ `${base}pdf.min.mjs`).then((m) => {
+      m.GlobalWorkerOptions.workerSrc = `${base}pdf.worker.min.mjs`;
+      return m;
+    });
+  }
+  return pdfjs;
+}
+
+/* A PDF says how many pages it has, so 내지 no longer has to be counted by
+   hand — and its first page becomes the artwork the model wears. */
+async function takePdf(file, slot) {
+  markUpload(slot, `${file.name} · 읽는 중…`, true);
+  try {
+    const lib = await loadPdfJs();
+    const doc = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+    const page = await doc.getPage(1);
+
+    const raw = page.getViewport({ scale: 1 });
+    const view = page.getViewport({ scale: 1400 / Math.max(raw.width, raw.height) });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(view.width);
+    canvas.height = Math.round(view.height);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport: view }).promise;
+
+    const img = new Image();
+    img.onload = () => {
+      const isInner = slot === 'inner' && state.mode === 'book';
+      landArtwork(slot, img, `${file.name} · ${doc.numPages}p`);
+      if (isInner) setInnerPages(doc.numPages);
+    };
+    img.src = canvas.toDataURL('image/png');
+  } catch (err) {
+    markUpload(slot, `${file.name} · 읽지 못했습니다`);
+    console.error('[order] PDF read failed:', err);
+  }
+}
+
+/* the 페이지 field only takes even counts within its own range */
+function setInnerPages(n) {
+  const row = MODES.book.steps
+    .find((s) => s.t === 'part' && s.part === 'in')
+    .rows.find((r) => r.key === 'in_page_val');
+  const even = n % 2 ? n + 1 : n;
+  state.opts.in_page_val = Math.min(row.max, Math.max(row.min, even));
+  renderForm(state.mode);
+  refreshDynamic();
+  paintCaption();
+  if (engine) engine.update(derive());
 }
 
 /* dropping on the preview feeds the first slot of the current product */
@@ -841,6 +957,7 @@ function switchMode(mode) {
   if (!MODES[mode]) return;
   state.mode = mode;
   state.images = {};                 // artwork is per product
+  state.files = {};
   state.opts = seedDefaults(mode);
   renderForm(mode);
   refreshDynamic();
@@ -1208,6 +1325,17 @@ async function createEngine(mount) {
           st.castShadow = true;
           g.add(st);
         });
+
+      } else if (D.bind === '사철제본') {
+        /* 사철은 대장을 실로 꿰므로 책등에 땀이 줄지어 남는다 */
+        const thread = new THREE.MeshStandardMaterial({ color: 0xb9ae97, roughness: 0.85 });
+        const stitches = Math.max(5, Math.round(h / 0.34));
+        for (let i = 0; i < stitches; i++) {
+          const st = new THREE.Mesh(
+            new THREE.BoxGeometry(cover * 0.9, h / stitches * 0.5, d * 0.72), thread);
+          st.position.set(-(w / 2 + cover), -h / 2 + ((i + 0.5) / stitches) * h, 0);
+          g.add(st);
+        }
       }
     }
 
@@ -1292,8 +1420,11 @@ async function createEngine(mount) {
      sized by the frame's own px and then multiplied by the page scale —
      otherwise the canvas softens as the window grows */
   function resize() {
-    const w = mount.clientWidth || 1;
-    const h = mount.clientHeight || 1;
+    /* if the stage ever measures degenerate — a stale stylesheet, a hidden
+       tab — fall back to its design size rather than shrinking the canvas */
+    let w = mount.clientWidth;
+    let h = mount.clientHeight;
+    if (w < 80 || h < 80) { w = 900; h = 726; }
     const scale = parseFloat(
       getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio * scale, 2.5));

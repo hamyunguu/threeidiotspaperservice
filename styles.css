@@ -968,6 +968,11 @@ body.order { --stage-h: 1080; background: #fff; }
   color: #9a9a9a;
 }
 .ord-upload-state.is-set { color: #0196ff; }
+.ord-upload-state.is-busy { color: #302929; }
+
+/* 사용자입력을 고른 순간 규격 단계 안에서 바로 치수를 받는 자리 */
+.ord-custom { margin-top: 18px; padding-top: 16px; border-top: 1px dashed #000; }
+.ord-custom .ord-note { margin: 0; }
 
 /* ---- 2. sizes ---- */
 
@@ -1053,6 +1058,8 @@ textarea.ord-input { resize: vertical; line-height: 1.5; }
   transition: background .18s, color .18s;
 }
 .ord-seg-item + .ord-seg-item { border-left: 1px solid #000; }
+/* 제본 방식처럼 항목이 다섯을 넘는 줄 */
+.ord-seg.is-tight .ord-seg-item { padding: 8px 11px; font-size: 15px; }
 .ord-seg-item:hover { background: #f0f0f0; }
 .ord-seg-item.is-on { background: #000; color: #fff; }
 
