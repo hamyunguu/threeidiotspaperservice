@@ -82,6 +82,88 @@ body.is-expanded { --stage-h: 1218; }   /* tallest expanded card ends at 1198 */
   text-underline-offset: 6px;
 }
 
+/* Search / Login / Cart open a panel instead of navigating, so they get the
+   same affordance as a link without carrying an href. */
+.nav-item.is-action { cursor: pointer; }
+.nav-item.is-action:hover,
+.nav-item.is-action.is-open {
+  color: var(--nav, #000);
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+
+/* ---------------- header panel (search / login / cart) ----------------
+   Slides up from the bottom of the real viewport, not the scaled stage, so
+   it keeps its own type size at every window width. */
+
+.headbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 8500;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 18px 28px 20px;
+  background: #fff;
+  border-top: 1px solid #000;
+  font-family: 'IBM Plex Mono', monospace;
+  transform: translateY(100%);
+  transition: transform .28s cubic-bezier(.2, .7, .3, 1);
+}
+.headbar.is-open { transform: translateY(0); }
+
+.headbar-label { flex: none; font-size: 15px; letter-spacing: 1.5px; color: #302929; }
+
+.headbar-body { flex: 1; min-width: 0; }
+
+/* the search line itself — a bare underline, matching the chat input */
+.headbar-body input {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #000;
+  background: transparent;
+  outline: none;
+  padding: 6px 2px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 20px;
+  letter-spacing: -0.5px;
+  color: #000;
+}
+.headbar-body input::placeholder { color: #9a9a9a; }
+
+.headbar-note {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 18px;
+  letter-spacing: -0.45px;
+  color: #305673;
+}
+.headbar-hint {
+  display: block;
+  margin-top: 6px;
+  min-height: 18px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 14px;
+  letter-spacing: -0.35px;
+  color: #305673;
+}
+
+.headbar-close {
+  flex: none;
+  border: none;
+  background: none;
+  padding: 4px 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 22px;
+  line-height: 1;
+  color: #000;
+  cursor: pointer;
+}
+.headbar-close:hover { opacity: .55; }
+
+@media (prefers-reduced-motion: reduce) { .headbar { transition: none; } }
+
 /* ---------------- hero: background artwork ---------------- */
 
 .art {
@@ -493,6 +575,8 @@ body.hero2 { --stage-h: 1080; background: #fff; }
 
 /* ---- header ---- */
 .logo { position: absolute; left: 20px; top: 20px; width: 95px; height: 96px; z-index: 6; }
+.logo[data-href] { cursor: pointer; transition: opacity .18s; }
+.logo[data-href]:hover { opacity: .6; }
 /* dashed rule, matching the 2-2 dash of Figma Line 3 */
 .header-rule {
   position: absolute; left: 0; top: 136px; width: 1920px; height: 1px; z-index: 4;
@@ -617,10 +701,11 @@ body.hero2 .nav-item { font-size: 24px; }
   padding: 0 16px; font-family: 'Noto Sans KR', sans-serif; font-size: 20px; letter-spacing: -0.5px; color: #000;
 }
 .chat-input input::placeholder { color: #000; opacity: 1; }
-/* plain black circle, exactly as Figma Ellipse 188 (no icon) */
+/* black disc carrying the three overlapping process inks */
 .chat-send {
   width: 30px; height: 30px; margin-right: 11px; border-radius: 50%; border: none;
-  background: #000; cursor: pointer; flex: none;
+  background: url('assets/send-btn.svg?v=19') center / contain no-repeat;
+  cursor: pointer; flex: none;
 }
 .chat-send:hover { opacity: .85; }
 

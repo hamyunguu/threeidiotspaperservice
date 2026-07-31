@@ -428,3 +428,127 @@ function closeTip() {
 }
 
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTip(); });
+
+/* ---------------- header: search / login / cart ----------------
+   These three carry no href — they slide a panel up from the bottom of the
+   viewport instead. Built here rather than in each page's markup so all five
+   pages get the same panel from the one script they already load. */
+
+const NAV_ACTIONS = {
+  search: {
+    label: 'SEARCH',
+    placeholder: '무엇을 찾고 계신가요? 예: 제본, 종이, 꿰기',
+  },
+  login: {
+    label: 'LOGIN',
+    note: '로그인은 준비 중입니다. 지금은 로그인 없이 모든 페이지를 보실 수 있어요.',
+  },
+  cart: {
+    label: 'CART',
+    note: '장바구니는 준비 중입니다. 프로그램 신청이 열리면 여기에 담을 수 있어요.',
+  },
+};
+
+/* a search term routes to the page that answers it */
+const SEARCH_ROUTES = [
+  { re: /(꿰|바늘|실\b)/,                    to: 'program-detail.html?p=1', name: '꿰기 세션' },
+  { re: /(묶|매듭|끈|고무줄|밴드)/,           to: 'program-detail.html?p=2', name: '묶기 세션' },
+  { re: /(풀기|해체|분해|뜯)/,                to: 'program-detail.html?p=3', name: '풀기 세션' },
+  { re: /(프로그램|세션|워크숍|수업|program)/i, to: 'program.html',            name: '프로그램' },
+  { re: /(아이덴티티|브랜드|로고|identity)/i,  to: 'identity.html',           name: 'Identity' },
+  { re: /(서비스|가격|비용|견적|문의|service)/i, to: 'service.html',          name: 'Service' },
+  { re: /(제본|종이|용지|인쇄|바인딩|paper|print|bind)/i, to: 'program.html',  name: '프로그램' },
+  { re: /(홈|메인|처음|home|tips|팁스)/i,      to: 'index.html',              name: '홈' },
+];
+
+let headbar = null;      // the panel element, built on first use
+let headbarKey = null;   // which nav item it is currently showing
+
+function buildHeadbar() {
+  const el = document.createElement('div');
+  el.className = 'headbar';
+  el.innerHTML =
+    `<span class="headbar-label"></span>
+     <div class="headbar-body"></div>
+     <button type="button" class="headbar-close" aria-label="닫기">&times;</button>`;
+  el.querySelector('.headbar-close').addEventListener('click', closeHeadbar);
+  document.body.appendChild(el);
+  return el;
+}
+
+function runSearch(q, hint) {
+  const term = q.trim();
+  if (!term) return;
+  const hit = SEARCH_ROUTES.find((r) => r.re.test(term));
+  if (hit) {
+    hint.textContent = `${hit.name} 페이지로 이동합니다…`;
+    window.location.href = hit.to;
+  } else {
+    hint.textContent = `'${term}'에 해당하는 페이지가 없어요. 제본·종이·프로그램처럼 검색해 보세요.`;
+  }
+}
+
+function openHeadbar(key) {
+  const action = NAV_ACTIONS[key];
+  if (!action) return;
+  headbar = headbar || buildHeadbar();
+  headbarKey = key;
+
+  headbar.querySelector('.headbar-label').textContent = action.label;
+  const body = headbar.querySelector('.headbar-body');
+
+  if (key === 'search') {
+    body.innerHTML =
+      `<input type="text" autocomplete="off" placeholder="${action.placeholder}" aria-label="검색어" />
+       <span class="headbar-hint"></span>`;
+    const input = body.querySelector('input');
+    const hint = body.querySelector('.headbar-hint');
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); runSearch(input.value, hint); }
+    });
+    // let the slide-up start before focusing, so the page doesn't jump
+    setTimeout(() => input.focus(), 60);
+  } else {
+    body.innerHTML = `<p class="headbar-note">${action.note}</p>`;
+  }
+
+  // flush layout first so the panel actually slides instead of appearing
+  void headbar.offsetWidth;
+  headbar.classList.add('is-open');
+  markNavOpen(key);
+}
+
+function closeHeadbar() {
+  if (!headbar) return;
+  headbar.classList.remove('is-open');
+  headbarKey = null;
+  markNavOpen(null);
+}
+
+function markNavOpen(key) {
+  document.querySelectorAll('.nav-item.is-action').forEach((el) => {
+    el.classList.toggle('is-open', el.dataset.action === key);
+  });
+}
+
+document.querySelectorAll('.nav-item:not([href])').forEach((el) => {
+  const key = el.textContent.trim().toLowerCase();
+  if (!NAV_ACTIONS[key]) return;
+
+  el.classList.add('is-action');
+  el.dataset.action = key;
+  el.tabIndex = 0;                       // no href, so make it keyboard reachable
+  el.setAttribute('role', 'button');
+
+  const toggle = (e) => {
+    e.preventDefault();
+    if (headbarKey === key) closeHeadbar();
+    else openHeadbar(key);
+  };
+  el.addEventListener('click', toggle);
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') toggle(e);
+  });
+});
+
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeHeadbar(); });
