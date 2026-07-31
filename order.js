@@ -1001,13 +1001,22 @@ window.addEventListener('resize', () => { if (engine) engine.resize(); });
 async function createEngine(mount) {
   const THREE = await import('three');
   const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
-  const { RoomEnvironment } = await import('three/addons/environments/RoomEnvironment.js');
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true, alpha: true, powerPreference: 'high-performance',
+  });
   renderer.setClearColor(0x000000, 0);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  /* filmic response: the highlights on coated stock roll off instead of
+     clipping to flat white, which is most of what makes paper look shot
+     rather than drawn */
+  /* Khronos PBR Neutral, not ACES. This is a preview of what someone is
+     about to have printed, so the artwork has to come back the colour it
+     went in — ACES rolls saturated ink off towards grey. Neutral keeps the
+     albedo and only compresses the highlights, which is exactly the trade
+     a product viewer wants. */
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.toneMappingExposure = 1.0;
   renderer.domElement.className = 'ord-canvas';
   mount.appendChild(renderer.domElement);
 
@@ -1031,39 +1040,52 @@ async function createEngine(mount) {
   controls.minPolarAngle = 0.15;
   controls.maxPolarAngle = Math.PI * 0.52;
 
-  /* white stock on a white page only reads through its own shading, so the
-     fill stays low and the key comes in steeply from the left */
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xdedede, 0.32));
-  const key = new THREE.DirectionalLight(0xffffff, 1.5);
-  key.position.set(-3, 10, 4.5);      // steep, so a standing sheet casts a short shadow
-  key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
-  key.shadow.camera.near = 1;
-  key.shadow.camera.far = 24;
-  key.shadow.camera.left = -5;
-  key.shadow.camera.right = 5;
-  key.shadow.camera.top = 5;
-  key.shadow.camera.bottom = -5;
-  key.shadow.bias = -0.0005;
-  key.shadow.radius = 8;
-  scene.add(key);
-  const fill = new THREE.DirectionalLight(0xffffff, 0.35);
-  fill.position.set(4, 1.5, -2);
-  scene.add(fill);
-
-  /* the environment is only there to give coated stock something to reflect */
+  /* A studio setup, and no shadow anywhere: nothing is cast on the page.
+     With the drop shadow gone, what separates white paper from a white
+     background is the rim — a hard light from behind that draws a bright
+     line along every edge — plus the falloff the key leaves across the
+     face. That is how white-on-white is lit for real, too. */
+  /* The environment IS the light, the way a paper product is actually shot:
+     a big soft source overhead falling off to a darker floor. That gradient
+     is what puts tone across a white sheet — a face turned up reads near
+     white, a face turned down falls away — and it is the only thing keeping
+     white stock off a white page now that nothing casts a shadow. */
   const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environment = (() => {
+    /* an equirectangular map has to be 2:1 — at any other aspect the
+       projection folds in on itself and PMREM hands back a black room */
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 256;
+    const g = c.getContext('2d');
+    const grd = g.createLinearGradient(0, 0, 0, 256);
+    /* a white room, not a dark one: the softbox overhead, white walls at the
+       horizon, a bounce floor below. The spread top to bottom is small — it
+       only has to be enough to tell one face of a sheet from another */
+    grd.addColorStop(0, '#ffffff');      // softbox
+    grd.addColorStop(0.44, '#fbfbfb');
+    grd.addColorStop(0.52, '#ededed');   // horizon
+    grd.addColorStop(0.8, '#d0d0d0');
+    grd.addColorStop(1, '#bcbcbc');      // bounce floor
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 512, 256);
+    const t = new THREE.CanvasTexture(c);
+    t.mapping = THREE.EquirectangularReflectionMapping;
+    t.colorSpace = THREE.SRGBColorSpace;
+    return pmrem.fromEquirectangular(t).texture;
+  })();
 
-  /* the object sits on this; nothing but its shadow is drawn */
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(60, 60),
-    new THREE.ShadowMaterial({ opacity: 0.2 })
-  );
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.004;      // clear of the object's own bottom face
-  ground.receiveShadow = true;
-  scene.add(ground);
+  /* the key only sets which way the highlight runs; the environment carries
+     the exposure, so it stays gentle */
+  const key = new THREE.DirectionalLight(0xffffff, 0.55);
+  key.position.set(-4.5, 5, 5.5);
+  scene.add(key);
+
+  /* and the rim draws the bright line down every edge that used to be told
+     by the drop shadow */
+  const rim = new THREE.DirectionalLight(0xffffff, 0.65);
+  rim.position.set(2, 3, -6);
+  scene.add(rim);
 
   let root = new THREE.Group();
   scene.add(root);
@@ -1079,7 +1101,9 @@ async function createEngine(mount) {
     c.width = 512;
     c.height = 724;
     const g = c.getContext('2d');
-    g.fillStyle = '#ffffff';
+    /* not paper-white but stock-white: leaving headroom above the albedo is
+       what lets the lighting model the sheet instead of clipping it */
+    g.fillStyle = '#f2f0ec';
     g.fillRect(0, 0, c.width, c.height);
     g.strokeStyle = '#d6d6d6';
     g.lineWidth = 4;
@@ -1120,26 +1144,135 @@ async function createEngine(mount) {
     return c;
   }
 
+  /* ---- the surface of paper ----
+     Flat colour reads as plastic. Real stock has a tooth that catches the
+     key at grazing angles and a slightly uneven finish, so both are drawn
+     once here and tiled over everything. */
+
+  const maxAniso = renderer.capabilities.getMaxAnisotropy();
+
+  /* fibre tooth, as a normal map: high-frequency, very shallow */
+  const fibreMap = (() => {
+    const n = 512;
+    const c = document.createElement('canvas');
+    c.width = n;
+    c.height = n;
+    const g = c.getContext('2d');
+    const img = g.createImageData(n, n);
+    for (let i = 0; i < n * n; i++) {
+      const d = (Math.random() - 0.5) * 34;
+      img.data[i * 4] = 128 + d;                       // x slope
+      img.data[i * 4 + 1] = 128 + (Math.random() - 0.5) * 34;
+      img.data[i * 4 + 2] = 255;
+      img.data[i * 4 + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(9, 9);
+    t.anisotropy = maxAniso;
+    return t;
+  })();
+
+  /* a low-frequency wash so the finish is never perfectly even */
+  const finishMap = (() => {
+    const n = 256;
+    const c = document.createElement('canvas');
+    c.width = n;
+    c.height = n;
+    const g = c.getContext('2d');
+    g.fillStyle = '#808080';
+    g.fillRect(0, 0, n, n);
+    for (let i = 0; i < 90; i++) {
+      const r = 20 + Math.random() * 70;
+      const v = Math.round(118 + Math.random() * 26);
+      const blob = g.createRadialGradient(
+        Math.random() * n, Math.random() * n, 0,
+        Math.random() * n, Math.random() * n, r);
+      blob.addColorStop(0, `rgba(${v},${v},${v},0.5)`);
+      blob.addColorStop(1, 'rgba(128,128,128,0)');
+      g.fillStyle = blob;
+      g.fillRect(0, 0, n, n);
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(2, 2);
+    return t;
+  })();
+
+  /* the fore edge of a book is a stack of individual sheets, not a slab */
+  const edgeStripes = (() => {
+    const w = 256;
+    const h = 8;
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const g = c.getContext('2d');
+    g.fillStyle = '#f6f0e2';
+    g.fillRect(0, 0, w, h);
+    for (let x = 0; x < w; x += 2) {
+      g.fillStyle = `rgba(176,164,140,${0.18 + Math.random() * 0.3})`;
+      g.fillRect(x, 0, 1, h);
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = maxAniso;
+    return t;
+  })();
+
   /* ---- materials ---- */
 
-  /* coating is the whole difference between a matt and a glossy sheet, and
-     uncoated stock (모조·반누보·레자크…) never gets a sheen at all */
+  /* Coating is the whole difference between a matt and a glossy sheet, and
+     uncoated stock (모조·반누보·레자크…) never gets a sheen at all. On top of
+     that every sheet carries the fibre tooth and the uneven finish, which is
+     what keeps a grazing highlight from looking like a plastic card. */
   function paperMat(coating, paperName, map) {
     const uncoated = /모조|미색|반누보|레자크|색지|크라프트|마쉬멜로우/.test(paperName || '');
-    return new THREE.MeshPhysicalMaterial({
+    const gloss = coating === '유광';
+    const matt = coating === '무광';
+    const m = new THREE.MeshPhysicalMaterial({
       map: map || null,
-      color: map ? 0xffffff : 0xfafafa,
-      roughness: coating === '유광' ? 0.15 : coating === '무광' ? 0.46 : (uncoated ? 0.92 : 0.72),
+      color: map ? 0xffffff : 0xf2f0ec,
+      roughness: gloss ? 0.13 : matt ? 0.44 : (uncoated ? 0.9 : 0.7),
+      roughnessMap: finishMap,
+      normalMap: fibreMap,
+      normalScale: new THREE.Vector2(
+        uncoated && !gloss ? 0.16 : 0.07,
+        uncoated && !gloss ? 0.16 : 0.07),
       metalness: 0,
-      clearcoat: coating === '유광' ? 1 : coating === '무광' ? 0.3 : 0,
-      clearcoatRoughness: coating === '유광' ? 0.1 : 0.42,
-      envMapIntensity: 0.6,
+      clearcoat: gloss ? 1 : matt ? 0.28 : 0,
+      clearcoatRoughness: gloss ? 0.08 : 0.4,
+      /* uncoated stock scatters at the surface — that soft off-angle glow is
+         sheen, not specular */
+      sheen: uncoated && !gloss ? 0.5 : 0.15,
+      sheenRoughness: 0.85,
+      sheenColor: new THREE.Color(0xfff8ec),
+      envMapIntensity: gloss ? 1.15 : 0.95,
     });
+    if (map) map.anisotropy = maxAniso;
+    return m;
   }
 
   /* the cut edge is what makes a sheet look like paper and not a plane */
-  const cutEdge = () => new THREE.MeshStandardMaterial({ color: 0xe4ddcd, roughness: 0.95 });
-  const pageBlock = () => new THREE.MeshStandardMaterial({ color: 0xf2ebdb, roughness: 0.96 });
+  const cutEdge = () => new THREE.MeshStandardMaterial({
+    color: 0xe8e1d2, roughness: 0.94, roughnessMap: finishMap,
+  });
+
+  const pageBlock = () => new THREE.MeshStandardMaterial({
+    color: 0xf4eddd, roughness: 0.95, roughnessMap: finishMap,
+  });
+
+  /* the fore edge and the head and tail of a book, ruled into sheets. The
+     stripes have to run across the stack, which is a different axis on the
+     side faces than on the top, so each gets its own turn of the map. */
+  function stackedEdge(sheets, turn) {
+    const t = cloneTex(edgeStripes);
+    t.center.set(0.5, 0.5);
+    t.rotation = turn ? Math.PI / 2 : 0;
+    t.repeat.set(turn ? 1 : Math.max(1, sheets / 26), turn ? Math.max(1, sheets / 26) : 1);
+    return new THREE.MeshStandardMaterial({ map: t, roughness: 0.93 });
+  }
 
   /* ---- helpers ---- */
 
@@ -1159,25 +1292,40 @@ async function createEngine(mount) {
     return 3 / Math.max(D.w, D.h);
   }
 
-  /* map the ±z faces of a box onto the [u0,u1] slice of its texture, so a
-     folded sheet shows one continuous artwork across its panels */
-  function sliceUV(geo, u0, u1) {
-    const uv = geo.attributes.uv;
-    for (const base of [16, 20]) {
-      for (let i = 0; i < 4; i++) {
-        uv.setX(base + i, u0 + uv.getX(base + i) * (u1 - u0));
-      }
-    }
-    uv.needsUpdate = true;
+  /* One artwork has to run unbroken across the panels of a folded sheet, so
+     each panel shows only its own vertical slice of it. Done on the texture
+     rather than on the mesh's UVs — a bowed panel is subdivided, and walking
+     its vertices by index would depend on how many segments it happens to
+     have. */
+  function slice(tex, i, panels) {
+    const t = cloneTex(tex);
+    if (!t) return null;
+    t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+    t.repeat.set(1 / panels, 1);
+    t.offset.set(i / panels, 0);
+    return t;
   }
 
-  function sheet(w, h, t, frontMat, backMat) {
+  /* No sheet of paper is dead flat. Bowing it very slightly across its width
+     is the single thing that stops a print reading as a rectangle of colour:
+     the curve walks a highlight across the face as the model turns. */
+  function bow(geo, depth) {
+    const p = geo.attributes.position;
+    const half = geo.parameters.width / 2;
+    for (let i = 0; i < p.count; i++) {
+      const k = p.getX(i) / half;                 // -1 .. 1
+      p.setZ(i, p.getZ(i) + depth * (1 - k * k));
+    }
+    p.needsUpdate = true;
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  function sheet(w, h, t, frontMat, backMat, curve) {
+    const geo = new THREE.BoxGeometry(w, h, t, curve ? 40 : 1, 1, 1);
+    if (curve) bow(geo, curve);
     const edge = cutEdge();
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, t),
-      [edge, edge, edge, edge, frontMat, backMat]);
-    m.castShadow = true;
-    m.receiveShadow = true;
-    return m;
+    return new THREE.Mesh(geo, [edge, edge, edge, edge, frontMat, backMat]);
   }
 
   /* ---- the four products ---- */
@@ -1196,8 +1344,9 @@ async function createEngine(mount) {
 
     if (panels === 1) {
       const m = sheet(w, h, t, paperMat(D.coating, D.paper, front),
-        paperMat(D.coating, D.paper, back));
+        paperMat(D.coating, D.paper, back), w * 0.016);
       m.position.y = h / 2;
+      m.rotation.x = -0.03;                 // a sheet never stands plumb
       root.add(m);
       return;
     }
@@ -1210,14 +1359,14 @@ async function createEngine(mount) {
     let z = 0;
     for (let i = 0; i < panels; i++) {
       const rot = (i % 2 === 0 ? 1 : -1) * angle;
-      const geo = new THREE.BoxGeometry(pw, h, t);
-      sliceUV(geo, i / panels, (i + 1) / panels);
+      const geo = new THREE.BoxGeometry(pw, h, t, 20, 1, 1);
+      /* each panel keeps a little of its own bow, so the fold is not a hinge
+         between two perfectly flat cards */
+      bow(geo, pw * 0.012);
       const edge = cutEdge();
       const panel = new THREE.Mesh(geo, [edge, edge, edge, edge,
-        paperMat(D.coating, D.paper, cloneTex(front)),
-        paperMat(D.coating, D.paper, cloneTex(back))]);
-      panel.castShadow = true;
-      panel.receiveShadow = true;
+        paperMat(D.coating, D.paper, slice(front, i, panels)),
+        paperMat(D.coating, D.paper, slice(back, i, panels))]);
       const dx = Math.cos(rot) * pw;
       const dz = -Math.sin(rot) * pw;
       panel.position.set(x + dx / 2, h / 2, z + dz / 2);
@@ -1238,7 +1387,7 @@ async function createEngine(mount) {
     const t = 0.032;
 
     const face = sheet(w, h, t, paperMat(D.coating, D.paper, texFor('front', '앞면')),
-      paperMat(D.coating, D.paper, null));
+      paperMat(D.coating, D.paper, null), w * 0.006);
     face.rotation.x = -Math.PI / 2;
     face.position.set(0, t / 2, 0);
 
@@ -1250,11 +1399,13 @@ async function createEngine(mount) {
 
     const g = new THREE.Group();
     face.position.x = -w * 0.56;
+    face.rotation.z = 0.04;
     g.add(face);
 
     const flip = sheet(w, h, t, paperMat(D.coating, D.paper, texFor('back', '뒷면')),
-      paperMat(D.coating, D.paper, null));
+      paperMat(D.coating, D.paper, null), w * 0.006);
     flip.rotation.x = -Math.PI / 2;
+    flip.rotation.z = -0.05;                 // cards never land square to each other
     flip.position.set(w * 0.56, t / 2, 0);
     g.add(flip);
 
@@ -1276,13 +1427,22 @@ async function createEngine(mount) {
     const coverMat = (slot, label) =>
       paperMat(D.coverCoating, D.coverPaper, D.cover ? texFor(slot, label) : null);
 
-    /* the pages, inset a hair so the cover overhangs like a real trim */
-    const block = new THREE.Mesh(new THREE.BoxGeometry(w * 0.985, h * 0.985, d), pageBlock());
-    block.castShadow = true;
-    block.receiveShadow = true;
+    /* The pages, inset a hair so the cover overhangs like a real trim, and
+       ruled on every exposed side so the stack reads as sheets. */
+    const leaves = Math.max(2, D.pages / 2);
+    const blockEdge = [
+      stackedEdge(leaves, false),   // +x fore edge
+      stackedEdge(leaves, false),   // -x spine side
+      stackedEdge(leaves, true),    // +y head
+      stackedEdge(leaves, true),    // -y tail
+      pageBlock(), pageBlock(),     // hidden under the covers
+    ];
+    const block = new THREE.Mesh(new THREE.BoxGeometry(w * 0.985, h * 0.985, d), blockEdge);
     g.add(block);
 
-    const front = sheet(w, h, cover, coverMat('cover', '표지'), pageBlock());
+    /* a bound cover lifts a little off the block towards the fore edge —
+       that curve is the only thing that puts a gradient across it */
+    const front = sheet(w, h, cover, coverMat('cover', '표지'), pageBlock(), w * 0.014);
     front.position.z = d / 2 + cover / 2;
     g.add(front);
 
@@ -1291,50 +1451,71 @@ async function createEngine(mount) {
     g.add(back);
 
     if (D.bind === '링(스프링)제본') {
-      const ringMat = new THREE.MeshStandardMaterial({
-        color: D.ringColor, metalness: 0.55, roughness: 0.4,
+      const ringMat = new THREE.MeshPhysicalMaterial({
+        color: D.ringColor, metalness: 0.9, roughness: 0.28, envMapIntensity: 1.2,
       });
-      /* the coil has to clear the block front and back, and sit right on the
-         edge, or at this size it disappears inside the covers */
-      const r = Math.max(0.055, (d / 2 + cover) * 1.5);
-      const count = Math.max(8, Math.round(h / (r * 2.1)));
+      /* Twin loop wire, measured the way it is made: the wire runs through a
+         hole about 5㎜ in from the spine and closes around the outside of the
+         edge, so each loop lies FLAT — its plane horizontal, seen from the
+         front as a short bar crossing the edge — and the loops stack up the
+         height at a 8.5㎜ pitch. */
+      const holeIn = 5 * s;
+      const wire = Math.max(0.006, 0.55 * s);
+      const r = Math.max(holeIn, d / 2 + cover) + 1.2 * s;
+      const count = Math.max(6, Math.round(D.h / 8.5));
       for (let i = 0; i < count; i++) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.2, 8, 22), ringMat);
-        ring.position.set(-w / 2 + r * 0.25, -h / 2 + ((i + 0.5) / count) * h, 0);
-        ring.rotation.y = Math.PI / 2;
-        ring.castShadow = true;
-        g.add(ring);
+        const loop = new THREE.Mesh(new THREE.TorusGeometry(r, wire, 12, 40), ringMat);
+        loop.position.set(-w / 2 + holeIn, -h / 2 + ((i + 0.5) / count) * h, 0);
+        loop.rotation.x = Math.PI / 2;      // lay the loop down, axis vertical
+        g.add(loop);
       }
-    } else if (D.bind !== '제본 없음') {
-      /* 무선·PUR wrap the cover around the back; 중철 folds and staples it */
-      const spineMat = D.bind === '중철제본_세로형'
-        ? pageBlock()
-        : coverMat('cover', '표지');
-      const spine = new THREE.Mesh(new THREE.BoxGeometry(cover, h, d + cover * 2), spineMat);
-      spine.position.x = -(w / 2 + cover / 2);
-      spine.castShadow = true;
-      g.add(spine);
 
+    } else if (D.bind !== '제본 없음') {
+      /* 무선·PUR·사철 wrap the cover around the back. A bound spine is not a
+         flat plate — it bellies out, so it is a half round. 중철 folds and
+         staples instead. */
       if (D.bind === '중철제본_세로형') {
-        const steel = new THREE.MeshStandardMaterial({
-          color: 0x9aa0a6, metalness: 0.85, roughness: 0.3,
+        const fold = new THREE.Mesh(
+          new THREE.CylinderGeometry(d / 2 + cover, d / 2 + cover, h, 20, 1, true,
+            Math.PI / 2, Math.PI),
+          pageBlock());
+        fold.position.x = -w / 2;
+        g.add(fold);
+
+        const steel = new THREE.MeshPhysicalMaterial({
+          color: 0x9aa0a6, metalness: 0.95, roughness: 0.22, envMapIntensity: 1.2,
         });
         [-h * 0.22, h * 0.22].forEach((y) => {
-          const st = new THREE.Mesh(new THREE.BoxGeometry(cover * 1.6, h * 0.08, d * 0.5), steel);
-          st.position.set(-(w / 2 + cover / 2), y, 0);
-          st.castShadow = true;
+          const st = new THREE.Mesh(
+            new THREE.BoxGeometry(cover * 1.8, h * 0.075, (d + cover) * 0.55), steel);
+          st.position.set(-(w / 2 + cover * 0.4), y, 0);
           g.add(st);
         });
 
-      } else if (D.bind === '사철제본') {
-        /* 사철은 대장을 실로 꿰므로 책등에 땀이 줄지어 남는다 */
-        const thread = new THREE.MeshStandardMaterial({ color: 0xb9ae97, roughness: 0.85 });
-        const stitches = Math.max(5, Math.round(h / 0.34));
-        for (let i = 0; i < stitches; i++) {
-          const st = new THREE.Mesh(
-            new THREE.BoxGeometry(cover * 0.9, h / stitches * 0.5, d * 0.72), thread);
-          st.position.set(-(w / 2 + cover), -h / 2 + ((i + 0.5) / stitches) * h, 0);
-          g.add(st);
+      } else {
+        const spine = new THREE.Mesh(
+          new THREE.CylinderGeometry(d / 2 + cover, d / 2 + cover, h, 24, 1, true,
+            Math.PI / 2, Math.PI),
+          coverMat('cover', '표지'));
+        spine.position.x = -w / 2;
+        g.add(spine);
+
+        if (D.bind === '사철제본') {
+          /* 사철은 대장을 실로 꿰므로 책등에 땀이 줄지어 남는다 */
+          const thread = new THREE.MeshStandardMaterial({
+            color: 0xb2a68d, roughness: 0.8,
+          });
+          const stitches = Math.max(4, Math.round(D.h / 28));
+          for (let i = 0; i < stitches; i++) {
+            const st = new THREE.Mesh(
+              new THREE.TorusGeometry(d / 2 + cover * 1.4, Math.max(0.0022, 0.28 * s),
+                8, 24, Math.PI * 0.86),
+              thread);
+            st.position.set(-w / 2, -h / 2 + ((i + 0.5) / stitches) * h, 0);
+            st.rotation.y = Math.PI / 2;
+            st.rotation.z = Math.PI / 2;
+            g.add(st);
+          }
         }
       }
     }
@@ -1427,7 +1608,7 @@ async function createEngine(mount) {
     if (w < 80 || h < 80) { w = 900; h = 726; }
     const scale = parseFloat(
       getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio * scale, 2.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio * scale, 3));
     renderer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
