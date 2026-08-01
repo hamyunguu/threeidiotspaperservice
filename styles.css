@@ -632,10 +632,13 @@ body.hero2 { --stage-h: 1080; background: #fff; }
 /* The wordmark is a single letter until the header opens, cycling T → i → P
    → S. Optima is a licensed face with no webfont, so these are the glyph
    outlines Figma exports — which is also exact rather than approximate. */
-.hd-t {
-  left: 20px; height: 18px; display: flex; align-items: flex-end;
+/* two layers, so one letter dissolves into the next instead of cutting */
+.hd-t { left: 20px; width: 12px; height: 18px; }
+.hd-t img {
+  position: absolute; left: 0; bottom: 0; display: block; width: auto;
+  opacity: 0; transition: opacity .6s ease;
 }
-.hd-t img { display: block; width: auto; }
+.hd-t img.is-on { opacity: 1; }
 /* the S is exported white for its black circle; on the white page it flips */
 .hd-t img[src*="glyph-s"] { filter: invert(1); }
 .hd-mark {
@@ -1005,7 +1008,9 @@ body.program2 { --stage-h: 1080; background: #fff; }
   position: relative; width: 600px; height: 500px; overflow: hidden;
   background: #d9d9d9;
 }
-.pg-shot img {
+/* the direct child only — the Archive chevron is an img inside here too, and
+   it must stay in its button's flex row rather than being pinned to the frame */
+.pg-shot > img {
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; display: block;
 }

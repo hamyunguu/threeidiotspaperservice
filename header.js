@@ -68,27 +68,31 @@ const GLYPH_SCALE = 13 / 62;      // an 18px Optima cap is about 13px tall
 const LETTER_MS = 2200;
 
 const letterBox = document.getElementById('hdLetter');
-const letterImg = letterBox && letterBox.querySelector('img');
+const letters = letterBox ? [...letterBox.querySelectorAll('img')] : [];
 let glyph = 0;
-let letterFade = null;
+let front = 0;                    // which of the two layers is showing
 
-function paintGlyph() {
-  const g = GLYPHS[glyph];
-  letterImg.src = `assets/${g.file}?v=45`;
-  letterImg.style.height = `${(g.h * GLYPH_SCALE).toFixed(2)}px`;
+function dress(img, i) {
+  const g = GLYPHS[i];
+  img.src = `assets/${g.file}?v=46`;
+  img.style.height = `${(g.h * GLYPH_SCALE).toFixed(2)}px`;
 }
 
-if (letterImg) {
-  paintGlyph();
-  /* the swap fades on its own animation rather than a class-driven
-     transition, which cannot be left half-applied if a frame is missed */
+/* the outgoing letter fades out while the incoming one fades in, on two
+   stacked layers — a single layer can only blink through transparent */
+function turnLetter() {
+  glyph = (glyph + 1) % GLYPHS.length;
+  const back = letters[1 - front];
+  dress(back, glyph);
+  letters[front].classList.remove('is-on');
+  back.classList.add('is-on');
+  front = 1 - front;
+}
+
+if (letters.length === 2) {
+  dress(letters[0], 0);
+  letters[0].classList.add('is-on');
   if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    setInterval(() => {
-      glyph = (glyph + 1) % GLYPHS.length;
-      paintGlyph();
-      if (letterFade) letterFade.cancel();
-      letterFade = letterImg.animate([{ opacity: 0 }, { opacity: 1 }],
-        { duration: 240, easing: 'ease' });
-    }, LETTER_MS);
+    setInterval(turnLetter, LETTER_MS);
   }
 }
