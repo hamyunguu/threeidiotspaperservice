@@ -1,13 +1,9 @@
 /* ---------------------------------------------------------------
    Hero (Figma 393:531 · header open 453:1075 · search 393:341).
 
-   Three states of one layout. The header opens on hover — the T grows
-   into the full mark and the menu unfolds — which pushes the rule from
-   58 to 123 and everything under it down 65px; the CSS does that move,
-   this file only sets the class. Search opens the same header plus its
-   own field row.
-
-   data-href navigation lives in script.js (loaded after this).
+   The poster and the chatbot. The header moved out to header.js once
+   every page started wearing it; data-href navigation lives in script.js
+   (both load alongside this one).
    --------------------------------------------------------------- */
 
 /* ---------------- loading page (shown deliberately ~1.5s on entry) ---------------- */
@@ -28,112 +24,38 @@ if (loader) {
   setTimeout(dismiss, 2600);
 }
 
-/* ---------------- header: hover opens it, Search opens the field ----------------
-   The open header is a hover state in Figma, so it is one here too — but it
-   also latches while the search field is up, otherwise moving the pointer to
-   the field would collapse the header out from under it. */
-
-const menu = document.getElementById('hdMenu');
-const searchBtn = document.getElementById('hdSearch');
-const searchField = document.getElementById('hdField');
-const searchInput = document.getElementById('hdInput');
-const closeBtn = document.getElementById('hdClose');
-
-const HEAD_ZONE = 123;            // the open header's own height
-
-function setHead(open) {
-  document.body.classList.toggle('is-head-open', open || isSearchOpen());
-}
-function isSearchOpen() {
-  return document.body.classList.contains('is-search-open');
-}
-
-/* the whole band across the top is the hover target, not just the words */
-document.addEventListener('pointermove', (e) => {
-  if (isSearchOpen()) return;
-  const scale = parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
-  const stage = document.getElementById('stage');
-  if (!stage) return;
-  const box = stage.getBoundingClientRect();
-  const y = (e.clientY - box.top) / scale;
-  const x = (e.clientX - box.left) / scale;
-  setHead(y >= 0 && y <= HEAD_ZONE && x >= 0 && x <= 1920);
-});
-menu.addEventListener('pointerenter', () => setHead(true));
-
-function openSearch() {
-  document.body.classList.add('is-search-open', 'is-head-open');
-  searchInput.focus();
-}
-function closeSearch() {
-  document.body.classList.remove('is-search-open');
-  searchInput.value = '';
-  setHead(false);
-}
-searchBtn.addEventListener('click', openSearch);
-closeBtn.addEventListener('click', closeSearch);
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && isSearchOpen()) closeSearch();
-});
-
-/* ---------------- the closed header's letter turns through the wordmark ----------------
-   T → i → P → S, each glyph at its own natural height so the four keep the
-   proportions Figma drew them at (scaled to an 18px T). */
-
-const GLYPHS = [
-  { file: 'glyph-t.svg', h: 62 },
-  { file: 'glyph-i.svg', h: 64 },
-  { file: 'glyph-p.svg', h: 57.304 },
-  { file: 'glyph-s.svg', h: 60.496 },
-];
-const GLYPH_SCALE = 13 / 62;        // an 18px Optima cap is about 13px tall
-const LETTER_MS = 2200;
-
-const letterBox = document.getElementById('hdLetter');
-const letterImg = letterBox.querySelector('img');
-let glyph = 0;
-
-function paintGlyph() {
-  const g = GLYPHS[glyph];
-  letterImg.src = `assets/${g.file}?v=40`;
-  letterImg.style.height = `${(g.h * GLYPH_SCALE).toFixed(2)}px`;
-}
-paintGlyph();
-
-/* the swap fades on its own animation rather than a class-driven transition,
-   which cannot be left half-applied if a frame is missed */
-let letterFade = null;
-if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-  setInterval(() => {
-    glyph = (glyph + 1) % GLYPHS.length;
-    paintGlyph();
-    /* drop the previous fade first — a backgrounded tab freezes the timeline,
-       and without this they would pile up unfinished */
-    if (letterFade) letterFade.cancel();
-    letterFade = letterImg.animate([{ opacity: 0 }, { opacity: 1 }],
-      { duration: 240, easing: 'ease' });
-  }, LETTER_MS);
-}
-
 /* ---------------- left: the poster the numbering pages through ---------------- */
 
 const POSTERS = [
-  'assets/fig-poster.jpg?v=40',
-  'assets/card-hand.jpg?v=40',
-  'assets/gal-wood-a.jpg?v=40',
+  'assets/fig-poster.jpg?v=45',
+  'assets/card-hand.jpg?v=45',
+  'assets/gal-wood-a.jpg?v=45',
 ];
 
-const posterImg = document.getElementById('posterImg');
+const layers = [...document.querySelectorAll('.poster img')];
 const pages = [...document.querySelectorAll('.numbering button')];
 const AUTO_MS = 4500;
 let current = 0;
+let front = 0;                 // which of the two layers is showing
 let timer;
 
+/* the incoming frame is decoded on the spare layer first, then cross-faded in,
+   so the dissolve never flashes a half-loaded image */
 function show(i) {
-  current = (i + POSTERS.length) % POSTERS.length;
-  posterImg.src = POSTERS[current];
-  pages.forEach((p, n) => p.classList.toggle('is-on', n === current));
+  const next = (i + POSTERS.length) % POSTERS.length;
+  pages.forEach((p, n) => p.classList.toggle('is-on', n === next));
+  if (next === current && layers[front].getAttribute('src')) return;
+  current = next;
+
+  const back = layers[1 - front];
+  const swap = () => {
+    layers[front].classList.remove('is-on');
+    back.classList.add('is-on');
+    front = 1 - front;
+  };
+  if (back.getAttribute('src') === POSTERS[current]) { swap(); return; }
+  back.onload = swap;
+  back.src = POSTERS[current];
 }
 
 function play() {

@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=40" />
+<link rel="stylesheet" href="styles.css?v=45" />
 
 <!-- The sheet preview is a live 3D model. order.js only pulls three.js in
      once, on this page; the import map is what lets its add-ons resolve the
@@ -21,22 +21,38 @@
 }
 </script>
 </head>
-<body class="order">
+<body class="order page-sub">
 
 <div class="viewport" id="viewport">
   <div class="stage" id="stage">
 
-    <!-- ===== header — same as the hero page ===== -->
-    <img class="logo" src="assets/logo.svg?v=40" alt="TiPS 홈으로" data-href="index.html" title="홈" />
-    <nav class="nav">
-      <a class="nav-item" style="left:304px; top:20px; --nav:#029bed" href="identity.html">Identity</a>
-      <a class="nav-item" style="left:304px; top:56px; --nav:#ed028c" href="program.html">Program</a>
-      <a class="nav-item is-current" style="left:304px; top:92px; --nav:#302929" href="service.html">Service</a>
-      <a class="nav-item" style="left:970px;  top:20px">Search</a>
-      <a class="nav-item" style="left:1580px; top:20px">Cart</a>
-      <a class="nav-item" style="left:1780px; top:20px">Login</a>
-    </nav>
-    <div class="header-rule"></div>
+    <!-- ===== header — the hero's, with this page already named (Figma 428:114) ===== -->
+    <span class="hd-t" id="hdLetter" aria-label="TiPS"><img src="assets/glyph-t.svg?v=45" alt="" /></span>
+    <img class="hd-mark" src="assets/fig-logo-mark.svg?v=45" alt="TiPS" data-href="index.html" />
+
+    <div class="hd-menu" id="hdMenu">
+      <span class="hd-menu-label">MENU</span>
+      <nav class="hd-nav">
+        <a href="identity.html">Identity</a>
+        <a href="program.html">Program</a>
+        <a class="is-current" href="service.html">Service</a>
+      </nav>
+    </div>
+
+    <button type="button" class="hd-search" id="hdSearch">Search</button>
+    <a class="hd-cart" href="service.html">Cart(0)</a>
+    <a class="hd-login" href="#">Login</a>
+
+    <div class="hd-field" id="hdField">
+      <span class="hd-caret" aria-hidden="true"></span>
+      <input class="hd-input" id="hdInput" type="text" autocomplete="off" placeholder="무엇을 찾고 계신가요?" />
+      <span class="hd-underline" aria-hidden="true"></span>
+      <button type="button" class="hd-close" id="hdClose" aria-label="검색 닫기">
+        <img src="assets/fig-search-icon.svg?v=45" alt="" />
+      </button>
+    </div>
+
+    <div class="h-rule" aria-hidden="true"></div>
 
     <!-- ===== product tabs — one order flow each ===== -->
     <nav class="ord-tabs" id="ordTabs">
@@ -65,8 +81,9 @@
   </div>
 </div>
 
-<script src="script.js?v=40"></script>
-<script type="module" src="order.js?v=40"></script>
-<script src="cursor.js?v=40"></script>
+<script src="header.js?v=45"></script>
+<script src="script.js?v=45"></script>
+<script type="module" src="order.js?v=45"></script>
+<script src="cursor.js?v=45"></script>
 </body>
 </html>

@@ -7,38 +7,69 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=40" />
+<link rel="stylesheet" href="styles.css?v=45" />
 </head>
-<body>
+<body class="page-sub">
 
 <div class="viewport" id="viewport">
   <div class="stage" id="stage">
 
-    <!-- nav -->
-    <nav class="nav">
-      <a class="nav-item is-current" style="left:20px;   top:20px; --nav:#0196ff" href="identity.html">Identity</a>
-      <a class="nav-item" style="left:227px;  top:17px; --nav:#f85485" href="program.html">Program</a>
-      <a class="nav-item" style="left:417px;  top:20px; --nav:#302929" href="service.html">Service</a>
-      <a class="nav-item" style="left:980px;  top:20px">Search</a>
-      <a class="nav-item" style="left:1700px; top:20px">Login</a>
-      <a class="nav-item" style="left:1832px; top:20px">Cart</a>
-    </nav>
+    <!-- ===== header — the hero's, with this page already named (Figma 428:114) ===== -->
+    <span class="hd-t" id="hdLetter" aria-label="TiPS"><img src="assets/glyph-t.svg?v=45" alt="" /></span>
+    <img class="hd-mark" src="assets/fig-logo-mark.svg?v=45" alt="TiPS" data-href="index.html" />
+
+    <div class="hd-menu" id="hdMenu">
+      <span class="hd-menu-label">MENU</span>
+      <nav class="hd-nav">
+        <a class="is-current" href="identity.html">Identity</a>
+        <a href="program.html">Program</a>
+        <a href="service.html">Service</a>
+      </nav>
+    </div>
+
+    <button type="button" class="hd-search" id="hdSearch">Search</button>
+    <a class="hd-cart" href="service.html">Cart(0)</a>
+    <a class="hd-login" href="#">Login</a>
+
+    <div class="hd-field" id="hdField">
+      <span class="hd-caret" aria-hidden="true"></span>
+      <input class="hd-input" id="hdInput" type="text" autocomplete="off" placeholder="무엇을 찾고 계신가요?" />
+      <span class="hd-underline" aria-hidden="true"></span>
+      <button type="button" class="hd-close" id="hdClose" aria-label="검색 닫기">
+        <img src="assets/fig-search-icon.svg?v=45" alt="" />
+      </button>
+    </div>
+
+    <div class="h-rule" aria-hidden="true"></div>
+
+    <!-- ===== registration / crop marks ===== -->
+    <div class="marks" aria-hidden="true">
+      <div class="mark r-top" style="left:20px"><img src="assets/mark-corner.svg?v=45" style="transform:scaleY(-1)"></div>
+      <div class="mark r-top" style="left:1852px"><img src="assets/mark-corner.svg?v=45" style="transform:rotate(90deg) scaleY(-1)"></div>
+      <div class="mark r-top is-target" style="left:20px"><img src="assets/mark-target.svg?v=45"></div>
+      <div class="mark r-top is-target" style="left:1852px"><img src="assets/mark-target.svg?v=45"></div>
+      <div class="mark r-bot" style="left:20px"><img src="assets/mark-corner.svg?v=45"></div>
+      <div class="mark r-bot" style="left:1852px"><img src="assets/mark-corner.svg?v=45" style="transform:rotate(-90deg)"></div>
+      <div class="mark r-bot is-target" style="left:20px"><img src="assets/mark-target.svg?v=45"></div>
+      <div class="mark r-bot is-target" style="left:1852px"><img src="assets/mark-target.svg?v=45"></div>
+    </div>
 
     <h1 class="page-title">Identity</h1>
     <p class="page-note">준비 중인 페이지입니다. — 떠다니는 T를 눌러 메인으로 돌아갈 수 있어요.</p>
 
     <!-- floating spheres. tap to follow the letter, drag to throw. (script.js) -->
     <div class="balls" id="balls">
-      <div class="ball" data-x="1450.00" data-y="300.00"  data-rot="-42.5"  data-href="identity.html" title="Identity"><img src="assets/ball-pen.svg?v=40"  alt="Identity" /></div>
-      <div class="ball" data-x="700.00"  data-y="820.00"  data-rot="-13.21" data-href="service.html"  title="Service"><img src="assets/ball-s.svg?v=40"    alt="Service" /></div>
-      <div class="ball" data-x="1650.00" data-y="720.00"  data-rot="29.82"  data-href="index.html"    title="Home"><img src="assets/ball-hammer.svg?v=40" alt="Home" /></div>
-      <div class="ball" data-x="1150.00" data-y="880.00"  data-rot="-48.65" data-href="program.html"  title="Program"><img src="assets/ball-p.svg?v=40"   alt="Program" /></div>
+      <div class="ball" data-letter="i" data-x="1450.00" data-y="300.00"  data-rot="-42.5" title="Tips-i"></div>
+      <div class="ball" data-letter="S" data-x="700.00"  data-y="820.00"  data-rot="-13.21"  title="Tips-S"></div>
+      <div class="ball" data-letter="T" data-x="1650.00" data-y="720.00"  data-rot="29.82"    title="Tips-T"></div>
+      <div class="ball" data-letter="P" data-x="1150.00" data-y="880.00"  data-rot="-48.65"  title="Tips-P"></div>
     </div>
 
   </div>
 </div>
 
-<script src="script.js?v=40"></script>
-<script src="cursor.js?v=40"></script>
+<script src="header.js?v=45"></script>
+<script src="script.js?v=45"></script>
+<script src="cursor.js?v=45"></script>
 </body>
 </html>
