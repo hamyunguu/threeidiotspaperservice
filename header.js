@@ -70,7 +70,9 @@ const LETTER_MS = 2200;
 const letterBox = document.getElementById('hdLetter');
 const letters = letterBox ? [...letterBox.querySelectorAll('img')] : [];
 let glyph = 0;
-let front = 0;                    // which of the two layers is showing
+/* every script on the page shares one global scope, so this name has to stay
+   out of hero.js's way — a duplicate `let` kills the whole other file */
+let glyphFront = 0;               // which of the two layers is showing
 
 function dress(img, i) {
   const g = GLYPHS[i];
@@ -82,11 +84,11 @@ function dress(img, i) {
    stacked layers — a single layer can only blink through transparent */
 function turnLetter() {
   glyph = (glyph + 1) % GLYPHS.length;
-  const back = letters[1 - front];
+  const back = letters[1 - glyphFront];
   dress(back, glyph);
-  letters[front].classList.remove('is-on');
+  letters[glyphFront].classList.remove('is-on');
   back.classList.add('is-on');
-  front = 1 - front;
+  glyphFront = 1 - glyphFront;
 }
 
 if (letters.length === 2) {

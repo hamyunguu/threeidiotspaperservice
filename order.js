@@ -971,13 +971,15 @@ function switchMode(mode) {
    the form is already usable; if it never lands the page says so rather
    than leaving an empty right half. */
 
-const stage = document.getElementById('ordStage');
+/* not plain `stage` — script.js loads first on this page and already owns
+   that global name; a duplicate top-level const would kill this whole file */
+const ordStage = document.getElementById('ordStage');
 const stageNote = document.getElementById('ordStageNote');
 let engine = null;
 
 switchMode('poster');
 
-createEngine(stage).then((eng) => {
+createEngine(ordStage).then((eng) => {
   engine = eng;
   stageNote.remove();
   engine.rebuild(derive(), state.images);
