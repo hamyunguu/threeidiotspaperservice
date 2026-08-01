@@ -27,9 +27,9 @@ if (loader) {
 /* ---------------- left: the poster the numbering pages through ---------------- */
 
 const POSTERS = [
-  'assets/fig-poster.jpg?v=51',
-  'assets/card-hand.jpg?v=51',
-  'assets/gal-wood-a.jpg?v=51',
+  'assets/fig-poster.jpg?v=52',
+  'assets/card-hand.jpg?v=52',
+  'assets/gal-wood-a.jpg?v=52',
 ];
 
 const layers = [...document.querySelectorAll('.poster img')];
@@ -87,12 +87,12 @@ const SEEDS = [
 ];
 
 const INTENTS = [
-  { re: /(꿰|바늘|실\b)/, text: '실과 바늘로 꿰는 제본이 궁금하시군요. 꿰기 세션에서 종이·천·철사까지 자유롭게 연결해봐요.', to: 'program-detail.html?p=1', label: '꿰기 세션 →' },
-  { re: /(묶|매듭|끈|고무줄|밴드)/, text: '묶어서 만드는 제본이라면 묶기 세션이 맞아요. 다양한 재료로 책의 구조를 만들어봅니다.', to: 'program-detail.html?p=2', label: '묶기 세션 →' },
-  { re: /(풀|해체|분해|뜯)/, text: '이미 만들어진 책을 거꾸로 따라가며 구조를 발견하는 풀기 세션을 추천해요.', to: 'program-detail.html?p=3', label: '풀기 세션 →' },
+  { re: /(꿰|바늘|실\b)/, text: '실과 바늘로 꿰는 제본이 궁금하시군요. 꿰기 세션에서 종이·천·철사까지 자유롭게 연결해봐요.', to: 'archive.html?p=1', label: '꿰기 세션 →' },
+  { re: /(묶|매듭|끈|고무줄|밴드)/, text: '묶어서 만드는 제본이라면 묶기 세션이 맞아요. 다양한 재료로 책의 구조를 만들어봅니다.', to: 'archive.html?p=2', label: '묶기 세션 →' },
+  { re: /(풀|해체|분해|뜯)/, text: '이미 만들어진 책을 거꾸로 따라가며 구조를 발견하는 풀기 세션을 추천해요.', to: 'archive.html?p=3', label: '풀기 세션 →' },
   { re: /(제본|바인딩|bind)/, text: '제본은 꿰기·묶기·풀기 세 방향으로 실험할 수 있어요. 프로그램에서 세션별로 살펴보세요.', to: 'program.html', label: '프로그램 보기 →' },
   { re: /(종이|용지|평량|무광|유광|paper)/, text: '종이는 용도와 질감, 평량(g)에 따라 크게 달라져요. 제본 방식과 함께 고르면 실패가 줄어요. 프로그램에서 재료 실험을 참고해보세요.', to: 'program.html', label: '프로그램 보기 →' },
-  { re: /(빈티지|클래식|고전)/, text: '빈티지·클래식한 느낌은 실제본(꿰기)과 크라프트·미색 계열 종이가 잘 어울려요.', to: 'program-detail.html?p=1', label: '꿰기 세션 →' },
+  { re: /(빈티지|클래식|고전)/, text: '빈티지·클래식한 느낌은 실제본(꿰기)과 크라프트·미색 계열 종이가 잘 어울려요.', to: 'archive.html?p=1', label: '꿰기 세션 →' },
   { re: /(가격|비용|견적|price|얼마)/, text: '가격 안내는 서비스 페이지에서 곧 제공될 예정이에요.', to: 'service.html', label: '서비스 →' },
   { re: /(아이덴티티|브랜드|identity|로고)/, text: 'TiPS의 브랜드 아이덴티티는 Identity 페이지에서 확인할 수 있어요.', to: 'identity.html', label: 'Identity →' },
 ];

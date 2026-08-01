@@ -11,7 +11,7 @@
    the window scrolls it.
    --------------------------------------------------------------- */
 
-const V = '?v=51';
+const V = '?v=52';
 
 /* the five discs of the session mark, at the offsets Figma sets them:
    x every 52, alternating between the two rows */

@@ -337,7 +337,7 @@ document.querySelectorAll('.ball[data-letter]').forEach((el) => {
   el.style.setProperty('--gh', `${m.gh}px`);
   el.classList.toggle('is-dark', m.dark);
   const img = document.createElement('img');
-  img.src = `assets/${m.file}?v=51`;
+  img.src = `assets/${m.file}?v=52`;
   img.alt = '';
   el.appendChild(img);
 });
@@ -373,7 +373,7 @@ function openTip(b) {
   overlay.className = 'tip-overlay';
   overlay.innerHTML =
     `<div class="tip-circle${meta.dark ? ' is-dark' : ''}" style="--tip:${meta.color}; --gh:${meta.gh}px">
-       <img class="tip-letter" src="assets/${meta.file}?v=51" alt="">
+       <img class="tip-letter" src="assets/${meta.file}?v=52" alt="">
        <div class="tip-copy">
          <div class="tip-title"></div>
          <div class="tip-body"></div>
@@ -462,9 +462,9 @@ const NAV_ACTIONS = {
 
 /* a search term routes to the page that answers it */
 const SEARCH_ROUTES = [
-  { re: /(꿰|바늘|실\b)/,                    to: 'program-detail.html?p=1', name: '꿰기 세션' },
-  { re: /(묶|매듭|끈|고무줄|밴드)/,           to: 'program-detail.html?p=2', name: '묶기 세션' },
-  { re: /(풀기|해체|분해|뜯)/,                to: 'program-detail.html?p=3', name: '풀기 세션' },
+  { re: /(꿰|바늘|실\b)/,                    to: 'archive.html?p=1', name: '꿰기 세션' },
+  { re: /(묶|매듭|끈|고무줄|밴드)/,           to: 'archive.html?p=2', name: '묶기 세션' },
+  { re: /(풀기|해체|분해|뜯)/,                to: 'archive.html?p=3', name: '풀기 세션' },
   { re: /(프로그램|세션|워크숍|수업|program)/i, to: 'program.html',            name: '프로그램' },
   { re: /(아이덴티티|브랜드|로고|identity)/i,  to: 'identity.html',           name: 'Identity' },
   { re: /(서비스|가격|비용|견적|문의|service)/i, to: 'service.html',          name: 'Service' },
