@@ -3,26 +3,26 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>TiPS — identity</title>
+<title>TiPS — archive</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css?v=51" />
 </head>
-<body class="page-sub">
+<body class="archive page-sub">
 
 <div class="viewport" id="viewport">
   <div class="stage" id="stage">
 
-    <!-- ===== header — the hero's, with this page already named (Figma 428:114) ===== -->
+    <!-- ===== header — the hero's, with Program already named ===== -->
     <span class="hd-t" id="hdLetter" aria-label="TiPS"><img alt="" /><img alt="" /></span>
     <img class="hd-mark" src="assets/fig-logo-mark.svg?v=51" alt="TiPS" data-href="index.html" />
 
     <div class="hd-menu" id="hdMenu">
       <span class="hd-menu-label">MENU</span>
       <nav class="hd-nav">
-        <a class="is-current" href="identity.html">Identity</a>
-        <a href="program.html">Program</a>
+        <a href="identity.html">Identity</a>
+        <a class="is-current" href="program.html">Program</a>
         <a href="service.html">Service</a>
       </nav>
     </div>
@@ -54,21 +54,31 @@
       <div class="mark r-bot is-target" style="left:1852px"><img src="assets/mark-target.svg?v=51"></div>
     </div>
 
-    <h1 class="page-title">Identity</h1>
-    <p class="page-note">준비 중인 페이지입니다. — 떠다니는 T를 눌러 메인으로 돌아갈 수 있어요.</p>
+    <!-- ===== back to the programme list ===== -->
+    <button type="button" class="arc-back" id="arcBack" aria-label="프로그램으로 돌아가기">
+      <img src="assets/arc-back.svg?v=51" alt="" />
+    </button>
 
-    <!-- floating spheres. tap to follow the letter, drag to throw. (script.js) -->
-    <div class="balls" id="balls">
-      <div class="ball" data-letter="i" data-x="1450.00" data-y="300.00"  data-rot="-42.5" title="Tips-i"></div>
-      <div class="ball" data-letter="S" data-x="700.00"  data-y="820.00"  data-rot="-13.21"  title="Tips-S"></div>
-      <div class="ball" data-letter="T" data-x="1650.00" data-y="720.00"  data-rot="29.82"    title="Tips-T"></div>
-      <div class="ball" data-letter="P" data-x="1150.00" data-y="880.00"  data-rot="-48.65"  title="Tips-P"></div>
-    </div>
+    <!-- ===== the session mark, copy and button — archive.js fills these ===== -->
+    <div class="arc-blob" id="arcBlob"></div>
+    <div class="arc-copy" id="arcCopy"></div>
+    <button type="button" class="arc-cta" id="arcCta">
+      <span>신청하러 가기</span><img src="assets/arc-cta.svg?v=51" alt="" />
+    </button>
+
+    <p class="arc-next-label">다른 프로그램</p>
+    <button type="button" class="arc-next" id="arcNext" aria-label="다른 프로그램">
+      <img src="assets/arc-next.svg?v=51" alt="" />
+    </button>
+
+    <!-- ===== the gallery ===== -->
+    <div class="arc-grid" id="arcGrid"></div>
 
   </div>
 </div>
 
 <script src="header.js?v=51"></script>
+<script src="archive.js?v=51"></script>
 <script src="script.js?v=51"></script>
 <script src="cursor.js?v=51"></script>
 </body>

@@ -1,0 +1,9 @@
+<svg width="37" height="37" viewBox="0 0 37 37" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Arrow">
+<g id="Property 1=Left Arrow1">
+<path id="Vector 28" d="M2 18.5L37 18.5" stroke="black"/>
+<line id="Line 10" y1="-0.5" x2="21.5313" y2="-0.5" transform="matrix(0.715085 0.699037 -0.715085 0.699037 0 21.9488)" stroke="black"/>
+<line id="Line 11" y1="-0.5" x2="21.5313" y2="-0.5" transform="matrix(-0.715085 0.699037 -0.715085 -0.699037 15.3967 0)" stroke="black"/>
+</g>
+</g>
+</svg>

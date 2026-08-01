@@ -74,7 +74,7 @@ let front = 0;                    // which of the two layers is showing
 
 function dress(img, i) {
   const g = GLYPHS[i];
-  img.src = `assets/${g.file}?v=46`;
+  img.src = `assets/${g.file}?v=51`;
   img.style.height = `${(g.h * GLYPH_SCALE).toFixed(2)}px`;
 }
 

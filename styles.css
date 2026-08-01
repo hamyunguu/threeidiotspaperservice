@@ -1081,6 +1081,110 @@ body.program2 { --stage-h: 1080; background: #fff; }
 }
 
 /* ===============================================================
+   PROGRAM ARCHIVE — Figma 476:821 / 476:1289 / 476:1363
+   One page per session, painted in that session's process colour. The
+   masonry runs far past the 1080 frame, so this is the one page whose
+   stage grows to its content and scrolls with the document.
+   =============================================================== */
+
+/* The frame is as tall as the gallery: archive.js measures the content and
+   writes it into --stage-h, which both the frame and the viewport already
+   derive their height from, so the window scrolls the whole thing. */
+body.archive { background: var(--ink); }
+body.archive .stage { background: var(--ink); }
+body.archive .viewport, body.archive .stage { transition: none; }
+
+/* the bottom pair of marks rides the end of the page, not the 1080 frame */
+body.archive .mark.r-bot { top: auto; bottom: 20px; }
+
+/* ---- back / next ---- */
+
+.arc-back {
+  position: absolute; left: 20px; top: 78px; width: 37px; height: 37px;
+  border: none; background: none; padding: 0; cursor: pointer; z-index: 6;
+}
+.arc-next {
+  position: absolute; left: 1743px; top: 151px; width: 63px; height: 43px;
+  border: none; background: none; padding: 0; cursor: pointer; z-index: 6;
+}
+.arc-back img, .arc-next img { display: block; width: 100%; height: 100%; }
+.arc-back:hover, .arc-next:hover { opacity: .6; }
+
+.arc-next-label {
+  position: absolute; left: 1751px; top: 204px; transform: translateX(-50%);
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 20px;
+  line-height: 1.4; letter-spacing: -0.5px; color: #000; white-space: nowrap; z-index: 6;
+}
+
+/* ---- the session mark: five discs with the two syllables over them ---- */
+
+.arc-blob { position: absolute; left: 115px; top: 151px; width: 284px; height: 114px; z-index: 4; }
+.arc-blob i {
+  position: absolute; width: 74px; height: 74px; border-radius: 50%; background: #000;
+}
+.arc-blob b {
+  position: absolute; top: 51px;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 50px;
+  line-height: 1; color: var(--ink); white-space: nowrap;
+}
+
+/* ---- the copy, and the button under it ---- */
+
+.arc-copy {
+  position: absolute; left: 495px; top: 151px; display: flex; gap: 10px; align-items: flex-start;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 24px; line-height: 1.4;
+  color: #000; z-index: 4;
+}
+.arc-copy > div:nth-child(1) { width: 460px; }
+.arc-copy > div:nth-child(2) { width: 463px; }
+/* the closing line of the second column is called out with a dotted rule */
+.arc-copy .is-note { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 4px; }
+
+.arc-cta {
+  position: absolute; left: 965px; top: var(--cta-top, 305px);
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px; border: 1px solid #000; border-radius: 90px;
+  background: none; cursor: pointer; z-index: 4;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 20px;
+  line-height: 1.4; letter-spacing: -0.5px; color: #000; white-space: nowrap;
+  transition: background .18s, color .18s;
+}
+.arc-cta img { width: 24px; height: 25.8px; display: block; }
+.arc-cta:hover { background: #000; color: #fff; }
+.arc-cta:hover img { filter: invert(1); }
+
+/* ---- the gallery ----
+   Four 408 columns with a 20 gutter, centred on the frame. Each tile keeps
+   the height Figma gave it, so the columns stagger the way they do there. */
+
+.arc-grid {
+  position: absolute; left: 961px; top: 414px; transform: translateX(-50%);
+  display: flex; gap: 20px; align-items: flex-start; z-index: 3;
+}
+.arc-col { display: flex; flex-direction: column; gap: 20px; width: 408px; }
+
+.arc-tile {
+  position: relative; width: 100%; overflow: hidden; display: block;
+  border: none; padding: 0; background: none; cursor: pointer;
+}
+/* a piece without a Figma height keeps its own shape; one with a height is
+   cropped into it. Without this the tile would be flat until its image
+   decoded, and the column would have nothing to stand on. */
+.arc-tile img {
+  display: block; width: 100%; height: auto;
+  transition: filter .3s ease, transform .3s ease;
+}
+.arc-tile.is-cropped img { height: 100%; object-fit: cover; }
+/* hovering a piece pushes it out of focus, the way the open programme card
+   frosts its own photo */
+.arc-tile:hover img, .arc-tile:focus-visible img { filter: blur(6px); transform: scale(1.04); }
+
+@media (prefers-reduced-motion: reduce) {
+  .arc-tile img { transition: filter .2s ease; }
+  .arc-tile:hover img { transform: none; }
+}
+
+/* ===============================================================
    SERVICE / ORDER PAGE
    The print-order form, ported from the earlier order page into this
    site's system: black hairlines instead of pale blue, IBM Plex Mono
