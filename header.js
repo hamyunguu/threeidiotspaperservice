@@ -3,8 +3,8 @@
    393:341 search · 428:114 the per-page variants).
 
    One behaviour everywhere: the wordmark letter turns T → i → P → S, and
-   putting the pointer anywhere in the top band opens the header — the
-   letter grows into the full mark and the menu unfolds.
+   putting the pointer on the header itself opens it — the letter grows
+   into the full mark and the menu unfolds.
 
    The difference off the hero is that the page you are on is already
    named beside MENU while the header is shut (428:121 "Program"), and
@@ -12,7 +12,7 @@
    MENU at 115. Opening only adds the other two names.
    --------------------------------------------------------------- */
 
-const HEAD_ZONE = 123;            // the open header's own height
+const RULE_Y = 58;                // where the rule under the header sits, shut
 
 const menu = document.getElementById('hdMenu');
 const searchBtn = document.getElementById('hdSearch');
@@ -27,15 +27,22 @@ function setHead(open) {
   document.body.classList.toggle('is-head-open', open || isSearchOpen());
 }
 
-/* the whole band across the top is the hover target, not just the words */
+/* The band across the top is the hover target, not just the words — but only
+   the header's own band: everything down to the rule and no further. Shut
+   that is 58px; open, the rule slides down by --shift and the band grows with
+   it, so the pointer can carry on into the unfolded menu without the header
+   snapping closed under it. Anything below the rule — the archive page's back
+   arrow sits right there — is the page, not the header. */
 document.addEventListener('pointermove', (e) => {
   if (isSearchOpen() || !stageEl) return;
-  const scale = parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
+  /* custom properties inherit, so body carries --scale from :root as well */
+  const css = getComputedStyle(document.body);
+  const scale = parseFloat(css.getPropertyValue('--scale')) || 1;
+  const zone = RULE_Y + (parseFloat(css.getPropertyValue('--shift')) || 0);
   const box = stageEl.getBoundingClientRect();
   const y = (e.clientY - box.top) / scale;
   const x = (e.clientX - box.left) / scale;
-  setHead(y >= 0 && y <= HEAD_ZONE && x >= 0 && x <= 1920);
+  setHead(y >= 0 && y <= zone && x >= 0 && x <= 1920);
 });
 if (menu) menu.addEventListener('pointerenter', () => setHead(true));
 
