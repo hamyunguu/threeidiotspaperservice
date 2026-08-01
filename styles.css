@@ -1099,9 +1099,13 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
 
 /* ---- back / next ---- */
 
+/* the arrow is drawn inside the top-left crop mark, so it rides the same
+   shift the mark does when the header opens rather than parting from it */
 .arc-back {
-  position: absolute; left: 20px; top: 78px; width: 37px; height: 37px;
+  position: absolute; left: 20px; top: calc(78px + var(--shift));
+  width: 37px; height: 37px;
   border: none; background: none; padding: 0; cursor: pointer; z-index: 6;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 .arc-next {
   position: absolute; left: 1743px; top: 151px; width: 63px; height: 43px;
@@ -1116,14 +1120,17 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
   line-height: 1.4; letter-spacing: -0.5px; color: #000; white-space: nowrap; z-index: 6;
 }
 
-/* ---- the session mark: five discs with the two syllables over them ---- */
+/* ---- the session mark: five discs with the two syllables over them ----
+   Figma 476:719. The box is 284 wide on every session but not the same
+   height, and the discs sit at different x on each, so archive.js writes
+   the height, the syllable y and the disc offsets. The discs are 76. */
 
-.arc-blob { position: absolute; left: 115px; top: 151px; width: 284px; height: 114px; z-index: 4; }
+.arc-blob { position: absolute; left: 115px; top: 151px; width: 284px; z-index: 4; }
 .arc-blob i {
-  position: absolute; width: 74px; height: 74px; border-radius: 50%; background: #000;
+  position: absolute; width: 76px; height: 76px; border-radius: 50%; background: #000;
 }
 .arc-blob b {
-  position: absolute; top: 51px;
+  position: absolute; top: var(--syl-top, 51px); width: 46px;
   font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 50px;
   line-height: 1; color: var(--ink); white-space: nowrap;
 }
@@ -1154,14 +1161,20 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
 .arc-cta:hover img { filter: invert(1); }
 
 /* ---- the gallery ----
-   Four 408 columns with a 20 gutter, centred on the frame. Each tile keeps
-   the height Figma gave it, so the columns stagger the way they do there. */
+   Four columns with a 20 gutter between them. Where they start and how wide
+   they are is a different number on each of the three frames, and 묶기 even
+   gives its first column its own tile gutter, so archive.js sets them from
+   the session. Each tile keeps the height Figma gave it, so the columns
+   stagger the way they do there. */
 
 .arc-grid {
-  position: absolute; left: 961px; top: 414px; transform: translateX(-50%);
+  position: absolute; left: var(--grid-x, 115px); top: var(--grid-y, 414px);
   display: flex; gap: 20px; align-items: flex-start; z-index: 3;
 }
-.arc-col { display: flex; flex-direction: column; gap: 20px; width: 408px; }
+.arc-col {
+  display: flex; flex-direction: column;
+  gap: var(--tile-gap, 20px); width: var(--col-w, 408px);
+}
 
 .arc-tile {
   position: relative; width: 100%; overflow: hidden; display: block;
