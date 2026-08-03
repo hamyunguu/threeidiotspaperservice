@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="expires" content="0" />
+<title>TiPS — cart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css?v=55" />
+</head>
+<body class="cart page-sub">
+
+<div class="viewport" id="viewport">
+  <div class="stage" id="stage">
+
+    <!-- ===== header — the site's own, not the opened one Figma drew ===== -->
+    <span class="hd-t" id="hdLetter" aria-label="TiPS"><img alt="" /><img alt="" /></span>
+    <img class="hd-mark" src="assets/fig-logo-mark.svg?v=55" alt="TiPS" data-href="index.html" />
+
+    <div class="hd-menu" id="hdMenu">
+      <span class="hd-menu-label">MENU</span>
+      <nav class="hd-nav">
+        <a href="identity.html">Identity</a>
+        <a href="program.html">Program</a>
+        <a href="service.html">Service</a>
+      </nav>
+    </div>
+
+    <button type="button" class="hd-search" id="hdSearch">Search</button>
+    <a class="hd-cart" href="cart.html">Cart(0)</a>
+    <a class="hd-login" href="login.html">Login</a>
+
+    <div class="hd-field" id="hdField">
+      <span class="hd-caret" aria-hidden="true"></span>
+      <input class="hd-input" id="hdInput" type="text" autocomplete="off" placeholder="무엇을 찾고 계신가요?" />
+      <span class="hd-underline" aria-hidden="true"></span>
+      <button type="button" class="hd-close" id="hdClose" aria-label="검색 닫기">
+        <img src="assets/fig-search-icon.svg?v=55" alt="" />
+      </button>
+    </div>
+
+    <div class="h-rule" aria-hidden="true"></div>
+
+    <!-- ===== registration / crop marks ===== -->
+    <div class="marks" aria-hidden="true">
+      <div class="mark r-top" style="left:20px"><img src="assets/mark-corner.svg?v=55" style="transform:scaleY(-1)"></div>
+      <div class="mark r-top" style="left:1852px"><img src="assets/mark-corner.svg?v=55" style="transform:rotate(90deg) scaleY(-1)"></div>
+      <div class="mark r-top is-target" style="left:20px"><img src="assets/mark-target.svg?v=55"></div>
+      <div class="mark r-top is-target" style="left:1852px"><img src="assets/mark-target.svg?v=55"></div>
+      <div class="mark r-bot" style="left:20px"><img src="assets/mark-corner.svg?v=55"></div>
+      <div class="mark r-bot" style="left:1852px"><img src="assets/mark-corner.svg?v=55" style="transform:rotate(-90deg)"></div>
+      <div class="mark r-bot is-target" style="left:20px"><img src="assets/mark-target.svg?v=55"></div>
+      <div class="mark r-bot is-target" style="left:1852px"><img src="assets/mark-target.svg?v=55"></div>
+    </div>
+
+    <!-- ===== nothing in it (Figma 515:654) ===== -->
+    <div id="ctEmpty" hidden>
+      <p class="ct-empty">고객님의 장바구니가 현재 비어있습니다.</p>
+      <a class="ct-back" href="service.html">서비스로 돌아가기<img src="assets/cart-back.svg?v=55" alt="" /></a>
+    </div>
+
+    <!-- ===== an order in it (Figma 515:699) ===== -->
+    <div class="ct-order" id="ctOrder" hidden>
+
+      <p class="ct-t" style="left:234px; top:215px">주문 내역</p>
+      <div class="ct-rule" style="left:233px; top:250px; width:174px"></div>
+      <p class="ct-n" style="left:1685px; top:215px">2026.08.07  20:03:59</p>
+      <div class="ct-rule" style="left:447px; top:250px; width:1238px"></div>
+
+      <img class="ct-dot" src="assets/cart-dot.svg?v=55" alt="" />
+      <p class="ct-t" style="left:487px; top:287px">색지 명함</p>
+      <div class="ct-rule" style="left:447px; top:325px; width:387px"></div>
+      <p class="ct-t" style="left:873px; top:287px">기말 최종</p>
+      <div class="ct-rule" style="left:874px; top:325px; width:386px"></div>
+      <p class="ct-t" style="left:1301px; top:287px">재단 사이즈: 90 × 50</p>
+      <div class="ct-rule" style="left:1301px; top:325px; width:386px"></div>
+      <button type="button" class="ct-close" id="ctClose" aria-label="주문 빼기">
+        <img src="assets/cart-close.svg?v=55" alt="" />
+      </button>
+
+      <img class="ct-thumb" src="assets/cart-thumb.svg?v=55" alt="작업 파일 미리보기" />
+
+      <p class="ct-t" style="left:873px; top:342px">주문 제목:</p>
+      <p class="ct-t" style="left:1087px; top:342px">기말 최종</p>
+      <div class="ct-rule" style="left:873px; top:380px; width:812px"></div>
+
+      <p class="ct-t" style="left:873px; top:397px">수량:</p>
+      <p class="ct-t" style="left:1087px; top:397px">100 X 1 (수량 / 디자인 수)</p>
+      <p class="ct-t is-right ct-pink" style="left:1685px; top:397px">수량변경불가</p>
+      <div class="ct-rule" style="left:873px; top:435px; width:812px"></div>
+
+      <p class="ct-t" style="left:873px; top:452px">옵션:</p>
+      <p class="ct-t" style="left:1087px; top:452px">인바이런먼트 크라프트 216g</p>
+      <div class="ct-rule" style="left:873px; top:490px; width:812px"></div>
+
+      <p class="ct-t" style="left:873px; top:507px">후가공:</p>
+      <p class="ct-t" style="left:1087px; top:507px">재단 I 화이트인쇄 I 타공</p>
+      <div class="ct-rule" style="left:873px; top:545px; width:812px"></div>
+
+      <p class="ct-t" style="left:873px; top:634px">부가세</p>
+      <p class="ct-n ct-grey" style="left:1260px; top:634px">14.300</p>
+      <p class="ct-t" style="left:1301px; top:634px">공급가액</p>
+      <p class="ct-n ct-grey" style="left:1685px; top:634px">1.430</p>
+      <div class="ct-rule" style="left:873px; top:672px; width:387px"></div>
+      <div class="ct-rule" style="left:1301px; top:672px; width:387px"></div>
+
+      <p class="ct-t" style="left:873px; top:689px">결제 예정금액</p>
+      <p class="ct-n ct-pink" style="left:1682px; top:689px">15.730</p>
+      <div class="ct-rule" style="left:873px; top:727px; width:812px"></div>
+
+      <button type="button" class="ct-pay" id="ctPay">15.730원 주문하기</button>
+
+      <p class="ct-notes-title">유의사항</p>
+      <p class="ct-note is-one" style="top:943px">·장바구니 보관 기간 : 회원은 2주(14일) 간 보관되며, 비회원은 창을 닫으면 저장된 정보가 사라집니다.</p>
+      <p class="ct-note" style="top:968px">·여러 제품을 한 번에 주문 시 출고일이 가장 늦는 제품에 맞춰 출고됩니다. 먼저 제작된 제작물을 미리 받고 싶으시다면 분리해 주문해 주시거나, 배송비 추가 지불 후 받을 수 있습니다.</p>
+
+    </div>
+
+  </div>
+</div>
+
+<script src="header.js?v=55"></script>
+<script src="cart.js?v=55"></script>
+<script src="script.js?v=55"></script>
+<script src="cursor.js?v=55"></script>
+</body>
+</html>

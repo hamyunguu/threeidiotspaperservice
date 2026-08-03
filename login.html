@@ -5,25 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta http-equiv="cache-control" content="no-cache" />
 <meta http-equiv="expires" content="0" />
-<title>TiPS — identity</title>
+<title>TiPS — login</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css?v=55" />
 </head>
-<body class="page-sub">
+<body class="login page-sub">
 
 <div class="viewport" id="viewport">
   <div class="stage" id="stage">
 
-    <!-- ===== header — the hero's, with this page already named (Figma 428:114) ===== -->
+    <!-- ===== header — the site's own, not the opened one Figma drew ===== -->
     <span class="hd-t" id="hdLetter" aria-label="TiPS"><img alt="" /><img alt="" /></span>
     <img class="hd-mark" src="assets/fig-logo-mark.svg?v=55" alt="TiPS" data-href="index.html" />
 
     <div class="hd-menu" id="hdMenu">
       <span class="hd-menu-label">MENU</span>
       <nav class="hd-nav">
-        <a class="is-current" href="identity.html">Identity</a>
+        <a href="identity.html">Identity</a>
         <a href="program.html">Program</a>
         <a href="service.html">Service</a>
       </nav>
@@ -56,21 +56,40 @@
       <div class="mark r-bot is-target" style="left:1852px"><img src="assets/mark-target.svg?v=55"></div>
     </div>
 
-    <h1 class="page-title">Identity</h1>
-    <p class="page-note">준비 중인 페이지입니다. — 떠다니는 T를 눌러 메인으로 돌아갈 수 있어요.</p>
+    <!-- ===== THREE idiots PAPER SERVICE ===== -->
+    <img class="lg-lockup" src="assets/tips-lockup.png?v=55" alt="THREE idiots PAPER SERVICE" />
 
-    <!-- floating spheres. tap to follow the letter, drag to throw. (script.js) -->
-    <div class="balls" id="balls">
-      <div class="ball" data-letter="i" data-x="1450.00" data-y="300.00"  data-rot="-42.5" title="Tips-i"></div>
-      <div class="ball" data-letter="S" data-x="700.00"  data-y="820.00"  data-rot="-13.21"  title="Tips-S"></div>
-      <div class="ball" data-letter="T" data-x="1650.00" data-y="720.00"  data-rot="29.82"    title="Tips-T"></div>
-      <div class="ball" data-letter="P" data-x="1150.00" data-y="880.00"  data-rot="-48.65"  title="Tips-P"></div>
-    </div>
+    <!-- ===== the form =====
+         Nothing is wired to a server: this is the page as drawn, so the
+         form submits nowhere and the buttons below it have no destination
+         yet. -->
+    <form class="lg-form" id="lgForm" autocomplete="off">
+      <label class="lg-label" for="lgId" style="top:343px">이메일 / 아이디</label>
+      <input class="lg-field" id="lgId" name="id" type="email" style="top:327px"
+             placeholder="chauhynk@gmail.com" />
+
+      <label class="lg-label" for="lgPw" style="top:422px">비밀번호</label>
+      <input class="lg-field" id="lgPw" name="pw" type="password" style="top:405px" />
+
+      <button type="submit" class="lg-btn is-fill" style="left:1145px; top:485px; height:60px">로그인</button>
+      <button type="button" class="lg-btn is-fill" style="left:1244px; top:485px; height:60px">회원가입</button>
+
+      <button type="button" class="lg-btn" style="left:1144px; top:565px; height:60px">아이디 찾기</button>
+      <button type="button" class="lg-btn" style="left:1286px; top:565px; height:60px">비밀번호 찾기</button>
+
+      <button type="button" class="lg-btn" style="left:1145px; top:755px; width:194px; height:62px">
+        <img src="assets/naver.svg?v=55" alt="" />네이버로 로그인
+      </button>
+      <button type="button" class="lg-btn" style="left:1359px; top:755px; width:194px; height:62px">
+        <img src="assets/kakao.svg?v=55" alt="" />카카오로 로그인
+      </button>
+    </form>
 
   </div>
 </div>
 
 <script src="header.js?v=55"></script>
+<script src="login.js?v=55"></script>
 <script src="script.js?v=55"></script>
 <script src="cursor.js?v=55"></script>
 </body>

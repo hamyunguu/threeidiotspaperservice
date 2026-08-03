@@ -1555,3 +1555,140 @@ textarea.ord-input { resize: vertical; line-height: 1.5; }
   color: #302929;
 }
 
+
+/* ===============================================================
+   LOGIN — Figma 515:564
+   The wordmark lockup on the left, the form on the right. Figma draws
+   this frame with the header already open; the header here behaves the
+   way it does everywhere else, so the rule stays at 58 and the crop
+   marks at 78. Every other number below is off the artboard.
+   =============================================================== */
+
+body.login { --stage-h: 1080; background: #fff; }
+
+/* Futura and Avara are licensed faces with no webfont, so the lockup
+   ships as one exported picture the way the header's Optima letters do */
+.lg-lockup {
+  position: absolute; left: 208.38px; top: 340px;
+  width: 564px; height: 477.394px; display: block; z-index: 3;
+}
+
+.lg-form { position: absolute; inset: 0; z-index: 4; }
+
+.lg-label {
+  position: absolute; left: 970px;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
+  font-size: 20px; line-height: 1.4; letter-spacing: -0.5px; color: #000;
+  white-space: nowrap;
+}
+
+.lg-field {
+  position: absolute; left: 1145px; width: 408px; height: 60px;
+  box-sizing: border-box; padding: 14px 18px;
+  background: #ffff00; border: 2px solid #000; border-radius: 0;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
+  font-size: 20px; line-height: 1.4; letter-spacing: -0.5px; color: #000;
+  outline: none; -webkit-appearance: none; appearance: none;
+}
+.lg-field::placeholder { color: #000; opacity: 1; }
+.lg-field:focus { outline: 2px solid #000; outline-offset: 2px; }
+
+/* every button on this page is the same box — 2px rule, 14/10 padding —
+   and only the fill tells the primary pair from the rest */
+.lg-btn {
+  position: absolute; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 14px 10px; border: 2px solid #000; background: #fff;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
+  font-size: 20px; line-height: 1.4; letter-spacing: -0.5px; color: #000;
+  white-space: nowrap; cursor: pointer;
+  transition: background .18s, color .18s;
+}
+.lg-btn.is-fill { background: #000; color: #fff; }
+.lg-btn:hover { background: #ffff00; color: #000; }
+.lg-btn.is-fill:hover { background: #fff; color: #000; }
+.lg-btn img { width: 30px; height: 30px; display: block; }
+
+/* ===============================================================
+   CART — Figma 515:654 empty · 515:699 with an order in it
+   =============================================================== */
+
+body.cart { --stage-h: 1080; background: #fff; }
+
+/* ---- empty ---- */
+
+.ct-empty {
+  position: absolute; left: 759px; top: 499px; z-index: 3;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
+  font-size: 25px; line-height: 1.4; letter-spacing: -0.625px; color: #000;
+  white-space: nowrap;
+}
+.ct-back {
+  position: absolute; left: 759px; top: 546px; z-index: 3;
+  font: inherit; text-decoration: none; white-space: nowrap;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
+  font-size: 25px; line-height: 1.4; letter-spacing: -0.625px; color: #000;
+}
+.ct-back img {
+  position: absolute; left: 196px; top: 9.22px;
+  width: 20.628px; height: 20.375px; display: block;
+}
+.ct-back:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+/* ---- with an order in it ---- */
+
+.ct-order { position: absolute; inset: 0; z-index: 3; }
+
+/* the sheet is ruled rather than boxed: every line below is one of
+   Figma's 1px strokes, so they are drawn as rules and not as borders */
+.ct-rule { position: absolute; height: 1px; background: #000; }
+
+.ct-t {
+  position: absolute;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
+  font-size: 25px; line-height: 1.4; letter-spacing: -0.625px; color: #000;
+  white-space: nowrap;
+}
+/* the figures are set in the mono face, and right-aligned to their column */
+.ct-n {
+  position: absolute; transform: translateX(-100%);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 25px; line-height: 1.4; letter-spacing: -0.625px; color: #000;
+  white-space: pre; text-align: right;
+}
+.ct-t.is-right { transform: translateX(-100%); text-align: right; }
+.ct-grey { color: #8c8c8c; }
+.ct-pink { color: #ec008c; }
+
+.ct-dot { position: absolute; left: 447px; top: 288px; width: 33px; height: 33px; display: block; }
+.ct-thumb { position: absolute; left: 447px; top: 341px; width: 386px; height: 386px; display: block; }
+
+.ct-close {
+  position: absolute; left: 1663px; top: 293px; width: 24px; height: 24px;
+  border: none; background: none; padding: 0; cursor: pointer;
+}
+.ct-close img { width: 100%; height: 100%; display: block; }
+.ct-close:hover { opacity: .6; }
+
+.ct-pay {
+  position: absolute; left: 447px; top: 830px; width: 1235px; height: 51px;
+  box-sizing: border-box; border: 1px solid #000; background: #ffff00;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
+  font-size: 25px; line-height: 1.4; letter-spacing: -0.625px; color: #000;
+  cursor: pointer; transition: background .18s, color .18s;
+}
+.ct-pay:hover { background: #000; color: #ffff00; }
+
+.ct-notes-title {
+  position: absolute; left: 237px; top: 909px;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
+  font-size: 18px; line-height: 1; color: #000;
+}
+.ct-note {
+  position: absolute; left: 233px; width: 662px;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 300;
+  font-size: 16px; line-height: 1.4; color: #000;
+}
+/* the first note is one line in Figma and the second wraps at 662 — the two
+   sit 25 apart, so letting the first one wrap would run it into the second */
+.ct-note.is-one { width: auto; white-space: nowrap; }
