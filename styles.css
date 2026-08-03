@@ -978,106 +978,82 @@ html.has-cursor * { cursor: none !important; }
 }
 
 /* ===============================================================
-   PROGRAM PAGE — Figma 500:477 / 500:618 / 500:735
-   Three 600-wide cards at x 20 / 660 / 1300. The one under the cursor
-   rises from y 290 to 228.25 and trades its 43px name bar for a panel
-   carrying the title blob, the Archive button and the description; the
-   other two stay put. Every number below is off the artboard.
+   PROGRAM PAGE — Figma 505:443 shut · 508:490 / 508:569 / 508:661 open
+   Three colour blocks, 886 tall, sitting at y 126 and centred on the
+   frame. Shut, each is a 94 strip carrying nothing but its number; the
+   one under the pointer opens to 1560, so the row grows from 318 to
+   1784 and — still centred — pushes the other two aside.
+
+   No photographs on this page any more: the block is the session's
+   process colour, and the mark is the same one the archive wears.
+   Every number below is off the artboard.
    =============================================================== */
 
 body.program2 { --stage-h: 1080; background: #fff; }
 
-.pg-cards { position: absolute; inset: 0; z-index: 3; }
+.pg-cards {
+  position: absolute; left: 0; top: 126px; width: 1920px; height: 886px;
+  display: flex; gap: 18px; justify-content: center; align-items: flex-start;
+  z-index: 3;
+}
 
+/* Figma lays the card out as a row — mark, number, copy — but only the
+   number is on show while the card is shut, and it has to sit at the
+   strip's own 10 rather than where the row would put it. So everything
+   is placed at the x Figma ends up with and the number slides between
+   the two. */
 .pg-card {
-  position: absolute; top: 290px; width: 600px;
-  border: none; background: none; padding: 0; text-align: left; cursor: pointer;
-  transition: top .38s cubic-bezier(.4, 0, .2, 1);
+  position: relative; flex: none; width: 94px; height: 886px; overflow: hidden;
+  border: none; padding: 0; background: var(--ink);
+  text-align: left; cursor: pointer;
+  transition: width .38s cubic-bezier(.4, 0, .2, 1);
 }
-.pg-card:nth-child(1) { left: 20px; }
-.pg-card:nth-child(2) { left: 660px; }
-.pg-card:nth-child(3) { left: 1300px; }
-.pg-card.is-on { top: 228.25px; }
+.pg-card.is-on { width: 1560px; }
 
-/* ---- the photo ---- */
-
-/* the card is a button, so everything inside it has to be blockified by
-   hand before it will take a width */
-.pg-shot {
-  display: block;
-  position: relative; width: 600px; height: 500px; overflow: hidden;
-  background: #d9d9d9;
+.pg-no {
+  position: absolute; left: 10px; top: 10px;
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 30px; background: #000;
+  font-family: 'IBM Plex Mono', monospace; font-size: 18px; line-height: 1;
+  color: var(--ink);
+  transition: left .38s cubic-bezier(.4, 0, .2, 1);
 }
-/* the direct child only — the Archive chevron is an img inside here too, and
-   it must stay in its button's flex row rather than being pinned to the frame */
-.pg-shot > img {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; display: block;
-}
-/* the open card frosts its photo so the title and the button read on it */
-.pg-veil {
-  position: absolute; inset: 0;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(13.4px); -webkit-backdrop-filter: blur(13.4px);
-  opacity: 0; transition: opacity .3s ease;
-}
-.pg-card.is-on .pg-veil { opacity: 1; }
+.pg-card.is-on .pg-no { left: 304px; }
 
-/* ---- the title blob: black discs with the two syllables over them ---- */
+.pg-mark { position: absolute; left: 10px; top: 10px; width: 284px; }
 
-.pg-blob { position: absolute; inset: 0; opacity: 0; transition: opacity .28s ease; }
-.pg-card.is-on .pg-blob { opacity: 1; transition-delay: .1s; }
-.pg-blob i {
-  position: absolute; width: 76.707px; height: 76.707px;
-  border-radius: 50%; background: #000;
+.pg-body {
+  position: absolute; left: 340px; top: 10px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 32px;
 }
-.pg-blob b {
-  position: absolute; font-family: 'Noto Sans KR', sans-serif; font-weight: 700;
-  font-size: 50px; line-height: 1.55; letter-spacing: -2.25px; color: var(--ink);
-  white-space: nowrap;
-}
-
-/* ---- Archive ---- */
-
-.pg-archive {
-  position: absolute; left: 365px; top: 402px; height: 46px;
-  display: flex; align-items: center; gap: 20px;
-  padding: 8px 20px; border-radius: 25px; background: #302929;
-  opacity: 0; transition: opacity .28s ease;
-}
-.pg-card.is-on .pg-archive { opacity: 1; transition-delay: .1s; }
-.pg-archive span {
-  font-family: 'IBM Plex Mono', monospace; font-size: 30px; line-height: 1; color: #fff;
-}
-.pg-archive img { width: 11.5px; height: 20px; display: block; }
-
-/* ---- the name bar, which grows into the panel ---- */
-
-.pg-panel {
-  display: block;
-  position: relative; width: 600px; height: 43px; background: var(--ink);
-  overflow: hidden;
-  transition: height .38s cubic-bezier(.4, 0, .2, 1);
-}
-.pg-card.is-on .pg-panel { height: var(--panel); }
-
 .pg-name {
-  position: absolute; left: 27px; top: 5px;
-  font-family: 'IBM Plex Mono', monospace; font-size: 30px; line-height: 1; color: #000;
-  transition: top .38s cubic-bezier(.4, 0, .2, 1);
+  font-family: 'IBM Plex Mono', monospace; font-size: 24px; line-height: 1;
+  letter-spacing: -0.6px; color: #000; white-space: nowrap;
 }
-.pg-card.is-on .pg-name { top: 18px; }
-
 .pg-desc {
-  position: absolute; left: 27px; top: 89px; width: 572px;
   font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
-  font-size: 25px; line-height: 1.55; letter-spacing: -1.125px; color: #000;
-  opacity: 0; transition: opacity .28s ease;
+  font-size: 24px; line-height: 1.4; color: #000; white-space: nowrap;
 }
-.pg-card.is-on .pg-desc { opacity: 1; transition-delay: .12s; }
+
+.pg-cta {
+  position: absolute; left: 337px; top: 147px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px; border: 1px solid #000; border-radius: 90px;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
+  font-size: 20px; line-height: 1.4; letter-spacing: -0.5px;
+  color: #000; white-space: nowrap;
+}
+.pg-cta img { width: 24px; height: 25.8px; display: block; }
+
+/* the shut strip is only 94 wide, so all of this is already clipped —
+   fading it keeps it from flashing through the corner as the card slides */
+.pg-mark, .pg-body, .pg-cta { opacity: 0; transition: opacity .24s ease; }
+.pg-card.is-on .pg-mark,
+.pg-card.is-on .pg-body,
+.pg-card.is-on .pg-cta { opacity: 1; transition-delay: .14s; }
 
 @media (prefers-reduced-motion: reduce) {
-  .pg-card, .pg-panel, .pg-name, .pg-veil, .pg-blob, .pg-archive, .pg-desc { transition: none; }
+  .pg-card, .pg-no, .pg-mark, .pg-body, .pg-cta { transition: none; }
 }
 
 /* ===============================================================
@@ -1121,19 +1097,21 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
 }
 
 /* ---- the session mark: five discs with the two syllables over them ----
-   Figma 476:719. The box is 284 wide on every session but not the same
-   height, and the discs sit at different x on each, so archive.js writes
-   the height, the syllable y and the disc offsets. The discs are 76. */
+   Figma 476:719, and the same mark rides the programme page. The box is
+   284 wide on every session but not the same height, and the discs sit at
+   different x on each, so whoever places it writes the height, the
+   syllable y and the disc offsets. The discs are 76. */
 
-.arc-blob { position: absolute; left: 115px; top: 151px; width: 284px; z-index: 4; }
-.arc-blob i {
+.blob i {
   position: absolute; width: 76px; height: 76px; border-radius: 50%; background: #000;
 }
-.arc-blob b {
+.blob b {
   position: absolute; top: var(--syl-top, 51px); width: 46px;
   font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 50px;
   line-height: 1; color: var(--ink); white-space: nowrap;
 }
+
+.arc-blob { position: absolute; left: 115px; top: 151px; width: 284px; z-index: 4; }
 
 /* ---- the copy, and the button under it ---- */
 

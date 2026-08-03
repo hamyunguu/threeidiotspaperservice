@@ -1,10 +1,10 @@
 /* ---------------------------------------------------------------
-   Program page (Figma 500:477 / 500:618 / 500:735).
+   Program page (Figma 505:443 shut · 508:490 / 508:569 / 508:661 open).
 
-   The three states are the same layout with a different card open, so
-   this only moves the `is-on` class; the CSS does the rise and the
-   panel. Nothing is open until the pointer picks a card, and letting go
-   of all three shuts them again.
+   The four states are the same row with a different card open, so this
+   only moves the `is-on` class; the CSS does the widening and the row
+   re-centres itself. Nothing is open until the pointer picks a card,
+   and letting go of all three shuts them again.
    --------------------------------------------------------------- */
 
 const cards = [...document.querySelectorAll('.pg-card')];
