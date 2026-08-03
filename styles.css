@@ -1590,7 +1590,6 @@ body.login { --stage-h: 1080; background: #fff; }
   font-size: 20px; line-height: 1.4; letter-spacing: -0.5px; color: #000;
   outline: none; -webkit-appearance: none; appearance: none;
 }
-.lg-field::placeholder { color: #000; opacity: 1; }
 .lg-field:focus { outline: 2px solid #000; outline-offset: 2px; }
 
 /* every button on this page is the same box — 2px rule, 14/10 padding —
