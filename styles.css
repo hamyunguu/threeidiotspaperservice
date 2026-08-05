@@ -246,7 +246,7 @@ body.order .nav-item { font-size: 24px; }
 .page-title {
   position: absolute;
   left: 20px;
-  top: 400px;
+  top: calc(400px + var(--shift));
   font-family: 'IBM Plex Mono', monospace;
   font-weight: 600;
   font-size: 180px;
@@ -258,7 +258,7 @@ body.order .nav-item { font-size: 24px; }
 .page-note {
   position: absolute;
   left: 26px;
-  top: 600px;
+  top: calc(600px + var(--shift));
   font-family: 'Noto Sans KR', sans-serif;
   font-weight: 600;
   font-size: 28px;
@@ -992,7 +992,8 @@ html.has-cursor * { cursor: none !important; }
 body.program2 { --stage-h: 1080; background: #fff; }
 
 .pg-cards {
-  position: absolute; left: 0; top: 126px; width: 1920px; height: 886px;
+  position: absolute; left: 0; top: calc(126px + var(--shift));
+  width: 1920px; height: calc(886px - var(--shift));
   display: flex; gap: 18px; justify-content: center; align-items: flex-start;
   z-index: 3;
 }
@@ -1003,7 +1004,7 @@ body.program2 { --stage-h: 1080; background: #fff; }
    is placed at the x Figma ends up with and the number slides between
    the two. */
 .pg-card {
-  position: relative; flex: none; width: 94px; height: 886px; overflow: hidden;
+  position: relative; flex: none; width: 94px; height: 100%; overflow: hidden;
   border: none; padding: 0; background: var(--ink);
   text-align: left; cursor: pointer;
   transition: width .38s cubic-bezier(.4, 0, .2, 1);
@@ -1084,14 +1085,14 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
   transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 .arc-next {
-  position: absolute; left: 1743px; top: 151px; width: 63px; height: 43px;
+  position: absolute; left: 1743px; top: calc(126px + var(--shift)); width: 63px; height: 43px;
   border: none; background: none; padding: 0; cursor: pointer; z-index: 6;
 }
 .arc-back img, .arc-next img { display: block; width: 100%; height: 100%; }
 .arc-back:hover, .arc-next:hover { opacity: .6; }
 
 .arc-next-label {
-  position: absolute; left: 1751px; top: 204px; transform: translateX(-50%);
+  position: absolute; left: 1751px; top: calc(179px + var(--shift)); transform: translateX(-50%);
   font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 20px;
   line-height: 1.4; letter-spacing: -0.5px; color: #000; white-space: nowrap; z-index: 6;
 }
@@ -1111,12 +1112,13 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
   line-height: 1; color: var(--ink); white-space: nowrap;
 }
 
-.arc-blob { position: absolute; left: 115px; top: 151px; width: 284px; z-index: 4; }
+.arc-blob { position: absolute; left: 115px; top: calc(126px + var(--shift)); width: 284px; z-index: 4; }
 
 /* ---- the copy, and the button under it ---- */
 
 .arc-copy {
-  position: absolute; left: 495px; top: 151px; display: flex; gap: 10px; align-items: flex-start;
+  position: absolute; left: 495px; top: calc(126px + var(--shift));
+  display: flex; gap: 10px; align-items: flex-start;
   font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 24px; line-height: 1.4;
   color: #000; z-index: 4;
 }
@@ -1126,7 +1128,7 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
 .arc-copy .is-note { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 4px; }
 
 .arc-cta {
-  position: absolute; left: 965px; top: var(--cta-top, 305px);
+  position: absolute; left: 965px; top: calc(var(--cta-top, 280px) + var(--shift));
   display: flex; align-items: center; gap: 10px;
   padding: 10px 20px; border: 1px solid #000; border-radius: 90px;
   background: none; cursor: pointer; z-index: 4;
@@ -1146,7 +1148,7 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
    stagger the way they do there. */
 
 .arc-grid {
-  position: absolute; left: var(--grid-x, 115px); top: var(--grid-y, 414px);
+  position: absolute; left: var(--grid-x, 115px); top: calc(var(--grid-y, 389px) + var(--shift));
   display: flex; gap: 20px; align-items: flex-start; z-index: 3;
 }
 .arc-col {
@@ -1191,7 +1193,7 @@ body.order { --stage-h: 1080; background: #fff; }
 .ord-tabs {
   position: absolute;
   left: 20px;
-  top: 158px;
+  top: calc(126px + var(--shift));
   display: flex;
   gap: 44px;
   z-index: 5;
@@ -1218,9 +1220,9 @@ body.order { --stage-h: 1080; background: #fff; }
 .ord-split {
   position: absolute;
   left: 960px;
-  top: 136px;
+  top: calc(104px + var(--shift));
   width: 1px;
-  height: 944px;
+  height: calc(976px - var(--shift));
   border-left: 1px dashed #000;
   z-index: 2;
 }
@@ -1230,9 +1232,9 @@ body.order { --stage-h: 1080; background: #fff; }
 .ord-form {
   position: absolute;
   left: 20px;
-  top: 214px;
+  top: calc(182px + var(--shift));
   width: 900px;
-  height: 846px;
+  height: calc(878px - var(--shift));
   padding-right: 26px;
   overflow-y: auto;
   z-index: 4;
@@ -1488,9 +1490,9 @@ textarea.ord-input { resize: vertical; line-height: 1.5; }
 .ord-preview {
   position: absolute;
   left: 1000px;
-  top: 214px;
+  top: calc(182px + var(--shift));
   width: 900px;
-  height: 846px;
+  height: calc(878px - var(--shift));
   z-index: 4;
 }
 
@@ -1569,11 +1571,14 @@ body.login { --stage-h: 1080; background: #fff; }
 /* Futura and Avara are licensed faces with no webfont, so the lockup
    ships as one exported picture the way the header's Optima letters do */
 .lg-lockup {
-  position: absolute; left: 208.38px; top: 340px;
+  position: absolute; left: 208.38px; top: calc(262px + var(--shift));
   width: 564px; height: 477.394px; display: block; z-index: 3;
 }
 
-.lg-form { position: absolute; inset: 0; z-index: 4; }
+/* Figma drew this frame with the header already open — its rule sits at 136
+   where ours sits at 58 — so the whole form hangs 78 higher against our own
+   header, and then rides it the way every other page does. */
+.lg-form { position: absolute; left: 0; right: 0; top: calc(var(--shift) - 78px); bottom: 0; z-index: 4; }
 
 .lg-label {
   position: absolute; left: 970px;
@@ -1617,13 +1622,13 @@ body.cart { --stage-h: 1080; background: #fff; }
 /* ---- empty ---- */
 
 .ct-empty {
-  position: absolute; left: 759px; top: 499px; z-index: 3;
+  position: absolute; left: 759px; top: calc(499px + var(--shift)); z-index: 3;
   font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
   font-size: 25px; line-height: 1.4; letter-spacing: -0.625px; color: #000;
   white-space: nowrap;
 }
 .ct-back {
-  position: absolute; left: 759px; top: 546px; z-index: 3;
+  position: absolute; left: 759px; top: calc(546px + var(--shift)); z-index: 3;
   font: inherit; text-decoration: none; white-space: nowrap;
   font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
   font-size: 25px; line-height: 1.4; letter-spacing: -0.625px; color: #000;
@@ -1636,7 +1641,9 @@ body.cart { --stage-h: 1080; background: #fff; }
 
 /* ---- with an order in it ---- */
 
-.ct-order { position: absolute; inset: 0; z-index: 3; }
+/* Figma's rule is at 136 on this frame and ours is at 58, so the sheet as
+   drawn hangs too low; 89 up puts its first line 68 under our own rule. */
+.ct-order { position: absolute; left: 0; right: 0; top: calc(var(--shift) - 89px); bottom: 0; z-index: 3; }
 
 /* the sheet is ruled rather than boxed: every line below is one of
    Figma's 1px strokes, so they are drawn as rules and not as borders */

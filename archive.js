@@ -11,16 +11,20 @@
    x, y and column width. Those are the numbers, straight off the design:
 
               mark          gallery x, y      column   gutter
-     꿰기     284 × 114     115, 414          408      20 / 20
-     묶기     284 ×  76      41, 622          440      20 / 10 in col 1
-     풀기     284 ×  76      55, 620          440      20 / 20
+     꿰기     284 × 114     115, 389          408      20 / 20
+     묶기     284 ×  76      41, 597          440      20 / 10 in col 1
+     풀기     284 ×  76      55, 595          440      20 / 20
+
+   Figma hangs this page's head 93 under the rule where the rest of the site
+   hangs 68, so everything here is 25 up from the artboard and then rides the
+   rule the way every other page does.
 
    The gallery runs well past the 1080 frame, so this is the page whose
    stage grows to its content (see body.archive in the stylesheet) and
    the window scrolls it.
    --------------------------------------------------------------- */
 
-const V = '?v=57';
+const V = '?v=58';
 
 /* ---------------- the session mark (476:719) ----------------
    Five 76px discs on a 284 box, with the two syllables laid over the
@@ -66,12 +70,12 @@ const SESSIONS = {
   1: {
     ink: '#00a0ff',
     mark: ['꿰', '기'],
-    ctaTop: '305px',
+    ctaTop: '280px',
     copy: [
       '꿰기 세션은 바늘과 실이라는 익숙한 제본<br>방식에서 출발해, 꿸 수 있는 모든 재료와<br>방법을 탐색하는 프로그램입니다. 종이에<br>구멍을 내고 실을 통과 시키는 것부터, 천과<br>플라스틱, 철사와 케이블처럼 제본과는 멀어<br>보이는 재료까지 자유롭게 연결해 봅니다.',
       '재료의 한계도, 방식의 제약도, 정해진 결과도<br>없습니다.<br><span class="is-note">꿰고 연결하며 발견하는 가능성만 있습니다.</span>',
     ],
-    grid: { x: 115, y: 414, col: 408, gaps: [20, 20, 20, 20] },
+    grid: { x: 115, y: 389, col: 408, gaps: [20, 20, 20, 20] },
     count: 23,
     file: (n) => `assets/archive/a1-${String(n).padStart(2, '0')}.jpg`,
     heights: P1_HEIGHTS,
@@ -79,13 +83,13 @@ const SESSIONS = {
   2: {
     ink: '#ec008c',
     mark: ['묶', '기'],
-    ctaTop: '305px',
+    ctaTop: '280px',
     copy: [
       '묶기 세션은 흩어진 재료들을 기상천외한<br>방식으로 한데 모으며, 묶는 행위가 어떻게<br>하나의 제본이 될 수 있는지 경험하는<br>프로그램 입니다.',
       '끈을 감고 매듭을 만들거나, 고무줄과 테이프,<br>밴드와 철사 등 손에 잡히는 다양한 재료를<br>이용해 새로운 책의 구조를 만들어 봅니다.',
     ],
     /* Figma gives this one's first column a 10 gutter and the rest 20 */
-    grid: { x: 41, y: 622, col: 440, gaps: [10, 20, 20, 20] },
+    grid: { x: 41, y: 597, col: 440, gaps: [10, 20, 20, 20] },
     count: 20,
     file: (n) => `assets/archive/a2-${String(n).padStart(2, '0')}.jpg`,
     heights: P2_HEIGHTS,
@@ -94,11 +98,11 @@ const SESSIONS = {
     ink: '#ffff00',
     mark: ['풀', '기'],
     /* the only session whose button sits up on the copy's own line */
-    ctaTop: '151px',
+    ctaTop: '126px',
     copy: [
       '풀기는 이미 만들어진 책과 제본의 구조를<br>거꾸로 따라가는 세션입니다. 실을 빼고,<br>매듭을 풀고, 접힌 면을 펼치며 하나의 책이<br>어떤 순서와 방식으로 만들어졌는지<br>발견합니다.',
     ],
-    grid: { x: 55, y: 620, col: 440, gaps: [20, 20, 20, 20] },
+    grid: { x: 55, y: 595, col: 440, gaps: [20, 20, 20, 20] },
     count: 20,
     file: (n) => `assets/archive/a3-${String(n).padStart(2, '0')}.jpg`,
     heights: P3_HEIGHTS,
@@ -187,7 +191,9 @@ function fitStage() {
   const scale = parseFloat(
     getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
   const height = box.height / scale;
-  document.body.style.setProperty('--stage-h', Math.ceil(s.grid.y + height + 88));
+  /* 65 of that tail is room for the shift: open the header and the whole
+     gallery slides down, and without the headroom the last row is cut off */
+  document.body.style.setProperty('--stage-h', Math.ceil(s.grid.y + height + 88 + 65));
 }
 
 fitStage();
