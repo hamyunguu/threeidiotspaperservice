@@ -253,6 +253,7 @@ body.order .nav-item { font-size: 24px; }
   line-height: 1;
   color: #000;
   z-index: 3;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 
 .page-note {
@@ -266,6 +267,7 @@ body.order .nav-item { font-size: 24px; }
   letter-spacing: -1.26px;
   color: #305673;
   z-index: 3;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 
 /* ---------------- floating spheres ---------------- */
@@ -710,8 +712,8 @@ body.page-sub .hd-nav a.is-current { display: block; }
 .mark img { position: absolute; left: 0; top: -1px; width: 49px; height: 49px; display: block; }
 .mark.is-target img { left: 0; top: 0; width: 48px; height: 48px; }
 
-.mark.r-top { top: calc(78px + var(--shift)); }
-.mark.r-mid { top: calc(482px + var(--shift)); }
+.mark.r-top { top: calc(78px + var(--shift)); transition: top .32s cubic-bezier(.4, 0, .2, 1); }
+.mark.r-mid { top: calc(482px + var(--shift)); transition: top .32s cubic-bezier(.4, 0, .2, 1); }
 .mark.r-bot { top: 1012px; }
 .mark.r-top, .mark.r-mid { transition: top .32s cubic-bezier(.4, 0, .2, 1); }
 
@@ -996,6 +998,7 @@ body.program2 { --stage-h: 1080; background: #fff; }
   width: 1920px; height: calc(886px - var(--shift));
   display: flex; gap: 18px; justify-content: center; align-items: flex-start;
   z-index: 3;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1), height .32s cubic-bezier(.4, 0, .2, 1);
 }
 
 /* Figma lays the card out as a row — mark, number, copy — but only the
@@ -1087,6 +1090,7 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
 .arc-next {
   position: absolute; left: 1743px; top: calc(126px + var(--shift)); width: 63px; height: 43px;
   border: none; background: none; padding: 0; cursor: pointer; z-index: 6;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 .arc-back img, .arc-next img { display: block; width: 100%; height: 100%; }
 .arc-back:hover, .arc-next:hover { opacity: .6; }
@@ -1095,6 +1099,7 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
   position: absolute; left: 1751px; top: calc(179px + var(--shift)); transform: translateX(-50%);
   font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 20px;
   line-height: 1.4; letter-spacing: -0.5px; color: #000; white-space: nowrap; z-index: 6;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 
 /* ---- the session mark: five discs with the two syllables over them ----
@@ -1112,7 +1117,7 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
   line-height: 1; color: var(--ink); white-space: nowrap;
 }
 
-.arc-blob { position: absolute; left: 115px; top: calc(126px + var(--shift)); width: 284px; z-index: 4; }
+.arc-blob { position: absolute; left: 115px; top: calc(126px + var(--shift)); width: 284px; z-index: 4; transition: top .32s cubic-bezier(.4, 0, .2, 1); }
 
 /* ---- the copy, and the button under it ---- */
 
@@ -1121,6 +1126,7 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
   display: flex; gap: 10px; align-items: flex-start;
   font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 24px; line-height: 1.4;
   color: #000; z-index: 4;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 .arc-copy > div:nth-child(1) { width: 460px; }
 .arc-copy > div:nth-child(2) { width: 463px; }
@@ -1134,7 +1140,7 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
   background: none; cursor: pointer; z-index: 4;
   font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 20px;
   line-height: 1.4; letter-spacing: -0.5px; color: #000; white-space: nowrap;
-  transition: background .18s, color .18s;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1), background .18s, color .18s;
 }
 .arc-cta img { width: 24px; height: 25.8px; display: block; }
 .arc-cta:hover { background: #000; color: #fff; }
@@ -1148,8 +1154,10 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
    stagger the way they do there. */
 
 .arc-grid {
-  position: absolute; left: var(--grid-x, 115px); top: calc(var(--grid-y, 389px) + var(--shift));
+  position: absolute; left: var(--grid-x, 115px); top: var(--grid-y, 389px);
   display: flex; gap: 20px; align-items: flex-start; z-index: 3;
+  transform: translateY(var(--shift));
+  transition: transform .32s cubic-bezier(.4, 0, .2, 1);
 }
 .arc-col {
   display: flex; flex-direction: column;
@@ -1197,6 +1205,7 @@ body.order { --stage-h: 1080; background: #fff; }
   display: flex;
   gap: 44px;
   z-index: 5;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 .ord-tab {
   border: none;
@@ -1225,6 +1234,7 @@ body.order { --stage-h: 1080; background: #fff; }
   height: calc(976px - var(--shift));
   border-left: 1px dashed #000;
   z-index: 2;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1), height .32s cubic-bezier(.4, 0, .2, 1);
 }
 
 /* ---- left column ---- */
@@ -1241,6 +1251,7 @@ body.order { --stage-h: 1080; background: #fff; }
   font-family: 'Noto Sans KR', sans-serif;
   font-weight: 400;
   color: #000;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1), height .32s cubic-bezier(.4, 0, .2, 1);
 }
 .ord-form::-webkit-scrollbar { width: 6px; }
 .ord-form::-webkit-scrollbar-thumb { background: #ccc; }
@@ -1494,6 +1505,7 @@ textarea.ord-input { resize: vertical; line-height: 1.5; }
   width: 900px;
   height: calc(878px - var(--shift));
   z-index: 4;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1), height .32s cubic-bezier(.4, 0, .2, 1);
 }
 
 /* the 3D stage — the canvas is transparent, so the product sits on the
@@ -1573,12 +1585,17 @@ body.login { --stage-h: 1080; background: #fff; }
 .lg-lockup {
   position: absolute; left: 208.38px; top: calc(262px + var(--shift));
   width: 564px; height: 477.394px; display: block; z-index: 3;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 
 /* Figma drew this frame with the header already open — its rule sits at 136
    where ours sits at 58 — so the whole form hangs 78 higher against our own
    header, and then rides it the way every other page does. */
-.lg-form { position: absolute; left: 0; right: 0; top: calc(var(--shift) - 78px); bottom: 0; z-index: 4; }
+.lg-form {
+  position: absolute; left: 0; right: 0; top: -78px; bottom: 0; z-index: 4;
+  transform: translateY(var(--shift));
+  transition: transform .32s cubic-bezier(.4, 0, .2, 1);
+}
 
 .lg-label {
   position: absolute; left: 970px;
@@ -1626,12 +1643,14 @@ body.cart { --stage-h: 1080; background: #fff; }
   font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
   font-size: 25px; line-height: 1.4; letter-spacing: -0.625px; color: #000;
   white-space: nowrap;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 .ct-back {
   position: absolute; left: 759px; top: calc(546px + var(--shift)); z-index: 3;
   font: inherit; text-decoration: none; white-space: nowrap;
   font-family: 'Noto Sans KR', sans-serif; font-weight: 400;
   font-size: 25px; line-height: 1.4; letter-spacing: -0.625px; color: #000;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 .ct-back img {
   position: absolute; left: 196px; top: 9.22px;
@@ -1643,7 +1662,11 @@ body.cart { --stage-h: 1080; background: #fff; }
 
 /* Figma's rule is at 136 on this frame and ours is at 58, so the sheet as
    drawn hangs too low; 89 up puts its first line 68 under our own rule. */
-.ct-order { position: absolute; left: 0; right: 0; top: calc(var(--shift) - 89px); bottom: 0; z-index: 3; }
+.ct-order {
+  position: absolute; left: 0; right: 0; top: -89px; bottom: 0; z-index: 3;
+  transform: translateY(var(--shift));
+  transition: transform .32s cubic-bezier(.4, 0, .2, 1);
+}
 
 /* the sheet is ruled rather than boxed: every line below is one of
    Figma's 1px strokes, so they are drawn as rules and not as borders */
