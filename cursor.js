@@ -4,6 +4,12 @@
      - dissolves to the black mark over anything clickable
      - vanishes entirely once the pointer leaves the window
    Pointer devices only; touch/coarse pointers keep the native cursor.
+
+   Everything here listens for pointer events rather than mouse ones. A
+   sphere on the hero calls preventDefault() when it is picked up, and
+   that stops the browser sending the mouse events it would otherwise
+   synthesise — so a mark driven by mousemove freezes for as long as the
+   button is down, which is exactly when it is being watched.
    --------------------------------------------------------------- */
 
 (function () {
@@ -24,11 +30,12 @@
     '[data-href], [role="button"], .prow, .pg, .ball, .maker, .card,' +
     '.card-archive, .apply-btn, .chat-send, .nav-item[href], .gal.hoverable, .tip-circle';
 
-  let x = -100, y = -100, shown = false;
+  let shown = false;
 
   function move(e) {
-    x = e.clientX; y = e.clientY;
-    cur.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+    if (e.pointerType === 'touch') return;
+    cur.style.transform =
+      `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
     if (!shown) { shown = true; cur.classList.add('is-on'); }
     const el = e.target;
     const hot = el && el.closest && el.closest(CLICKABLE);
@@ -37,13 +44,20 @@
 
   function hide() { shown = false; cur.classList.remove('is-on'); }
 
-  document.addEventListener('mousemove', move, { passive: true });
-  document.addEventListener('mouseover', move, { passive: true });
-  document.addEventListener('mousedown', () => cur.classList.add('is-down'));
-  document.addEventListener('mouseup', () => cur.classList.remove('is-down'));
+  document.addEventListener('pointermove', move, { passive: true });
+  document.addEventListener('pointerover', move, { passive: true });
+  document.addEventListener('pointerdown', () => cur.classList.add('is-down'));
+  document.addEventListener('pointerup', () => cur.classList.remove('is-down'));
 
-  // leave the window -> disappear (don't linger stuck at the edge)
-  document.addEventListener('mouseleave', hide);
+  /* Leaving the window has to take the mark with it, or it sits stranded
+     wherever it was last seen. `mouseleave` on the document is not
+     dependable for this — the reading that is, is a pointerout carrying no
+     relatedTarget, which is the browser saying the pointer went to nothing
+     at all. The rest are the ways a window can lose the pointer without
+     ever being crossed on the way out. */
+  document.addEventListener('pointerout', (e) => { if (!e.relatedTarget) hide(); });
+  document.addEventListener('mouseout', (e) => { if (!e.relatedTarget) hide(); });
+  root.addEventListener('pointerleave', hide);
   window.addEventListener('blur', hide);
-  document.addEventListener('mouseenter', () => { shown = true; cur.classList.add('is-on'); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) hide(); });
 })();

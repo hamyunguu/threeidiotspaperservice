@@ -195,14 +195,18 @@ let held = 0;
 
 balls.forEach((b) => {
   b.el.addEventListener('pointerdown', (e) => {
+    if (b.drag) return;
     e.preventDefault();
-    b.el.setPointerCapture(e.pointerId);
+    /* the capture is worth asking for — it keeps the moves coming even over
+       an iframe — but it is not what the drag depends on, see below */
+    try { b.el.setPointerCapture(e.pointerId); } catch (_) { /* no capture, no matter */ }
     const p = toDesign(e.clientX, e.clientY);
 
     // freeze it and remember where inside the sphere it was picked up
     b.speed = 0;
     b.omega = 0;
     b.drag = {
+      id: e.pointerId,              // which pointer is holding this one
       offX: p.x - b.x,
       offY: p.y - b.y,
       downX: e.clientX,             // client px, for the tap-vs-drag test
@@ -218,60 +222,76 @@ balls.forEach((b) => {
     if (++held === 1) document.body.dataset.dragging = '1';
     ensureLoop();
   });
-
-  b.el.addEventListener('pointermove', (e) => {
-    if (!b.drag) return;
-    const p = toDesign(e.clientX, e.clientY);
-    const maxY = stageH();
-    b.x = clamp(p.x - b.drag.offX, BALL_R, STAGE_W - BALL_R);
-    b.y = clamp(p.y - b.drag.offY, BALL_R, maxY - BALL_R);
-
-    b.drag.travel += Math.hypot(e.clientX - b.drag.lastX, e.clientY - b.drag.lastY);
-    b.drag.lastX = e.clientX;
-    b.drag.lastY = e.clientY;
-
-    // keep a short trail so the release can be turned into a throw
-    b.drag.samples.push({ t: performance.now(), x: b.x, y: b.y });
-    if (b.drag.samples.length > 8) b.drag.samples.shift();
-  });
-
-  const release = (e) => {
-    if (!b.drag) return;
-    const drag = b.drag;
-    const now = performance.now();
-
-    // a quick press that barely moved is a tap, not a throw -> reveal a print tip
-    const isTap = drag.travel < 8 && (now - drag.downT) < 350;
-
-    b.drag = null;
-    b.el.classList.remove('is-held');
-    if (--held === 0) delete document.body.dataset.dragging;
-
-    if (isTap) { openTip(b); return; }
-
-    const recent = drag.samples.filter((s) => now - s.t < 120);
-    let vx = 0, vy = 0;
-    if (recent.length >= 2) {
-      const a = recent[0];
-      const z = recent[recent.length - 1];
-      const dt = (z.t - a.t) / 1000;
-      if (dt > 0.001) { vx = (z.x - a.x) / dt; vy = (z.y - a.y) / dt; }
-    }
-
-    const thrown = Math.hypot(vx, vy);
-    if (thrown > 20) {
-      b.heading = Math.atan2(vy, vx);
-      b.speed = Math.min(thrown, THROW_MAX);
-      b.spin = reduceMotion ? 0 : clamp(vx / 14, -260, 260);  // sidespin from the flick
-    }
-    // released without a flick: speed stays 0 and step() eases it back to cruise
-
-    ensureLoop();
-  };
-
-  b.el.addEventListener('pointerup', release);
-  b.el.addEventListener('pointercancel', release);
 });
+
+/* The moves are watched on the window rather than on each sphere.
+   setPointerCapture is supposed to keep sending them to the element that was
+   pressed, but browsers are uneven about honouring it for a mouse, and when
+   it does not hold the sphere stops dead under the pointer and only catches
+   up if you happen to drag back over it. Watching the window instead means
+   the sphere follows wherever the pointer goes, captured or not — a held
+   sphere is found by the pointer id it was picked up with. */
+
+const heldBy = (id) => balls.find((b) => b.drag && b.drag.id === id);
+
+window.addEventListener('pointermove', (e) => {
+  const b = heldBy(e.pointerId);
+  if (!b) return;
+  const p = toDesign(e.clientX, e.clientY);
+  const maxY = stageH();
+  b.x = clamp(p.x - b.drag.offX, BALL_R, STAGE_W - BALL_R);
+  b.y = clamp(p.y - b.drag.offY, BALL_R, maxY - BALL_R);
+
+  b.drag.travel += Math.hypot(e.clientX - b.drag.lastX, e.clientY - b.drag.lastY);
+  b.drag.lastX = e.clientX;
+  b.drag.lastY = e.clientY;
+
+  // keep a short trail so the release can be turned into a throw
+  b.drag.samples.push({ t: performance.now(), x: b.x, y: b.y });
+  if (b.drag.samples.length > 8) b.drag.samples.shift();
+
+  ensureLoop();
+}, { passive: true });
+
+function release(b) {
+  if (!b || !b.drag) return;
+  const drag = b.drag;
+  const now = performance.now();
+
+  // a quick press that barely moved is a tap, not a throw -> reveal a print tip
+  const isTap = drag.travel < 8 && (now - drag.downT) < 350;
+
+  b.drag = null;
+  b.el.classList.remove('is-held');
+  if (--held === 0) delete document.body.dataset.dragging;
+
+  if (isTap) { openTip(b); return; }
+
+  const recent = drag.samples.filter((s) => now - s.t < 120);
+  let vx = 0, vy = 0;
+  if (recent.length >= 2) {
+    const a = recent[0];
+    const z = recent[recent.length - 1];
+    const dt = (z.t - a.t) / 1000;
+    if (dt > 0.001) { vx = (z.x - a.x) / dt; vy = (z.y - a.y) / dt; }
+  }
+
+  const thrown = Math.hypot(vx, vy);
+  if (thrown > 20) {
+    b.heading = Math.atan2(vy, vx);
+    b.speed = Math.min(thrown, THROW_MAX);
+    b.spin = reduceMotion ? 0 : clamp(vx / 14, -260, 260);  // sidespin from the flick
+  }
+  // released without a flick: speed stays 0 and step() eases it back to cruise
+
+  ensureLoop();
+}
+
+window.addEventListener('pointerup', (e) => release(heldBy(e.pointerId)));
+window.addEventListener('pointercancel', (e) => release(heldBy(e.pointerId)));
+/* let go somewhere the page never hears about — another window, another app —
+   and the sphere would otherwise stay stuck to a pointer that is gone */
+window.addEventListener('blur', () => balls.forEach(release));
 
 /* ---------------- loop ---------------- */
 
@@ -337,7 +357,7 @@ document.querySelectorAll('.ball[data-letter]').forEach((el) => {
   el.style.setProperty('--gh', `${m.gh}px`);
   el.classList.toggle('is-dark', m.dark);
   const img = document.createElement('img');
-  img.src = `assets/${m.file}?v=56`;
+  img.src = `assets/${m.file}?v=57`;
   img.alt = '';
   el.appendChild(img);
 });
@@ -373,7 +393,7 @@ function openTip(b) {
   overlay.className = 'tip-overlay';
   overlay.innerHTML =
     `<div class="tip-circle${meta.dark ? ' is-dark' : ''}" style="--tip:${meta.color}; --gh:${meta.gh}px">
-       <img class="tip-letter" src="assets/${meta.file}?v=56" alt="">
+       <img class="tip-letter" src="assets/${meta.file}?v=57" alt="">
        <div class="tip-copy">
          <div class="tip-title"></div>
          <div class="tip-body"></div>
