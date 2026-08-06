@@ -24,7 +24,7 @@
    the window scrolls it.
    --------------------------------------------------------------- */
 
-const V = '?v=59';
+const V = '?v=60';
 
 /* ---------------- the session mark (476:719) ----------------
    Five 76px discs on a 284 box, with the two syllables laid over the

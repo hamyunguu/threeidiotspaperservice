@@ -326,28 +326,113 @@ balls.forEach(draw);
 if (balls.length) ensureLoop();
 
 /* ---------------- print-tip overlay ----------------
-   Tapping a sphere grows it into a big centred circle carrying a random
-   print tip. Tapping the circle rolls a new tip; tapping outside shrinks
-   it back to the sphere. Rendered in screen space (not the scaled stage)
-   so it centres on the real viewport. */
+   Tapping a sphere grows it into a big centred circle carrying a print tip,
+   a different one each time; tapping outside shrinks it back to the sphere.
+   Rendered in screen space (not the scaled stage) so it centres on the real
+   viewport. */
 
 /* Figma Tips-T / Tips-I / Tips-P / Tips-S (428:187, 428:275, 428:287, 428:292).
-   Each letter owns one tip and one process colour; `gh` is the glyph's own
-   height, which is what puts it in the circle at the size Figma drew it. */
+   The letter and the process colour belong to the sphere; the tip does not —
+   it is drawn from the pool below when the sphere is opened. `gh` is the
+   glyph's own height, which is what puts it in the circle at the size Figma
+   drew it. */
 const LETTERS = {
-  T: { file: 'glyph-t.svg', gh: 62, color: '#00a0ff', dark: false,
-       title: '이미지는 300dpi로 준비하기',
-       body: '웹에서 선명해 보이는 이미지도\n인쇄하면 흐릿해질 수 있습니다.\n실제 출력 크기를 기준으로 300dpi를\n권장하며, 작은 이미지를 억지로\n확대하면 화질이 개선되지\n않습니다.' },
-  i: { file: 'glyph-i.svg', gh: 64, color: '#ffff00', dark: false,
-       title: '재단선보다 3mm 더 채우기',
-       body: '배경 이미지나 색상은 완성 사이즈에서\n끝내지 말고, 사방으로 약 3mm씩 더\n연장해 주세요. 재단 시 생길 수 있는\n미세한 오차에도 흰 여백이\n드러나지 않습니다.' },
-  P: { file: 'glyph-p.svg', gh: 57.304, color: '#ec008c', dark: false,
-       title: '제본 방식에 맞춰 페이지를 설계하기',
-       body: '중철은 보통 전체 페이지가\n4의 배수여야 하며, 무선제본은\n페이지 수와 종이 두께에 따라 책등\n너비가 달라집니다.' },
-  S: { file: 'glyph-s.svg', gh: 60.496, color: '#000000', dark: true,
-       title: 'RGB보다 CMYK로 확인하기',
-       body: '모니터는 빛으로 색을 표현하고,\n인쇄물은 잉크로 색을 표현합니다.\n형광빛이나 선명한 파란색처럼 일부\nRGB 색상은 인쇄 시 탁해질 수 있으니\nCMYK 변환 후 색감을\n다시 확인하세요.' },
+  T: { file: 'glyph-t.svg', gh: 62, color: '#00a0ff', dark: false },
+  i: { file: 'glyph-i.svg', gh: 64, color: '#ffff00', dark: false },
+  P: { file: 'glyph-p.svg', gh: 57.304, color: '#ec008c', dark: false },
+  S: { file: 'glyph-s.svg', gh: 60.496, color: '#000000', dark: true },
 };
+
+/* ---------------- the tips ----------------
+   Twenty of them, and the sphere hands over a different one each time. The
+   body breaks where it is written to: the copy block is 317 wide at 20px, so
+   every line here is set to land inside that and inside the circle's curve —
+   at most six lines, or the last one falls off the bottom of the round.
+   Check any edit against that width rather than trusting the look of it. */
+
+const TIPS = [
+  { title: '큰 검정은 리치블랙으로',
+    body: '넓은 면을 K100 하나로만 채우면\n잉크가 얇게 깔려 얼룩이 보입니다.\nC40 M30 Y30 K100처럼 밑색을\n받쳐 주면 깊은 검정이 됩니다.' },
+
+  { title: '작은 글씨는 반대로 K100',
+    body: '검정 글씨를 네 도로 만들면\n인쇄기 핀이 조금만 어긋나도\n글자 가장자리에 색 테두리가\n생깁니다. 작은 글씨일수록\n먹 한 도로만 쓰세요.' },
+
+  { title: '잉크는 300%를 넘기지 않기',
+    body: 'CMYK 네 값을 더한 수가 300을\n넘으면 잉크가 마르지 못해\n뒷장에 묻습니다. 어두운 사진은\n인쇄용 프로파일로 변환해\n총량을 눌러 두세요.' },
+
+  { title: '중철은 안쪽이 밀려납니다',
+    body: '접어서 겹칠수록 안쪽 장이\n바깥으로 밀려 나가고, 재단하면\n그만큼 여백이 좁아집니다.\n두꺼운 중철일수록 바깥 여백을\n넉넉히 잡으세요.' },
+
+  { title: '무선제본은 안쪽 여백을 더',
+    body: '책등에 풀로 붙는 제본은\n펼쳐도 안쪽이 끝까지 열리지\n않습니다. 안쪽 여백을 바깥보다\n5mm 안팎 넓게 두어야 글이\n말려 들어가지 않습니다.' },
+
+  { title: '종이에는 결이 있습니다',
+    body: '책은 종이 결이 책등과 나란해야\n잘 펼쳐지고 오래 갑니다.\n결을 가로질러 묶으면 페이지가\n뻣뻣해지고 접힌 자리가\n갈라지기 쉽습니다.' },
+
+  { title: '코팅하면 색이 달라집니다',
+    body: '유광은 색을 진하고 선명하게,\n무광은 한 톤 가라앉게 만듭니다.\n같은 파일이라도 코팅에 따라\n인상이 바뀌니 샘플을 먼저\n보고 정하세요.' },
+
+  { title: '0.25pt 아래 선은 사라집니다',
+    body: '화면에서는 보이던 가는 선이\n인쇄에서는 끊기거나 아예\n찍히지 않습니다. 선은 0.3pt\n이상으로 두고, 흰 선이라면\n더 굵게 잡으세요.' },
+
+  { title: '그라데이션에는 띠가 집니다',
+    body: '부드럽게 변하는 면도 인쇄에서는\n계단처럼 끊겨 보일 때가 있습니다.\n아주 옅은 노이즈를 얹으면\n경계가 흩어져 눈에 덜 띕니다.' },
+
+  { title: '흰색에 오버프린트는 금물',
+    body: '흰색 개체에 오버프린트가 걸리면\n인쇄에서 그대로 사라집니다.\n화면에는 멀쩡히 보이기 때문에\n넘기기 전에 오버프린트\n미리보기로 확인하세요.' },
+
+  { title: '종이색이 잉크색을 바꿉니다',
+    body: '미색이나 크라프트지에 찍으면\n같은 값도 노랗게 돌아갑니다.\n흰 종이에서 맞춘 색은 색지 위에서\n다른 색이 되니 종이를\n먼저 정하세요.' },
+
+  { title: '재단은 1mm쯤 어긋납니다',
+    body: '테두리를 가늘게 두른 디자인은\n한쪽만 두꺼워 보이기 쉽습니다.\n가장자리와 나란한 요소는\n재단선에서 5mm쯤 떨어뜨리면\n오차가 눈에 띄지 않습니다.' },
+
+  { title: '접히는 자리의 글자는 갈라집니다',
+    body: '두꺼운 종이일수록 접은 선에서\n잉크가 터집니다. 접히는 자리에\n글자나 얇은 선을 두지 말고,\n미리 눌러 주는 오시 가공을\n넣으세요.' },
+
+  { title: '3단 접지는 안쪽 면을 좁게',
+    body: '세 번 접어 겹치는 면은 다른 면과\n같은 폭이면 접히지 않습니다.\n안으로 들어가는 면을 2mm 안팎\n좁게 잡아야 깔끔하게 접힙니다.' },
+
+  { title: '박은 얇은 획에서 뭉갭니다',
+    body: '금박이나 은박은 열과 압력으로\n눌러 붙이는 가공이라, 가는 획과\n좁은 사이는 메워지거나 끊깁니다.\n박으로 갈 요소는 굵고\n단순하게 그리세요.' },
+
+  { title: '형광과 금은은 CMYK 밖입니다',
+    body: '네 가지 잉크를 섞어도 나오지 않는\n색이 있습니다. 형광, 금, 은은\n별색 잉크를 따로 써야 하며,\n화면에서 아무리 맞춰도\n인쇄에서는 탁해집니다.' },
+
+  { title: '얇은 종이는 뒷면이 비칩니다',
+    body: '양면 인쇄에서 뒷장의 어두운 면이\n앞으로 비쳐 올라옵니다. 평량만\n보지 말고 불투명도를 함께 보고,\n한쪽이 진하다면 조금 두꺼운\n종이를 쓰세요.' },
+
+  { title: '폰트는 넘기기 전에 윤곽선으로',
+    body: '인쇄소에 그 서체가 없으면\n제멋대로 다른 글꼴로 바뀝니다.\n글자를 윤곽선으로 변환하거나\n서체를 포함해 저장하면\n모양이 그대로 갑니다.' },
+
+  { title: '300dpi는 출력 크기 기준',
+    body: '파일에 적힌 해상도가 아니라,\n실제로 인쇄될 크기에서 300dpi가\n나와야 합니다. 작은 이미지를\n키우면 숫자만 올라갈 뿐\n선명해지지 않습니다.' },
+
+  { title: '배경은 재단선 밖으로 3mm',
+    body: '배경을 완성 크기에 딱 맞추면\n재단이 조금만 어긋나도 흰 선이\n드러납니다. 사방으로 3mm씩\n더 늘려 두면 어디를 잘라도\n배경이 이어집니다.' },
+];
+
+/* Drawn from a bag rather than rolled fresh each time: twenty independent
+   picks repeat themselves often enough to look broken, and the same tip twice
+   running reads as if the sphere did not hear the tap. The bag hands out all
+   twenty before refilling, and a refill never puts the last one back on top. */
+let tipBag = [];
+let tipLast = -1;
+
+function nextTip() {
+  if (!tipBag.length) {
+    tipBag = TIPS.map((_, i) => i);
+    for (let i = tipBag.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [tipBag[i], tipBag[j]] = [tipBag[j], tipBag[i]];
+    }
+    if (tipBag[tipBag.length - 1] === tipLast && tipBag.length > 1) {
+      [tipBag[0], tipBag[tipBag.length - 1]] = [tipBag[tipBag.length - 1], tipBag[0]];
+    }
+  }
+  tipLast = tipBag.pop();
+  return TIPS[tipLast];
+}
 
 /* dress each sphere in its letter once, at load */
 document.querySelectorAll('.ball[data-letter]').forEach((el) => {
@@ -357,7 +442,7 @@ document.querySelectorAll('.ball[data-letter]').forEach((el) => {
   el.style.setProperty('--gh', `${m.gh}px`);
   el.classList.toggle('is-dark', m.dark);
   const img = document.createElement('img');
-  img.src = `assets/${m.file}?v=59`;
+  img.src = `assets/${m.file}?v=60`;
   img.alt = '';
   el.appendChild(img);
 });
@@ -369,8 +454,8 @@ function metaFor(ballEl) {
 let tipEl = null;        // the overlay currently open
 let tipBall = null;      // the sphere it grew from
 
-function fillTip(circle, meta) {
-  const { title, body } = meta;
+function fillTip(circle, tip) {
+  const { title, body } = tip;
   const t = circle.querySelector('.tip-title');
   const b = circle.querySelector('.tip-body');
   // brief fade so a re-roll reads as a change
@@ -393,7 +478,7 @@ function openTip(b) {
   overlay.className = 'tip-overlay';
   overlay.innerHTML =
     `<div class="tip-circle${meta.dark ? ' is-dark' : ''}" style="--tip:${meta.color}; --gh:${meta.gh}px">
-       <img class="tip-letter" src="assets/${meta.file}?v=59" alt="">
+       <img class="tip-letter" src="assets/${meta.file}?v=60" alt="">
        <div class="tip-copy">
          <div class="tip-title"></div>
          <div class="tip-body"></div>
@@ -403,7 +488,7 @@ function openTip(b) {
   tipEl = overlay;
 
   const circle = overlay.querySelector('.tip-circle');
-  fillTip(circle, meta);
+  fillTip(circle, nextTip());
   /* the circle is drawn at its real 385, so shrink the whole thing rather than
      any of its parts when the window cannot hold it */
   const room = Math.min(window.innerWidth, window.innerHeight) * 0.86;
