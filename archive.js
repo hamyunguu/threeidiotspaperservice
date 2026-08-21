@@ -23,7 +23,7 @@
    the window scrolls it.
    --------------------------------------------------------------- */
 
-const V = '?v=61';
+const V = '?v=62';
 
 /* ---------------- the session mark (476:719) ----------------
    Five 76px discs on a 284 box, with the two syllables laid over the
@@ -81,7 +81,7 @@ const SESSIONS = {
     ctaTop: '305px',
     copy: [
       '꿰기 세션은 바늘과 실이라는 익숙한 제본<br>방식에서 출발해, 꿸 수 있는 모든 재료와<br>방법을 탐색하는 프로그램입니다. 종이에<br>구멍을 내고 실을 통과 시키는 것부터, 천과<br>플라스틱, 철사와 케이블처럼 제본과는 멀어<br>보이는 재료까지 자유롭게 연결해 봅니다.',
-      '재료의 한계도, 방식의 제약도, 정해진 결과도<br>없습니다.<br><span class="is-note">꿰고 연결하며 발견하는 가능성만 있습니다.</span>',
+      '재료의 한계도, 방식의 제약도, 정해진 결과도<br>없습니다. <span class="is-note">꿰고 연결하며 발견하는 가능성만<br>있습니다.</span>',
     ],
     grid: { x: 115, y: 545, cols: [408, 408, 408, 408], gaps: [20, 20, 20, 20] },
     count: 23,
@@ -94,8 +94,8 @@ const SESSIONS = {
     mark: ['묶', '기'],
     ctaTop: '305px',
     copy: [
-      '묶기 세션은 흩어진 재료들을 기상천외한<br>방식으로 한데 모으며, 묶는 행위가 어떻게<br>하나의 제본이 될 수 있는지 경험하는<br>프로그램 입니다.',
-      '끈을 감고 매듭을 만들거나, 고무줄과 테이프,<br>밴드와 철사 등 손에 잡히는 다양한 재료를<br>이용해 새로운 책의 구조를 만들어 봅니다.',
+      '묶기 세션은 서로 다른 종이와 재료를<br>다양한 방식으로 묶어 하나의 형태로 만드는<br>프로그램입니다. 끈을 감거나 매듭을 짓고,<br>고무줄이나 밴드처럼 주변에서 쉽게 접할 수<br>있는 재료를 활용해 여러 가지 제본 구조를<br>만들어 봅니다.',
+      '어떤 형태로 완성할지는 모두 열려 있습니다.<br><span class="is-note">서로 다른 재료를 하나의 구조로 묶어보며<br>제본의 범위를 넓혀갑니다.</span>',
     ],
     /* Figma gives this one's first column a 10 gutter and the rest 20 */
     grid: { x: 115, y: 545, cols: [440, 440, 440, 310], gaps: [10, 20, 20, 20] },
@@ -108,8 +108,10 @@ const SESSIONS = {
     mark: ['풀', '기'],
     /* the only session whose button sits up on the copy's own line */
     ctaTop: '271px',
+    copyWidth2: '460px',
     copy: [
-      '풀기는 이미 만들어진 책과 제본의 구조를<br>거꾸로 따라가는 세션입니다. 실을 빼고,<br>매듭을 풀고, 접힌 면을 펼치며 하나의 책이<br>어떤 순서와 방식으로 만들어졌는지<br>발견합니다.',
+      '풀기 세션은 책장을 펼쳐 넘겨보는 익숙한<br>방식에서 벗어나, 풀어가는 과정을 통해<br>내용을 읽는 새로운 책의 형태를 탐색하는<br>프로그램입니다. 손의 움직임에 따라<br>내용과 구조가 드러나는 책을 만들어 봅니다.',
+      '<span class="is-note">풀고 펼치는 움직임 자체가 새로운 책의<br>형태이자 읽기의 방식이 됩니다.</span>',
     ],
     grid: { x: 115, y: 545, cols: [408, 408, 408, 408], gaps: [20, 20, 20, 20] },
     count: 20,
@@ -137,6 +139,7 @@ blob.innerHTML =
 
 document.getElementById('arcCopy').innerHTML =
   s.copy.map((c) => `<div>${c}</div>`).join('');
+document.getElementById('arcCopy').style.setProperty('--copy-col-2', s.copyWidth2 || '463px');
 
 const cta = document.getElementById('arcCta');
 cta.style.setProperty('--cta-top', s.ctaTop);

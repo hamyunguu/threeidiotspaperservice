@@ -2,9 +2,9 @@
    The header, shared by every page (Figma 393:531 closed · 453:1075 open ·
    393:341 search · 428:114 the per-page variants).
 
-   One behaviour everywhere: the wordmark letter turns T → i → P → S, and
-   putting the pointer on the header itself opens it — the letter grows
-   into the full mark and the menu unfolds.
+   On the hero, the wordmark letter turns T → i → P → S. Sub-pages keep the
+   Figma header's fixed T. Putting the pointer on the header itself opens it —
+   the letter grows into the full mark and the menu unfolds.
 
    The difference off the hero is that the page you are on is already
    named beside MENU while the header is shut (428:121 "Program"), and
@@ -83,7 +83,7 @@ let glyphFront = 0;               // which of the two layers is showing
 
 function dress(img, i) {
   const g = GLYPHS[i];
-  img.src = `assets/${g.file}?v=61`;
+  img.src = `assets/${g.file}?v=62`;
   img.style.height = `${(g.h * GLYPH_SCALE).toFixed(2)}px`;
 }
 
@@ -101,7 +101,8 @@ function turnLetter() {
 if (letters.length === 2) {
   dress(letters[0], 0);
   letters[0].classList.add('is-on');
-  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (!document.body.classList.contains('page-sub') &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     setInterval(turnLetter, LETTER_MS);
   }
 }

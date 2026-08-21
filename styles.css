@@ -747,9 +747,8 @@ body.page-sub .hd-nav a.is-current { display: block; }
   position: absolute; left: 965px; top: calc(126px + var(--shift)); width: 463px; z-index: 3;
   font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 20px; line-height: 1.4;
   letter-spacing: -0.5px; color: #000;
-  transition: top .32s cubic-bezier(.4, 0, .2, 1), font-size .32s cubic-bezier(.4, 0, .2, 1);
+  transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
-.is-head-open .hero-ko { font-size: 24px; letter-spacing: 0; }
 /* the English block sits 62px lower when the header is open, not 65 (Figma) */
 .hero-en {
   position: absolute; left: 965px; top: 387px; width: 447px; z-index: 3;
@@ -1131,7 +1130,7 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
   transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 .arc-copy > div:nth-child(1) { width: 460px; }
-.arc-copy > div:nth-child(2) { width: 463px; }
+.arc-copy > div:nth-child(2) { width: var(--copy-col-2, 463px); }
 /* the closing line of the second column is called out with a dotted rule */
 .arc-copy .is-note { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 4px; }
 
