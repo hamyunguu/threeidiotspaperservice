@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+KR:wght@300;400;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=63" />
+<link rel="stylesheet" href="styles.css?v=64" />
 
 <!-- The sheet preview is a live 3D model. order.js only pulls three.js in
      once, on this page; the import map is what lets its add-ons resolve the
@@ -30,7 +30,7 @@
 
     <!-- ===== header — the hero's, with this page already named (Figma 428:114) ===== -->
     <span class="hd-t" id="hdLetter" aria-label="TiPS"><img alt="" /><img alt="" /></span>
-    <img class="hd-mark" src="assets/fig-logo-mark.svg?v=63" alt="TiPS" data-href="index.html" />
+    <img class="hd-mark" src="assets/fig-logo-mark.svg?v=64" alt="TiPS" data-href="index.html" />
 
     <div class="hd-menu" id="hdMenu">
       <span class="hd-menu-label">MENU</span>
@@ -50,28 +50,48 @@
       <input class="hd-input" id="hdInput" type="text" autocomplete="off" placeholder="무엇을 찾고 계신가요?" />
       <span class="hd-underline" aria-hidden="true"></span>
       <button type="button" class="hd-close" id="hdClose" aria-label="검색 닫기">
-        <img src="assets/fig-search-icon.svg?v=63" alt="" />
+        <img src="assets/fig-search-icon.svg?v=64" alt="" />
       </button>
     </div>
 
     <div class="h-rule" aria-hidden="true"></div>
 
-    <!-- ===== product tabs — one order flow each ===== -->
-    <nav class="ord-tabs" id="ordTabs">
-      <button type="button" class="ord-tab is-on" data-mode="poster">Poster</button>
-      <button type="button" class="ord-tab" data-mode="book">Book</button>
-      <button type="button" class="ord-tab" data-mode="leaflet">Leaflet</button>
-      <button type="button" class="ord-tab" data-mode="print">Print</button>
-    </nav>
-
-    <!-- the dashed rule splits the order form from the preview -->
+    <!-- the vertical rule splits the two independent left panes from preview -->
     <div class="ord-split" aria-hidden="true"></div>
 
-    <!-- ===== left: order form — order.js renders it from the mode schema ===== -->
-    <form class="ord-form" id="ordForm" autocomplete="off"></form>
+    <!-- ===== left-top: common information; only its right-hand form scrolls ===== -->
+    <section class="ord-common-pane" id="ordCommonPane">
+      <aside class="ord-product-side">
+        <nav class="ord-tabs" id="ordTabs" aria-label="제품 종류">
+          <button type="button" class="ord-tab is-on" data-mode="poster">
+            <i aria-hidden="true"></i><span>포스터<small>Poster</small></span>
+          </button>
+          <button type="button" class="ord-tab" data-mode="book">
+            <i aria-hidden="true"></i><span>책<small>Book</small></span>
+          </button>
+          <button type="button" class="ord-tab" data-mode="product">
+            <i aria-hidden="true"></i><span>제품<small>Products</small></span>
+          </button>
+        </nav>
+        <div class="ord-product-kinds" id="ordProductKinds" aria-label="제품 세부 종류">
+          <button type="button" data-kind="소책자">소책자</button>
+          <button type="button" data-kind="리플렛">리플렛</button>
+          <button type="button" class="is-on" data-kind="명함">명함</button>
+        </div>
+        <p class="ord-service-note">서비스 정보를 작성한 후<br>문의하시면 확인되는 대로<br>견적, 일정을 이메일<br>답장으로 보내드리고<br>있습니다. 인쇄를 맡기기<br>전에 확인 사항 및 가이드 등<br>웹사이트의 모든 항목을 꼭<br>읽어주시기 바랍니다.</p>
+      </aside>
+      <div class="ord-common-scroll" id="ordCommon" tabindex="0"></div>
+    </section>
+
+    <!-- ===== left-bottom: detailed information; independently scrollable ===== -->
+    <section class="ord-detail-pane" id="ordDetailPane" tabindex="-1">
+      <div class="ord-detail-title" id="ordDetailTitle"></div>
+      <form class="ord-form" id="ordForm" autocomplete="off"></form>
+    </section>
 
     <!-- ===== right: live 3D preview ===== -->
     <div class="ord-preview" id="ordPreview">
+      <p class="ord-preview-summary" id="ordPreviewSummary">“업로드 파일 이름”, 설정 크기, 단면/양면, 인쇄 기본 정보 등</p>
       <div class="ord-stage" id="ordStage">
         <p class="ord-stage-note" id="ordStageNote">3D 미리보기를 불러오는 중…</p>
       </div>
@@ -83,9 +103,9 @@
   </div>
 </div>
 
-<script src="header.js?v=63"></script>
-<script src="script.js?v=63"></script>
-<script type="module" src="order.js?v=63"></script>
-<script src="cursor.js?v=63"></script>
+<script src="header.js?v=64"></script>
+<script src="script.js?v=64"></script>
+<script type="module" src="order.js?v=64"></script>
+<script src="cursor.js?v=64"></script>
 </body>
 </html>

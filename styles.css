@@ -1720,3 +1720,209 @@ body.cart { --stage-h: 1080; background: #fff; }
 /* the first note is one line in Figma and the second wraps at 662 — the two
    sit 25 apart, so letting the first one wrap would run it into the second */
 .ct-note.is-one { width: auto; white-space: nowrap; }
+
+/* ===============================================================
+   SERVICE V2 — Figma 663:815 / 684:1965 / 684:2358 / 684:3808
+   Two independently scrolling left panes and a fixed live preview.
+   =============================================================== */
+
+body.order { --ord-ink: #ffff00; overflow: hidden; }
+body.order .h-rule { left: 20px; width: 1880px; }
+
+.ord-split {
+  left: 960px; top: calc(57px + var(--shift)); width: 1px;
+  height: calc(1023px - var(--shift)); border: 0; background: #000;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1), height .32s cubic-bezier(.4, 0, .2, 1);
+}
+
+.ord-common-pane,
+.ord-detail-pane {
+  position: absolute; left: 20px; width: 940px; overflow: hidden;
+  box-sizing: border-box; border-bottom: 1px solid #000;
+  font-family: 'Noto Sans KR', sans-serif; color: #000;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1), height .32s cubic-bezier(.4, 0, .2, 1), background .2s ease;
+}
+.ord-common-pane { top: calc(58px + var(--shift)); height: 501px; z-index: 4; background: #fff; }
+.ord-detail-pane { top: calc(559px + var(--shift)); height: calc(501px - var(--shift)); z-index: 4; background: #fff; }
+.ord-detail-pane.is-active { background: var(--ord-ink); }
+
+.ord-product-side,
+.ord-detail-title {
+  position: absolute; left: 0; top: 0; width: 213px; height: 100%;
+  box-sizing: border-box; border-right: 1px solid #000; background: inherit; z-index: 2;
+}
+.ord-tabs {
+  position: absolute; left: 0; top: 37px; display: flex; flex-direction: column;
+  gap: 20px; z-index: auto; transition: none;
+}
+.ord-tab {
+  position: relative; display: flex; align-items: flex-start; gap: 14px;
+  width: 138px; border: 0; padding: 0; background: transparent;
+  color: #000; text-align: left; font-family: 'Noto Sans KR', sans-serif;
+  font-size: 18px; line-height: 1.1; text-decoration: none;
+}
+.ord-tab i {
+  position: relative; flex: none; width: 18px; height: 18px; box-sizing: border-box;
+  border: 1px solid #000; border-radius: 50%; background: #fff;
+}
+.ord-tab.is-on { color: #000; text-decoration: none; }
+.ord-tab.is-on i { background: var(--ord-ink); }
+.ord-tab.is-on i::before,
+.ord-tab.is-on i::after {
+  content: ''; position: absolute; left: 8px; top: -3px; width: 1px; height: 22px; background: #000;
+}
+.ord-tab.is-on i::before { transform: rotate(45deg); }
+.ord-tab.is-on i::after { transform: rotate(-45deg); }
+.ord-tab small { display: block; margin-top: 3px; font: 13px/1.1 'IBM Plex Mono', monospace; }
+
+.ord-product-kinds {
+  display: none; position: absolute; left: 32px; top: 206px; width: 105px;
+  flex-direction: column; align-items: flex-start; gap: 9px;
+}
+.ord-common-pane[data-mode="product"] .ord-product-kinds { display: flex; }
+.ord-product-kinds button {
+  border: 0; padding: 0 0 2px; background: transparent; font: 15px/1.2 'Noto Sans KR', sans-serif; cursor: pointer;
+}
+.ord-product-kinds button.is-on { border-bottom: 1px solid #000; }
+.ord-service-note {
+  position: absolute; left: 0; bottom: 19px; margin: 0;
+  font-size: 12px; line-height: 1.55; letter-spacing: -.3px;
+}
+
+.ord-common-scroll {
+  position: absolute; left: 213px; top: 0; width: 727px; height: 100%;
+  box-sizing: border-box; padding: 32px 35px 31px 0; overflow-y: auto; overscroll-behavior: contain;
+  z-index: 3;
+  scrollbar-width: thin; scrollbar-color: #000 transparent;
+}
+.ord-common-scroll::-webkit-scrollbar,
+.ord-form::-webkit-scrollbar { width: 5px; }
+.ord-common-scroll::-webkit-scrollbar-thumb,
+.ord-form::-webkit-scrollbar-thumb { background: #000; }
+.ord-common-step { width: 652px; margin: 0 0 51px; }
+.ord-common-step:last-child { margin-bottom: 0; }
+.ord-common-head {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 14px;
+  font-size: 18px; font-weight: 400; line-height: 1;
+  transform: translateX(-23px);
+}
+.ord-common-head > span {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 18px; height: 18px; box-sizing: border-box; border: 1px solid #000;
+  border-radius: 50%; font: 11px/1 'IBM Plex Mono', monospace;
+}
+.ord-common-head.is-complete > span { background: #000; color: #fff; }
+.ord-common-help { margin: -3px 0 18px; font-size: 12px; font-weight: 300; }
+
+.ord-common-uploads { display: flex; flex-direction: column; gap: 32px; margin-left: 0; }
+.ord-common-upload {
+  position: relative; display: flex; align-items: center; justify-content: space-between;
+  width: 624px; min-height: 40px; box-sizing: border-box; border: 1px dashed #000;
+  padding: 8px 11px; font-size: 16px; cursor: pointer;
+  transition: background .18s, color .18s;
+}
+.ord-common-upload:hover { background: var(--ord-ink); }
+.ord-common-upload.is-complete { background: #000; color: #fff; }
+.ord-common-upload b { font-size: 14px; font-weight: 400; }
+.ord-common-upload span { max-width: 470px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ord-common-upload input { display: none; }
+
+.ord-format-groups { display: flex; align-items: flex-start; gap: 75px; margin-left: 0; }
+.ord-format-set { margin: 0; }
+.ord-format-set > p {
+  display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 8px;
+  font-size: 13px; line-height: 1;
+}
+.ord-format-set > p b { margin-left: 16px; font: 10px/1 'IBM Plex Mono', monospace; font-weight: 400; }
+.ord-format-board { position: relative; }
+.ord-format-set.is-a .ord-format-board { width: 156px; height: 224px; }
+.ord-format-set.is-b .ord-format-board { width: 176px; height: 251px; }
+.ord-format {
+  position: absolute; box-sizing: border-box; border: 1px solid #000; background: #fff;
+  padding: 0; cursor: pointer; color: #000; transition: background .12s ease;
+}
+.ord-format span {
+  position: absolute; left: 8px; top: 7px; z-index: 1;
+  font: 12px/1 'IBM Plex Mono', monospace; pointer-events: none;
+}
+.ord-format:hover,
+.ord-format.is-on { background: var(--ord-ink); }
+.ord-format.is-a1 { inset: 0; }
+.ord-format.is-a2 { left: 0; top: 112px; width: 156px; height: 112px; z-index: 2; }
+.ord-format.is-a3 { left: 0; top: 112px; width: 78px; height: 112px; z-index: 3; }
+.ord-format.is-a4 { left: 0; top: 168px; width: 78px; height: 56px; z-index: 4; }
+.ord-format.is-a2 span { left: 86px; }
+.ord-format.is-b1 { inset: 0; }
+.ord-format.is-b2 { left: 0; top: 126px; width: 176px; height: 125px; z-index: 2; }
+.ord-format.is-b3 { left: 0; top: 126px; width: 88px; height: 125px; z-index: 3; }
+.ord-format.is-b4 { left: 0; top: 189px; width: 88px; height: 62px; z-index: 4; }
+.ord-format.is-b2 span { left: 96px; }
+.ord-format-set.is-custom { width: 148px; }
+.ord-format.is-custom {
+  position: relative; width: 148px; height: 148px; border-style: dashed;
+}
+.ord-custom-size { display: none; align-items: center; gap: 7px; margin: 13px 0 0 482px; font-size: 12px; }
+.ord-custom-size.is-on { display: flex; }
+.ord-custom-size input { width: 55px; height: 25px; box-sizing: border-box; border: 1px solid #000; font: 12px 'IBM Plex Mono', monospace; }
+
+.ord-common-row { display: grid; grid-template-columns: 101px 1fr; align-items: center; min-height: 40px; margin: 0 0 32px; font-size: 18px; }
+.ord-common-field {
+  width: 523px; height: 40px; box-sizing: border-box; border: 1px dashed #000;
+  padding: 0 12px; background: #fff; color: #000; font: 16px 'Noto Sans KR', sans-serif;
+}
+.ord-common-field.is-complete { background: #000; color: #fff; }
+.ord-qty { position: relative; width: 523px; }
+.ord-qty input { width: 100%; padding-right: 35px; }
+.ord-qty i { position: absolute; right: 12px; top: 10px; font-style: normal; }
+.ord-common-seg { display: flex; width: 523px; height: 40px; }
+.ord-common-seg button { flex: 1; border: 1px dashed #000; background: #fff; font: 16px 'Noto Sans KR', sans-serif; cursor: pointer; }
+.ord-common-seg button + button { border-left: 0; }
+.ord-common-seg button.is-on { background: #000; color: #fff; }
+.ord-next {
+  width: 624px; height: 40px; margin: 8px 0 0; border: 1px dashed #000;
+  background: #000; color: #fff; text-align: left; padding-left: 11px; font: 16px 'Noto Sans KR', sans-serif; cursor: pointer;
+}
+
+.ord-detail-title { padding: 20px 0; }
+.ord-detail-title strong { display: block; font-size: 26px; line-height: 1.05; font-weight: 600; }
+.ord-detail-title span { display: block; margin-top: 4px; font-size: 15px; }
+.ord-form {
+  position: absolute; left: 213px; top: 0; width: 727px; height: 100%;
+  box-sizing: border-box; padding: 32px 35px 45px 0; overflow-y: auto; overscroll-behavior: contain;
+  z-index: 3; transition: none; background: transparent;
+}
+.ord-detail-step { width: 652px; margin: 0 0 42px; }
+.ord-detail-step .ord-common-head { margin-bottom: 14px; }
+.ord-detail-options { display: grid; margin-left: 0; }
+.ord-detail-options.is-small { grid-template-columns: repeat(2, 155px); gap: 34px; }
+.ord-detail-options.is-colors { grid-template-columns: repeat(3, 155px); gap: 12px 34px; }
+.ord-detail-choice {
+  width: 155px; height: 30px; box-sizing: border-box; border: 1px solid #000 !important;
+  padding: 0; background: #fff; color: #000; font: 12px 'Noto Sans KR', sans-serif;
+}
+.ord-detail-choice + .ord-detail-choice { border-left: 1px solid #000; }
+.ord-detail-choice:hover { background: rgba(255,255,255,.6); }
+.ord-detail-choice.is-on { background: #000; color: #fff; }
+.ord-detail-select {
+  display: block; width: 533px; height: 40px; margin-left: 0; box-sizing: border-box;
+  border: 1px dashed #000; border-radius: 0; padding: 0 12px; background: #fff;
+  color: #000; font: 16px 'Noto Sans KR', sans-serif;
+}
+.ord-detail-select.is-complete { background: #000; color: #fff; }
+.ord-detail-step.is-submit { margin-left: 0; width: 624px; }
+.ord-detail-step.is-submit > label { display: block; margin-bottom: 9px; font-size: 13px; }
+.ord-detail-step.is-submit textarea { width: 100%; height: 80px; box-sizing: border-box; border: 1px solid #000; padding: 10px; resize: none; }
+.ord-detail-step.is-submit .ord-submit { height: 52px; margin-top: 10px; font-family: 'Noto Sans KR', sans-serif; }
+
+.ord-preview {
+  left: 980px; top: calc(78px + var(--shift)); width: 872px; height: calc(982px - var(--shift));
+  transition: top .32s cubic-bezier(.4, 0, .2, 1), height .32s cubic-bezier(.4, 0, .2, 1);
+}
+.ord-preview-summary {
+  position: absolute; left: 68px; top: 0; z-index: 5; margin: 0;
+  font: 13px/1.45 'Noto Sans KR', sans-serif;
+}
+.ord-stage { inset: 34px 0 90px; }
+.ord-drop-hint { bottom: 44px; font-size: 12px; }
+.ord-dim { bottom: 12px; font-size: 12px; }
+.ord-view-reset { bottom: 8px; }

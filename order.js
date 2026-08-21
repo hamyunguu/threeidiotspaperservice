@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------
-   Service (order) page — Poster / Book / Leaflet / Print.
+   Service (order) page — Poster / Book / Products.
 
-   The four order flows are carried over from the earlier standalone
+   The order schemas are carried over from the earlier standalone
    order page: same step order (규격 → 기본정보 → 제본 → 파트 → 주문메모 →
    견적), same select options and placeholder wording, same field keys
    (goods_size, in_paper_group, in_lastJob4 …), same estimate model. Only
@@ -54,7 +54,7 @@ const LAST_COAT_COVER = { key: 'lastJob4', ph: '::: 코팅선택 :::',
 const MODES = {
   poster: {
     label: 'Poster', goods: '포스터', code: 'S0083',
-    uploads: [{ slot: 'front', label: '앞면 (인쇄면)' }, { slot: 'back', label: '뒷면' }],
+    uploads: [{ slot: 'front', label: '작업 파일' }],
     steps: [
       { t: 'size', label: '규격 사이즈 선택', key: 'goods_size', value: 'A2(594*420)',
         note: '오전 11시~오후 5시 주문은 익일 오전 10시 출고, 오후 5시~익일 오전 11시 ' +
@@ -190,6 +190,29 @@ const MODES = {
   },
 };
 
+/* The redesigned service has three top-level products. Products keeps the
+   existing name-card calculation as its base and exposes booklet/leaflet/
+   card as a nested choice, exactly like the Figma Products state. */
+MODES.product = {
+  ...MODES.print,
+  label: 'Products',
+  goods: '제품',
+  uploads: [{ slot: 'front', label: '작업 파일' }],
+};
+
+const SERVICE_MODES = {
+  poster: { ko: '포스터', en: 'Poster', ink: '#ffff00' },
+  book: { ko: '책', en: 'Book', ink: '#ec008c' },
+  product: { ko: '제품', en: 'Products', ink: '#00a0ff' },
+};
+
+const SERVICE_FORMATS = [
+  { name: 'A1', w: 594, h: 841 }, { name: 'A2', w: 420, h: 594 },
+  { name: 'A3', w: 297, h: 420 }, { name: 'A4', w: 210, h: 297 },
+  { name: 'B1', w: 728, h: 1030 }, { name: 'B2', w: 515, h: 728 },
+  { name: 'B3', w: 364, h: 515 }, { name: 'B4', w: 257, h: 364 },
+];
+
 /* 제본 방식 — 사철은 실로 대장을 꿰는 방식이라 링·중철과 함께 늘 걸려 있어야 한다 */
 const BINDINGS = ['무선제본', '사철제본', '중철제본_세로형', 'PUR 제본', '링(스프링)제본', '제본 없음'];
 
@@ -212,10 +235,17 @@ const state = {
   opts: {},      // current form values, keyed by the original form names
   images: {},    // slot -> decoded artwork the model textures itself from
   files: {},     // slot -> { label, busy } for the upload row
+  pickedSize: '',
+  detailActive: false,
 };
 
 const form = document.getElementById('ordForm');
 const tabs = document.getElementById('ordTabs');
+const common = document.getElementById('ordCommon');
+const commonPane = document.getElementById('ordCommonPane');
+const detailPane = document.getElementById('ordDetailPane');
+const detailTitle = document.getElementById('ordDetailTitle');
+const productKinds = document.getElementById('ordProductKinds');
 const preview = document.getElementById('ordPreview');
 const dropHint = document.getElementById('ordDropHint');
 const dimLabel = document.getElementById('ordDim');
@@ -379,7 +409,7 @@ function renderPart(step, o) {
     '</h2>' + (off ? '' : rows.join('')) + '</section>';
 }
 
-function renderForm(mode) {
+function renderLegacyForm(mode) {
   const schema = MODES[mode];
   const o = state.opts;
   const out = [];
@@ -482,18 +512,135 @@ function renderForm(mode) {
   paintUploads();
 }
 
+/* ---------------- service v2: split common/detail panes ---------------- */
+
+function commonHead(no, label, done) {
+  return `<h2 class="ord-common-head${done ? ' is-complete' : ''}">` +
+    `<span>${done ? '✓' : no}</span>${esc(label)}</h2>`;
+}
+
+function formatButton(f, cls) {
+  const on = state.pickedSize === f.name ? ' is-on' : '';
+  return `<button type="button" class="ord-format ${cls}${on}" data-format="${f.name}" ` +
+    `data-w="${f.w}" data-h="${f.h}"><span>${f.name}</span></button>`;
+}
+
+function formatBoard(prefix, label, widthText) {
+  const fs = SERVICE_FORMATS.filter((f) => f.name[0] === prefix);
+  return `<div class="ord-format-set is-${prefix.toLowerCase()}">` +
+    `<p><span>${label}</span><b>${widthText}</b></p><div class="ord-format-board">` +
+    formatButton(fs[0], `is-${prefix.toLowerCase()}1`) +
+    formatButton(fs[1], `is-${prefix.toLowerCase()}2`) +
+    formatButton(fs[2], `is-${prefix.toLowerCase()}3`) +
+    formatButton(fs[3], `is-${prefix.toLowerCase()}4`) +
+    '</div></div>';
+}
+
+function commonDone() {
+  const schema = MODES[state.mode];
+  const files = schema.uploads.every((u) => state.files[u.slot] && !state.files[u.slot].busy);
+  const order = Boolean(String(state.opts.customer_name || '').trim()) &&
+    (parseInt(String(state.opts.goods_ea || '').replace(/[^\d]/g, ''), 10) || 0) > 0 &&
+    Boolean(state.opts.quick_no);
+  return { files, size: Boolean(state.pickedSize), order };
+}
+
+function renderCommon(mode) {
+  const schema = MODES[mode];
+  const o = state.opts;
+  const done = commonDone();
+  const out = [];
+
+  out.push(`<section class="ord-common-step" data-common-step="files">${commonHead(1, '작업 파일', done.files)}`);
+  out.push('<div class="ord-common-uploads">');
+  schema.uploads.forEach((u) => {
+    const file = state.files[u.slot];
+    out.push(`<label class="ord-common-upload${file && !file.busy ? ' is-complete' : ''}">` +
+      (mode === 'book' ? `<b>${esc(u.label)}</b>` : '') +
+      `<span data-slot-state="${u.slot}">${file ? esc(file.label) : '파일 선택 혹은 드래그(.pdf/.png/.jpeg)'}</span>` +
+      `<input type="file" accept="image/*,.pdf" data-upload="${u.slot}"></label>`);
+  });
+  out.push('</div></section>');
+
+  out.push(`<section class="ord-common-step" data-common-step="size">${commonHead(2, '작업 크기', done.size)}` +
+    '<p class="ord-common-help">드래그 혹은 클릭하여 크기를 지정하세요.</p><div class="ord-format-groups">' +
+    formatBoard('A', 'A판형', '594×841') + formatBoard('B', 'B판형', '728×1030') +
+    `<div class="ord-format-set is-custom"><p><span>사용자 지정</span><b>${esc(o.goods_size_w)}×${esc(o.goods_size_h)}</b></p>` +
+      `<button type="button" class="ord-format is-custom${state.pickedSize === 'custom' ? ' is-on' : ''}" data-format="custom">` +
+        '<span>직접 입력</span></button></div></div>' +
+    `<div class="ord-custom-size${state.pickedSize === 'custom' ? ' is-on' : ''}">` +
+      `<input type="number" min="1" data-common-key="custom_w" value="${esc(o.goods_size_w)}" aria-label="사용자 지정 가로">` +
+      '<span>×</span>' +
+      `<input type="number" min="1" data-common-key="custom_h" value="${esc(o.goods_size_h)}" aria-label="사용자 지정 세로"><span>㎜</span></div>` +
+    '</section>');
+
+  const qty = parseInt(String(o.goods_ea || '').replace(/[^\d]/g, ''), 10) || 0;
+  out.push(`<section class="ord-common-step" data-common-step="order">${commonHead(3, '주문 정보', done.order)}` +
+    '<div class="ord-common-row"><label>주문 제목</label>' +
+      `<input class="ord-common-field${String(o.customer_name || '').trim() ? ' is-complete' : ''}" ` +
+      `data-common-key="customer_name" value="${esc(o.customer_name)}" placeholder="제목을 입력하세요."></div>` +
+    '<div class="ord-common-row"><label>주문 수량</label><span class="ord-qty">' +
+      `<input type="number" min="0" class="ord-common-field${qty > 0 ? ' is-complete' : ''}" ` +
+      `data-common-key="goods_ea" value="${qty}"><i>매</i></span></div>` +
+    '<div class="ord-common-row"><label>주문 일정</label><div class="ord-common-seg">' +
+      `<button type="button" data-common-value="긴급"${o.quick_no === '긴급' ? ' class="is-on"' : ''}>긴급</button>` +
+      `<button type="button" data-common-value="일반"${o.quick_no === '일반' ? ' class="is-on"' : ''}>일반</button>` +
+    '</div></div>' +
+    '<button type="button" class="ord-next" id="ordNext">다음 | 상세 정보 입력</button></section>');
+
+  common.innerHTML = out.join('');
+}
+
+function detailChoice(key, value, label) {
+  return `<button type="button" class="ord-detail-choice ord-seg-item${state.opts[key] === value ? ' is-on' : ''}" ` +
+    `data-key="${key}" data-val="${esc(value)}">${esc(label || value)}</button>`;
+}
+
+function renderForm(mode) {
+  const meta = SERVICE_MODES[mode];
+  const o = state.opts;
+  const papers = mode === 'book' ? PAPER_BOOK : mode === 'product' ? PAPER_CARD : PAPER_FLAT;
+  const finish = mode === 'book' ? BINDINGS : ['코팅 없음', '무광 코팅', '유광 코팅', '재단'];
+  const colors = ['컬러 8도', '컬러 4도', '컬러 2도', '흑백 1도', '별색 지정', '상담 필요'];
+
+  detailTitle.innerHTML = `<strong>${meta.ko}</strong><span>작업 상세 정보</span>`;
+  form.innerHTML =
+    `<section class="ord-detail-step">${commonHead(1, '양면 인쇄 여부', Boolean(o.in_mun_values))}` +
+      '<div class="ord-detail-options is-small">' +
+      detailChoice('in_mun_values', '양면출력', '양면') +
+      detailChoice('in_mun_values', '단면출력', '단면') + '</div></section>' +
+    `<section class="ord-detail-step">${commonHead(2, '색상 도수', Boolean(o.in_printer))}` +
+      '<div class="ord-detail-options is-colors">' +
+      colors.map((c) => detailChoice('in_printer', c, c)).join('') + '</div></section>' +
+    `<section class="ord-detail-step">${commonHead(3, '종이 선택', Boolean(o.in_paper_group))}` +
+      `<select class="ord-detail-select${o.in_paper_group ? ' is-complete' : ''}" data-key="in_paper_group">` +
+      '<option value="">종이 선택</option>' + papers.map((p) => `<option${o.in_paper_group === p ? ' selected' : ''}>${esc(p)}</option>`).join('') +
+      '</select></section>' +
+    `<section class="ord-detail-step">${commonHead(4, mode === 'book' ? '제본 및 후가공' : '후가공', Boolean(o.in_lastJob4 || (mode === 'book' && o.goods_jebon)))}` +
+      `<select class="ord-detail-select${o.in_lastJob4 || (mode === 'book' && o.goods_jebon) ? ' is-complete' : ''}" ` +
+      `data-key="${mode === 'book' ? 'goods_jebon' : 'in_lastJob4'}"><option value="">후가공 선택</option>` +
+      finish.map((p) => `<option${(mode === 'book' ? o.goods_jebon : o.in_lastJob4) === p ? ' selected' : ''}>${esc(p)}</option>`).join('') +
+      '</select></section>' +
+    '<section class="ord-detail-step is-submit"><label for="opt-goods_memo">추가 요청</label>' +
+      `<textarea id="opt-goods_memo" data-key="goods_memo" placeholder="요청 사항을 입력하세요.">${esc(o.goods_memo)}</textarea>` +
+      '<button type="button" class="ord-submit" id="ordSubmit">견적 문의하기</button></section>';
+}
+
 function totalPages(o) {
   return (+o.in_page_val || 0) + (o.use_in2 ? (+o.in2_page_val || 0) : 0);
 }
 
 function paintUploads() {
-  form.querySelectorAll('[data-slot-state]').forEach((el) => {
+  common.querySelectorAll('[data-slot-state]').forEach((el) => {
     const slot = el.getAttribute('data-slot-state');
     const f = state.files[slot];
-    el.textContent = f ? f.label : '파일 선택 / 드래그';
+    el.textContent = f ? f.label : '파일 선택 혹은 드래그(.pdf/.png/.jpeg)';
     el.classList.toggle('is-set', Boolean(f) && !f.busy);
     el.classList.toggle('is-busy', Boolean(f && f.busy));
+    const label = el.closest('.ord-common-upload');
+    if (label) label.classList.toggle('is-complete', Boolean(f) && !f.busy);
   });
+  paintCommonCompletion();
 }
 
 function markUpload(slot, label, busy) {
@@ -509,7 +656,7 @@ function parseDim(str) {
 }
 
 function seedDefaults(mode) {
-  const o = { customer_name: '', quick_no: '일반', goods_memo: '' };
+  const o = { customer_name: '', quick_no: '', goods_memo: '' };
 
   MODES[mode].steps.forEach((s) => {
     if (s.t === 'size') {
@@ -545,6 +692,13 @@ function seedDefaults(mode) {
       });
     }
   });
+  if (o.in_printer === '칼라 4도') o.in_printer = '컬러 4도';
+  o.goods_ea = 0;
+  o.in_mun_values = '';
+  o.in_printer = '';
+  o.in_lastJob4 = '';
+  if (mode === 'book') o.goods_jebon = '';
+  if (mode === 'product') o.product_kind = '명함';
   return o;
 }
 
@@ -646,8 +800,11 @@ const coatOf = (s) => (/무광/.test(s || '') ? '무광' : /유광/.test(s || ''
 function derive() {
   const o = state.opts;
   const bind = o.goods_jebon || '무선제본';
+  const previewMode = state.mode === 'product'
+    ? (o.product_kind === '소책자' ? 'book' : o.product_kind === '리플렛' ? 'leaflet' : 'print')
+    : state.mode;
   return {
-    mode: state.mode,
+    mode: previewMode,
     w: Math.max(1, +o.goods_size_w || 210),
     h: Math.max(1, +o.goods_size_h || 297),
     sides: o.in_mun_values === '양면출력' ? '양면' : '단면',
@@ -680,6 +837,12 @@ function paintCaption() {
     extra = ' · 양면';
   }
   dimLabel.textContent = `${D.w}×${D.h}mm${extra}`;
+
+  const file = state.files[MODES[state.mode].uploads[0].slot];
+  const side = o.in_mun_values ? o.in_mun_values.replace('출력', '') : '인쇄 방식 미선택';
+  const color = o.in_printer || '색상 미선택';
+  const summary = document.getElementById('ordPreviewSummary');
+  if (summary) summary.textContent = `“${file ? file.label : '업로드 파일 이름'}”, ${D.w}×${D.h}mm, ${side}, ${color}`;
 
   const primary = MODES[state.mode].uploads[0].slot;
   dropHint.textContent = state.images[primary]
@@ -795,6 +958,107 @@ function setOpt(key, value) {
   onOptionChange();
 }
 
+function paintCommonCompletion() {
+  const done = commonDone();
+  ['files', 'size', 'order'].forEach((key, index) => {
+    const head = common.querySelector(`[data-common-step="${key}"] .ord-common-head`);
+    if (!head) return;
+    head.classList.toggle('is-complete', done[key]);
+    const no = head.querySelector('span');
+    if (no) no.textContent = done[key] ? '✓' : String(index + 1);
+  });
+  common.querySelectorAll('[data-common-key="customer_name"], [data-common-key="goods_ea"]')
+    .forEach((el) => {
+      const filled = el.dataset.commonKey === 'customer_name'
+        ? Boolean(el.value.trim())
+        : (parseInt(el.value, 10) || 0) > 0;
+      el.classList.toggle('is-complete', filled);
+    });
+}
+
+function paintDetailCompletion() {
+  const checks = [
+    Boolean(state.opts.in_mun_values),
+    Boolean(state.opts.in_printer),
+    Boolean(state.opts.in_paper_group),
+    Boolean(state.mode === 'book' ? state.opts.goods_jebon : state.opts.in_lastJob4),
+  ];
+  form.querySelectorAll('.ord-detail-step').forEach((step, index) => {
+    if (index >= checks.length) return;
+    const head = step.querySelector('.ord-common-head');
+    if (!head) return;
+    head.classList.toggle('is-complete', checks[index]);
+    const no = head.querySelector('span');
+    if (no) no.textContent = checks[index] ? '✓' : String(index + 1);
+  });
+  form.querySelectorAll('.ord-detail-select').forEach((select) =>
+    select.classList.toggle('is-complete', Boolean(select.value)));
+}
+
+common.addEventListener('change', (e) => {
+  const el = e.target;
+  if (el.matches('[data-upload]')) {
+    const file = el.files && el.files[0];
+    if (file) takeFile(file, el.getAttribute('data-upload'));
+  }
+});
+
+common.addEventListener('input', (e) => {
+  const el = e.target;
+  const key = el.getAttribute('data-common-key');
+  if (!key) return;
+  if (key === 'customer_name' || key === 'goods_ea') {
+    state.opts[key] = el.value;
+    paintCommonCompletion();
+    refreshDynamic();
+    return;
+  }
+  if (key === 'custom_w' || key === 'custom_h') {
+    const mm = Math.max(1, parseInt(el.value, 10) || 1);
+    state.pickedSize = 'custom';
+    if (key === 'custom_w') state.opts.goods_size_w = state.opts.size_w_plus = mm;
+    else state.opts.goods_size_h = state.opts.size_h_plus = mm;
+    state.opts.goods_size = `사용자입력(${state.opts.goods_size_w}*${state.opts.goods_size_h})`;
+    common.querySelectorAll('.ord-format').forEach((b) =>
+      b.classList.toggle('is-on', b.dataset.format === 'custom'));
+    paintCommonCompletion();
+    onOptionChange();
+  }
+});
+
+common.addEventListener('click', (e) => {
+  const format = e.target.closest('[data-format]');
+  if (format) {
+    state.pickedSize = format.dataset.format;
+    if (state.pickedSize !== 'custom') {
+      const f = SERVICE_FORMATS.find((x) => x.name === state.pickedSize);
+      state.opts.goods_size = `${f.name}(${f.w}*${f.h})`;
+      state.opts.goods_size_w = state.opts.size_w_plus = f.w;
+      state.opts.goods_size_h = state.opts.size_h_plus = f.h;
+    }
+    renderCommon(state.mode);
+    onOptionChange();
+    return;
+  }
+
+  const schedule = e.target.closest('[data-common-value]');
+  if (schedule) {
+    state.opts.quick_no = schedule.dataset.commonValue;
+    common.querySelectorAll('[data-common-value]').forEach((b) =>
+      b.classList.toggle('is-on', b === schedule));
+    paintCommonCompletion();
+    onOptionChange();
+    return;
+  }
+
+  if (e.target.closest('#ordNext')) {
+    state.detailActive = true;
+    detailPane.classList.add('is-active');
+    form.scrollTo({ top: 0, behavior: 'smooth' });
+    detailPane.focus({ preventScroll: true });
+  }
+});
+
 form.addEventListener('change', (e) => {
   const el = e.target;
   if (el.matches('[data-upload]')) {
@@ -803,6 +1067,7 @@ form.addEventListener('change', (e) => {
     return;
   }
   if (el.matches('[data-key]')) setOpt(el.getAttribute('data-key'), el.value);
+  paintDetailCompletion();
 });
 
 form.addEventListener('input', (e) => {
@@ -816,6 +1081,7 @@ form.addEventListener('click', (e) => {
   const btn = e.target.closest('.ord-seg-item, .ord-size');
   if (btn) {
     setOpt(btn.getAttribute('data-key'), btn.getAttribute('data-val'));
+    paintDetailCompletion();
     return;
   }
 
@@ -830,10 +1096,10 @@ form.addEventListener('click', (e) => {
 
   if (e.target.closest('#ordSubmit')) {
     const btn2 = e.target.closest('#ordSubmit');
-    btn2.textContent = `주문 접수는 준비 중입니다 — 추정 ${won(estimate().total)}`;
+    btn2.textContent = `문의 준비 완료 — 추정 ${won(estimate().total)}`;
     btn2.classList.add('is-done');
     setTimeout(() => {
-      btn2.textContent = '주문 접수';
+      btn2.textContent = '견적 문의하기';
       btn2.classList.remove('is-done');
     }, 3200);
   }
@@ -953,16 +1219,39 @@ tabs.addEventListener('click', (e) => {
   switchMode(btn.dataset.mode);
 });
 
+productKinds.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-kind]');
+  if (!btn || state.mode !== 'product') return;
+  state.opts.product_kind = btn.dataset.kind;
+  productKinds.querySelectorAll('[data-kind]').forEach((b) => b.classList.toggle('is-on', b === btn));
+  paintCaption();
+  if (engine) engine.update(derive());
+});
+
 function switchMode(mode) {
   if (!MODES[mode]) return;
   state.mode = mode;
   state.images = {};                 // artwork is per product
   state.files = {};
+  state.pickedSize = '';
+  state.detailActive = false;
   state.opts = seedDefaults(mode);
+  const meta = SERVICE_MODES[mode];
+  commonPane.dataset.mode = mode;
+  document.body.style.setProperty('--ord-ink', meta.ink);
+  commonPane.style.setProperty('--ord-ink', meta.ink);
+  detailPane.style.setProperty('--ord-ink', meta.ink);
+  detailPane.classList.remove('is-active');
+  tabs.querySelectorAll('.ord-tab').forEach((b) => b.classList.toggle('is-on', b.dataset.mode === mode));
+  productKinds.classList.toggle('is-visible', mode === 'product');
+  productKinds.querySelectorAll('[data-kind]').forEach((b) =>
+    b.classList.toggle('is-on', b.dataset.kind === state.opts.product_kind));
+  renderCommon(mode);
   renderForm(mode);
   refreshDynamic();
   paintCaption();
   if (engine) engine.rebuild(derive(), state.images);
+  common.scrollTop = 0;
   form.scrollTop = 0;
 }
 
