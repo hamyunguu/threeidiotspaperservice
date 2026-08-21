@@ -6,9 +6,10 @@
    견적), same select options and placeholder wording, same field keys
    (goods_size, in_paper_group, in_lastJob4 …), same estimate model. Only
    the presentation is this site's — black hairlines, IBM Plex Mono
-   labels, CMYK step discs — and the three.js viewer that page used is
-   replaced by the flat scale preview, which now reads per product:
-   fold lines for a leaflet, a spine and a page block for a book.
+   labels, CMYK completion planes — and the live three.js preview reads
+   the same normalized option data as the estimate model. That shared data
+   contract lets future left-hand fields alter paper, coating, folds,
+   binding and artwork without rebuilding the viewer API.
 
    Flow source — 태산인디고 POD_goods.php:
      Poster  : goods 83  · 포스터
@@ -83,9 +84,9 @@ const MODES = {
   book: {
     label: 'Book', goods: '인디고 책자인쇄', code: 'S0073',
     uploads: [
-      { slot: 'cover', label: '표지 (앞면)' },
-      { slot: 'coverBack', label: '표지 (뒷면)' },
-      { slot: 'inner', label: '내지 (펼침면)' },
+      { slot: 'cover', label: '앞 표지' },
+      { slot: 'coverBack', label: '뒷 표지' },
+      { slot: 'inner', label: '내지' },
     ],
     steps: [
       { t: 'size', label: '규격 사이즈 선택', key: 'goods_size', value: 'A5(148*210)',
@@ -209,8 +210,10 @@ const SERVICE_MODES = {
 const SERVICE_FORMATS = [
   { name: 'A1', w: 594, h: 841 }, { name: 'A2', w: 420, h: 594 },
   { name: 'A3', w: 297, h: 420 }, { name: 'A4', w: 210, h: 297 },
+  { name: 'A5', w: 148, h: 210 }, { name: 'A6', w: 105, h: 148 },
   { name: 'B1', w: 728, h: 1030 }, { name: 'B2', w: 515, h: 728 },
   { name: 'B3', w: 364, h: 515 }, { name: 'B4', w: 257, h: 364 },
+  { name: 'B5', w: 182, h: 257 }, { name: 'B6', w: 128, h: 182 },
 ];
 
 /* 제본 방식 — 사철은 실로 대장을 꿰는 방식이라 링·중철과 함께 늘 걸려 있어야 한다 */
@@ -519,14 +522,28 @@ function commonHead(no, label, done) {
     `<span>${done ? '✓' : no}</span>${esc(label)}</h2>`;
 }
 
+function frameMarks() {
+  return '<i class="ord-field-mark is-lt"></i><i class="ord-field-mark is-rt"></i>' +
+    '<i class="ord-field-mark is-lb"></i><i class="ord-field-mark is-rb"></i>';
+}
+
+function framedControl(content, className, tag) {
+  const el = tag || 'span';
+  return `<${el} class="ord-field-frame ${className || ''}">${frameMarks()}` +
+    `<span class="ord-field-core">${content}</span></${el}>`;
+}
+
 function formatButton(f, cls) {
   const on = state.pickedSize === f.name ? ' is-on' : '';
   return `<button type="button" class="ord-format ${cls}${on}" data-format="${f.name}" ` +
     `data-w="${f.w}" data-h="${f.h}"><span>${f.name}</span></button>`;
 }
 
-function formatBoard(prefix, label, widthText) {
-  const fs = SERVICE_FORMATS.filter((f) => f.name[0] === prefix);
+function formatBoard(prefix, label, mode) {
+  const all = SERVICE_FORMATS.filter((f) => f.name[0] === prefix);
+  const fs = mode === 'product' ? all.slice(2, 6) : all.slice(0, 4);
+  const picked = fs.find((f) => f.name === state.pickedSize);
+  const widthText = picked ? `${picked.w}×${picked.h}` : '000×000';
   return `<div class="ord-format-set is-${prefix.toLowerCase()}">` +
     `<p><span>${label}</span><b>${widthText}</b></p><div class="ord-format-board">` +
     formatButton(fs[0], `is-${prefix.toLowerCase()}1`) +
@@ -541,6 +558,7 @@ function commonDone() {
   const files = schema.uploads.every((u) => state.files[u.slot] && !state.files[u.slot].busy);
   const order = Boolean(String(state.opts.customer_name || '').trim()) &&
     (parseInt(String(state.opts.goods_ea || '').replace(/[^\d]/g, ''), 10) || 0) > 0 &&
+    (state.mode !== 'book' || (parseInt(state.opts.in_page_val, 10) || 0) > 0) &&
     Boolean(state.opts.quick_no);
   return { files, size: Boolean(state.pickedSize), order };
 }
@@ -555,17 +573,20 @@ function renderCommon(mode) {
   out.push('<div class="ord-common-uploads">');
   schema.uploads.forEach((u) => {
     const file = state.files[u.slot];
-    out.push(`<label class="ord-common-upload${file && !file.busy ? ' is-complete' : ''}">` +
-      (mode === 'book' ? `<b>${esc(u.label)}</b>` : '') +
+    const upload = framedControl(
       `<span data-slot-state="${u.slot}">${file ? esc(file.label) : '파일 선택 혹은 드래그(.pdf/.png/.jpeg)'}</span>` +
-      `<input type="file" accept="image/*,.pdf" data-upload="${u.slot}"></label>`);
+      `<input type="file" accept="image/*,.pdf" data-upload="${u.slot}">`,
+      `ord-common-upload${file && !file.busy ? ' is-complete' : ''}`, 'label');
+    out.push(mode === 'book'
+      ? `<div class="ord-book-upload-row"><b>${esc(u.label)}</b>${upload}</div>`
+      : upload);
   });
   out.push('</div></section>');
 
   out.push(`<section class="ord-common-step" data-common-step="size">${commonHead(2, '작업 크기', done.size)}` +
     '<p class="ord-common-help">드래그 혹은 클릭하여 크기를 지정하세요.</p><div class="ord-format-groups">' +
-    formatBoard('A', 'A판형', '594×841') + formatBoard('B', 'B판형', '728×1030') +
-    `<div class="ord-format-set is-custom"><p><span>사용자 지정</span><b>${esc(o.goods_size_w)}×${esc(o.goods_size_h)}</b></p>` +
+    formatBoard('A', 'A판형', mode) + formatBoard('B', 'B판형', mode) +
+    `<div class="ord-format-set is-custom"><p><span>사용자 지정</span><b>${state.pickedSize === 'custom' ? `${esc(o.goods_size_w)}×${esc(o.goods_size_h)}` : '000×000'}</b></p>` +
       `<button type="button" class="ord-format is-custom${state.pickedSize === 'custom' ? ' is-on' : ''}" data-format="custom">` +
         '<span>직접 입력</span></button></div></div>' +
     `<div class="ord-custom-size${state.pickedSize === 'custom' ? ' is-on' : ''}">` +
@@ -575,25 +596,39 @@ function renderCommon(mode) {
     '</section>');
 
   const qty = parseInt(String(o.goods_ea || '').replace(/[^\d]/g, ''), 10) || 0;
+  const pages = parseInt(o.in_page_val, 10) || 0;
+  const titleField = framedControl(
+    `<input class="ord-common-field${String(o.customer_name || '').trim() ? ' is-complete' : ''}" ` +
+    `data-common-key="customer_name" value="${esc(o.customer_name)}" placeholder="제목을 입력하세요.">`,
+    'is-title');
+  const qtyField = framedControl(
+    `<input type="number" min="0" class="ord-common-field${qty > 0 ? ' is-complete' : ''}" ` +
+    `data-common-key="goods_ea" value="${qty}">`, 'is-qty');
+  const pageField = framedControl(
+    `<input type="number" min="0" step="2" class="ord-common-field${pages > 0 ? ' is-complete' : ''}" ` +
+    `data-common-key="in_page_val" value="${pages}">`, 'is-qty');
+  const rush = framedControl('<button type="button" data-common-value="긴급">긴급</button>',
+    `is-schedule${o.quick_no === '긴급' ? ' is-complete' : ''}`);
+  const normal = framedControl('<button type="button" data-common-value="일반">일반</button>',
+    `is-schedule${o.quick_no === '일반' ? ' is-complete' : ''}`);
+  const next = framedControl('<button type="button" class="ord-next" id="ordNext">다음 | 상세 정보 입력</button>',
+    'ord-next-frame');
   out.push(`<section class="ord-common-step" data-common-step="order">${commonHead(3, '주문 정보', done.order)}` +
-    '<div class="ord-common-row"><label>주문 제목</label>' +
-      `<input class="ord-common-field${String(o.customer_name || '').trim() ? ' is-complete' : ''}" ` +
-      `data-common-key="customer_name" value="${esc(o.customer_name)}" placeholder="제목을 입력하세요."></div>` +
-    '<div class="ord-common-row"><label>주문 수량</label><span class="ord-qty">' +
-      `<input type="number" min="0" class="ord-common-field${qty > 0 ? ' is-complete' : ''}" ` +
-      `data-common-key="goods_ea" value="${qty}"><i>매</i></span></div>` +
-    '<div class="ord-common-row"><label>주문 일정</label><div class="ord-common-seg">' +
-      `<button type="button" data-common-value="긴급"${o.quick_no === '긴급' ? ' class="is-on"' : ''}>긴급</button>` +
-      `<button type="button" data-common-value="일반"${o.quick_no === '일반' ? ' class="is-on"' : ''}>일반</button>` +
-    '</div></div>' +
-    '<button type="button" class="ord-next" id="ordNext">다음 | 상세 정보 입력</button></section>');
+    `<div class="ord-common-row"><label>주문 제목</label>${titleField}</div>` +
+    `<div class="ord-common-row"><label>주문 수량</label><div class="ord-quantity-set">${qtyField}` +
+      `<span class="ord-unit-label">${mode === 'book' ? '부' : '매'}</span>` +
+      (mode === 'book' ? `${pageField}<span class="ord-unit-label">페이지</span>` : '') +
+    `</div></div>` +
+    `<div class="ord-common-row"><label>주문 일정</label><div class="ord-common-seg">${rush}${normal}</div></div>` +
+    `${next}</section>`);
 
   common.innerHTML = out.join('');
 }
 
 function detailChoice(key, value, label) {
-  return `<button type="button" class="ord-detail-choice ord-seg-item${state.opts[key] === value ? ' is-on' : ''}" ` +
+  const button = `<button type="button" class="ord-detail-choice ord-seg-item${state.opts[key] === value ? ' is-on' : ''}" ` +
     `data-key="${key}" data-val="${esc(value)}">${esc(label || value)}</button>`;
+  return framedControl(button, 'ord-detail-choice-frame');
 }
 
 function renderForm(mode) {
@@ -613,14 +648,14 @@ function renderForm(mode) {
       '<div class="ord-detail-options is-colors">' +
       colors.map((c) => detailChoice('in_printer', c, c)).join('') + '</div></section>' +
     `<section class="ord-detail-step">${commonHead(3, '종이 선택', Boolean(o.in_paper_group))}` +
-      `<select class="ord-detail-select${o.in_paper_group ? ' is-complete' : ''}" data-key="in_paper_group">` +
+      framedControl(`<select class="ord-detail-select${o.in_paper_group ? ' is-complete' : ''}" data-key="in_paper_group">` +
       '<option value="">종이 선택</option>' + papers.map((p) => `<option${o.in_paper_group === p ? ' selected' : ''}>${esc(p)}</option>`).join('') +
-      '</select></section>' +
+      '</select>', 'ord-detail-select-frame') + '</section>' +
     `<section class="ord-detail-step">${commonHead(4, mode === 'book' ? '제본 및 후가공' : '후가공', Boolean(o.in_lastJob4 || (mode === 'book' && o.goods_jebon)))}` +
-      `<select class="ord-detail-select${o.in_lastJob4 || (mode === 'book' && o.goods_jebon) ? ' is-complete' : ''}" ` +
+      framedControl(`<select class="ord-detail-select${o.in_lastJob4 || (mode === 'book' && o.goods_jebon) ? ' is-complete' : ''}" ` +
       `data-key="${mode === 'book' ? 'goods_jebon' : 'in_lastJob4'}"><option value="">후가공 선택</option>` +
       finish.map((p) => `<option${(mode === 'book' ? o.goods_jebon : o.in_lastJob4) === p ? ' selected' : ''}>${esc(p)}</option>`).join('') +
-      '</select></section>' +
+      '</select>', 'ord-detail-select-frame') + '</section>' +
     '<section class="ord-detail-step is-submit"><label for="opt-goods_memo">추가 요청</label>' +
       `<textarea id="opt-goods_memo" data-key="goods_memo" placeholder="요청 사항을 입력하세요.">${esc(o.goods_memo)}</textarea>` +
       '<button type="button" class="ord-submit" id="ordSubmit">견적 문의하기</button></section>';
@@ -697,7 +732,10 @@ function seedDefaults(mode) {
   o.in_mun_values = '';
   o.in_printer = '';
   o.in_lastJob4 = '';
-  if (mode === 'book') o.goods_jebon = '';
+  if (mode === 'book') {
+    o.goods_jebon = '';
+    o.in_page_val = 0;
+  }
   if (mode === 'product') o.product_kind = '명함';
   return o;
 }
@@ -800,6 +838,8 @@ const coatOf = (s) => (/무광/.test(s || '') ? '무광' : /유광/.test(s || ''
 function derive() {
   const o = state.opts;
   const bind = o.goods_jebon || '무선제본';
+  const paperLabel = `${o.in_paper_group || ''} ${o.in_paper || ''}`;
+  const gsm = parseInt((paperLabel.match(/(\d+)\s*g/i) || [0, 160])[1], 10) || 160;
   const previewMode = state.mode === 'product'
     ? (o.product_kind === '소책자' ? 'book' : o.product_kind === '리플렛' ? 'leaflet' : 'print')
     : state.mode;
@@ -811,8 +851,18 @@ function derive() {
     coverSides: o.cover_mun_values === '양면출력' ? '양면' : '단면',
     coating: coatOf(o.in_lastJob4),
     coverCoating: coatOf(o.cover_lastJob4),
-    paper: `${o.in_paper_group || ''} ${o.in_paper || ''}`,
+    paper: paperLabel,
     coverPaper: `${o.cover_paper_group || ''} ${o.cover_paper || ''}`,
+    gsm,
+    /* These normalized print-production values are intentionally part of D:
+       future left-hand controls can set them without changing the renderer's
+       model API. */
+    paperThicknessMm: Math.max(0.07, +(o.paper_thickness_mm || gsm * 0.00105)),
+    inkCoverage: Math.max(0, Math.min(1, +(o.ink_coverage || 0.72))),
+    opacity: Math.max(0.55, Math.min(1, +(o.paper_opacity || 0.94))),
+    finish: o.in_lastJob4 || '',
+    foil: o.in_foil || '',
+    embossDepthMm: +(o.in_emboss_depth || 0),
     panels: foldPanels(),
     bind,
     spine: bind === '제본 없음' ? 0 : senecaMm(o),
@@ -842,7 +892,12 @@ function paintCaption() {
   const side = o.in_mun_values ? o.in_mun_values.replace('출력', '') : '인쇄 방식 미선택';
   const color = o.in_printer || '색상 미선택';
   const summary = document.getElementById('ordPreviewSummary');
-  if (summary) summary.textContent = `“${file ? file.label : '업로드 파일 이름'}”, ${D.w}×${D.h}mm, ${side}, ${color}`;
+  if (summary) {
+    const untouched = !file && !state.pickedSize && !o.in_mun_values && !o.in_printer;
+    summary.textContent = untouched
+      ? '“업로드 파일 이름", 설정 크기, 단면/양면, 인쇄 기본 정보 등'
+      : `“${file ? file.label : '업로드 파일 이름'}”, ${D.w}×${D.h}mm, ${side}, ${color}`;
+  }
 
   const primary = MODES[state.mode].uploads[0].slot;
   dropHint.textContent = state.images[primary]
@@ -967,7 +1022,7 @@ function paintCommonCompletion() {
     const no = head.querySelector('span');
     if (no) no.textContent = done[key] ? '✓' : String(index + 1);
   });
-  common.querySelectorAll('[data-common-key="customer_name"], [data-common-key="goods_ea"]')
+  common.querySelectorAll('[data-common-key="customer_name"], [data-common-key="goods_ea"], [data-common-key="in_page_val"]')
     .forEach((el) => {
       const filled = el.dataset.commonKey === 'customer_name'
         ? Boolean(el.value.trim())
@@ -1007,10 +1062,10 @@ common.addEventListener('input', (e) => {
   const el = e.target;
   const key = el.getAttribute('data-common-key');
   if (!key) return;
-  if (key === 'customer_name' || key === 'goods_ea') {
+  if (key === 'customer_name' || key === 'goods_ea' || key === 'in_page_val') {
     state.opts[key] = el.value;
     paintCommonCompletion();
-    refreshDynamic();
+    onOptionChange();
     return;
   }
   if (key === 'custom_w' || key === 'custom_h') {
@@ -1044,8 +1099,12 @@ common.addEventListener('click', (e) => {
   const schedule = e.target.closest('[data-common-value]');
   if (schedule) {
     state.opts.quick_no = schedule.dataset.commonValue;
-    common.querySelectorAll('[data-common-value]').forEach((b) =>
-      b.classList.toggle('is-on', b === schedule));
+    common.querySelectorAll('[data-common-value]').forEach((b) => {
+      const selected = b === schedule;
+      b.classList.toggle('is-on', selected);
+      const frame = b.closest('.ord-field-frame');
+      if (frame) frame.classList.toggle('is-complete', selected);
+    });
     paintCommonCompletion();
     onOptionChange();
     return;
@@ -1147,32 +1206,43 @@ function loadPdfJs() {
   return pdfjs;
 }
 
+async function renderPdfPage(doc, number) {
+  const page = await doc.getPage(number);
+  const raw = page.getViewport({ scale: 1 });
+  const view = page.getViewport({ scale: 2400 / Math.max(raw.width, raw.height) });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(view.width);
+  canvas.height = Math.round(view.height);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: ctx, viewport: view }).promise;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = canvas.toDataURL('image/png');
+  });
+}
+
 /* A PDF says how many pages it has, so 내지 no longer has to be counted by
-   hand — and its first page becomes the artwork the model wears. */
+   hand. A two-page flat PDF also maps page 2 to the reverse side, matching
+   the way a print-ready duplex file is actually supplied. */
 async function takePdf(file, slot) {
   markUpload(slot, `${file.name} · 읽는 중…`, true);
   try {
     const lib = await loadPdfJs();
     const doc = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
-    const page = await doc.getPage(1);
+    const img = await renderPdfPage(doc, 1);
+    const isInner = slot === 'inner' && state.mode === 'book';
+    landArtwork(slot, img, `${file.name} · ${doc.numPages}p`);
+    if (isInner) setInnerPages(doc.numPages);
 
-    const raw = page.getViewport({ scale: 1 });
-    const view = page.getViewport({ scale: 1400 / Math.max(raw.width, raw.height) });
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(view.width);
-    canvas.height = Math.round(view.height);
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvasContext: ctx, viewport: view }).promise;
-
-    const img = new Image();
-    img.onload = () => {
-      const isInner = slot === 'inner' && state.mode === 'book';
-      landArtwork(slot, img, `${file.name} · ${doc.numPages}p`);
-      if (isInner) setInnerPages(doc.numPages);
-    };
-    img.src = canvas.toDataURL('image/png');
+    if (slot === 'front' && doc.numPages > 1) {
+      const back = await renderPdfPage(doc, 2);
+      state.images.back = back;
+      if (engine) engine.setTexture('back', back);
+    }
   } catch (err) {
     markUpload(slot, `${file.name} · 읽지 못했습니다`);
     console.error('[order] PDF read failed:', err);
@@ -1298,6 +1368,8 @@ async function createEngine(mount) {
   });
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.VSMShadowMap;
   /* filmic response: the highlights on coated stock roll off instead of
      clipping to flat white, which is most of what makes paper look shot
      rather than drawn */
@@ -1307,13 +1379,13 @@ async function createEngine(mount) {
      albedo and only compresses the highlights, which is exactly the trade
      a product viewer wants. */
   renderer.toneMapping = THREE.NeutralToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMappingExposure = 1.04;
   renderer.domElement.className = 'ord-canvas';
   mount.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
 
-  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+  const camera = new THREE.PerspectiveCamera(29, 1, 0.1, 100);
   const fitCenter = new THREE.Vector3();
   let fitDist = 6;
 
@@ -1322,7 +1394,7 @@ async function createEngine(mount) {
      to be looked at from above or it disappears edge-on. */
   const viewDir = (mode) => (mode === 'print'
     ? new THREE.Vector3(-0.3, 0.9, 0.85).normalize()
-    : new THREE.Vector3(-0.38, 0.22, 1).normalize());
+    : new THREE.Vector3(-0.38, 0.32, 1).normalize());
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -1331,16 +1403,10 @@ async function createEngine(mount) {
   controls.minPolarAngle = 0.15;
   controls.maxPolarAngle = Math.PI * 0.52;
 
-  /* A studio setup, and no shadow anywhere: nothing is cast on the page.
-     With the drop shadow gone, what separates white paper from a white
-     background is the rim — a hard light from behind that draws a bright
-     line along every edge — plus the falloff the key leaves across the
-     face. That is how white-on-white is lit for real, too. */
   /* The environment IS the light, the way a paper product is actually shot:
      a big soft source overhead falling off to a darker floor. That gradient
-     is what puts tone across a white sheet — a face turned up reads near
-     white, a face turned down falls away — and it is the only thing keeping
-     white stock off a white page now that nothing casts a shadow. */
+     puts tone across a white sheet; a low-opacity shadow catcher supplies
+     the remaining contact cue without tinting the Figma-white preview. */
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = (() => {
     /* an equirectangular map has to be 2:1 — at any other aspect the
@@ -1368,8 +1434,20 @@ async function createEngine(mount) {
 
   /* the key only sets which way the highlight runs; the environment carries
      the exposure, so it stays gentle */
-  const key = new THREE.DirectionalLight(0xffffff, 0.55);
-  key.position.set(-4.5, 5, 5.5);
+  const key = new THREE.DirectionalLight(0xffffff, 1.15);
+  key.position.set(-3.5, 9, 6.5);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.left = -5;
+  key.shadow.camera.right = 5;
+  key.shadow.camera.top = 5;
+  key.shadow.camera.bottom = -5;
+  key.shadow.camera.near = 0.1;
+  key.shadow.camera.far = 18;
+  key.shadow.bias = -0.00015;
+  key.shadow.normalBias = 0.015;
+  key.shadow.radius = 10;
+  key.shadow.blurSamples = 16;
   scene.add(key);
 
   /* and the rim draws the bright line down every edge that used to be told
@@ -1377,6 +1455,20 @@ async function createEngine(mount) {
   const rim = new THREE.DirectionalLight(0xffffff, 0.65);
   rim.position.set(2, 3, -6);
   scene.add(rim);
+
+  const fill = new THREE.HemisphereLight(0xffffff, 0xd8d1c4, 0.42);
+  scene.add(fill);
+
+  /* A transparent shadow catcher grounds the product without changing the
+     Figma-white preview. It is deliberately outside `root`, so camera fitting
+     remains based only on the printable object. */
+  const shadowFloor = new THREE.Mesh(
+    new THREE.PlaneGeometry(14, 14),
+    new THREE.ShadowMaterial({ color: 0x594f44, opacity: 0.1 }));
+  shadowFloor.rotation.x = -Math.PI / 2;
+  shadowFloor.position.y = -0.012;
+  shadowFloor.receiveShadow = true;
+  scene.add(shadowFloor);
 
   let root = new THREE.Group();
   scene.add(root);
@@ -1389,18 +1481,18 @@ async function createEngine(mount) {
      grey the flat preview used, so nothing jumps when the model appears */
   function placeholder(label) {
     const c = document.createElement('canvas');
-    c.width = 512;
-    c.height = 724;
+    c.width = 1024;
+    c.height = 1448;
     const g = c.getContext('2d');
     /* not paper-white but stock-white: leaving headroom above the albedo is
        what lets the lighting model the sheet instead of clipping it */
     g.fillStyle = '#f2f0ec';
     g.fillRect(0, 0, c.width, c.height);
     g.strokeStyle = '#d6d6d6';
-    g.lineWidth = 4;
-    g.strokeRect(16, 16, c.width - 32, c.height - 32);
+    g.lineWidth = 6;
+    g.strokeRect(28, 28, c.width - 56, c.height - 56);
     g.fillStyle = '#b4b4b4';
-    g.font = '34px "IBM Plex Mono", monospace';
+    g.font = '52px "IBM Plex Mono", monospace';
     g.textAlign = 'center';
     g.fillText(label || '', c.width / 2, c.height / 2 + 12);
     const t = new THREE.CanvasTexture(c);
@@ -1409,9 +1501,23 @@ async function createEngine(mount) {
   }
 
   function fromImage(img) {
-    const t = new THREE.Texture(img);
+    /* Print on white stock: transparent pixels are paper, not black texels.
+       Cap the GPU texture at 4096px while retaining the supplied aspect. */
+    const max = 4096;
+    const scale = Math.min(1, max / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
+    c.height = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
+    const g = c.getContext('2d');
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(img, 0, 0, c.width, c.height);
+    const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.magFilter = THREE.LinearFilter;
+    t.generateMipmaps = true;
     t.needsUpdate = true;
     return t;
   }
@@ -1540,6 +1646,10 @@ async function createEngine(mount) {
       sheenRoughness: 0.85,
       sheenColor: new THREE.Color(0xfff8ec),
       envMapIntensity: gloss ? 1.15 : 0.95,
+      specularIntensity: gloss ? 1 : (uncoated ? 0.32 : 0.55),
+      specularColor: new THREE.Color(uncoated ? 0xfff4df : 0xffffff),
+      clearcoatNormalMap: gloss || matt ? fibreMap : null,
+      clearcoatNormalScale: new THREE.Vector2(0.025, 0.025),
     });
     if (map) map.anisotropy = maxAniso;
     return m;
@@ -1627,7 +1737,8 @@ async function createEngine(mount) {
     const s = unit(D);
     const w = D.w * s;
     const h = D.h * s;
-    const t = 0.018;
+    /* True caliper, with only a small visibility floor for a one-sheet edge. */
+    const t = Math.max(0.0045, D.paperThicknessMm * s * 2.4);
     const panels = Math.max(1, D.panels);
 
     const front = texFor('front', '앞면');
@@ -1675,7 +1786,7 @@ async function createEngine(mount) {
     const s = unit(D);
     const w = D.w * s;
     const h = D.h * s;
-    const t = 0.032;
+    const t = Math.max(0.009, D.paperThicknessMm * s * 2.8);
 
     const face = sheet(w, h, t, paperMat(D.coating, D.paper, texFor('front', '앞면')),
       paperMat(D.coating, D.paper, null), w * 0.006);
@@ -1847,6 +1958,11 @@ async function createEngine(mount) {
     if (D.mode === 'book') buildBook(D);
     else if (D.mode === 'print') buildCard(D);
     else buildSheet(D);
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      o.castShadow = true;
+      o.receiveShadow = true;
+    });
     root.updateMatrixWorld(true);
     fitCamera();
   }
@@ -1863,7 +1979,7 @@ async function createEngine(mount) {
     const vFov = (camera.fov * Math.PI) / 180;
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
     fitDist = Math.max(sphere.radius / Math.sin(vFov / 2),
-      sphere.radius / Math.sin(hFov / 2)) * 1.06;
+      sphere.radius / Math.sin(hFov / 2)) * 1.25;
     controls.minDistance = fitDist * 0.35;
     controls.maxDistance = fitDist * 2.2;
 
@@ -1899,7 +2015,7 @@ async function createEngine(mount) {
     if (w < 80 || h < 80) { w = 900; h = 726; }
     const scale = parseFloat(
       getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio * scale, 3));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio * scale, 4));
     renderer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
@@ -1919,6 +2035,11 @@ async function createEngine(mount) {
       if (D.mode === 'book') buildBook(D);
       else if (D.mode === 'print') buildCard(D);
       else buildSheet(D);
+      root.traverse((o) => {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        o.receiveShadow = true;
+      });
       root.updateMatrixWorld(true);
       fitCamera(true);              // an option change must not steal the view
     },
