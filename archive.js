@@ -23,19 +23,19 @@
    the window scrolls it.
    --------------------------------------------------------------- */
 
-const V = '?v=62';
+const V = '?v=63';
 
 /* ---------------- the session mark (476:719) ----------------
    Five 76px discs on a 284 box, with the two syllables laid over the
    first and last. Each session arranges them differently — 꿰기 is the
-   only two-row one, and 풀기 bunches three discs at the left and leaves
-   a gap before 기 — so the discs are listed per session rather than
+   only two-row one, and 풀기 spaces three discs evenly at the left before
+   leaving a gap to 기 — so the discs are listed per session rather than
    shared. `syl` is the y Figma puts both syllables at. */
 
 const MARKS = {
   1: { h: 114, syl: 51, discs: [[52, 0], [104, 38], [156, 0], [0, 38], [208, 38]] },
   2: { h: 76, syl: 13, discs: [[52, 0], [104, 0], [0, 0], [156, 0], [208, 0]] },
-  3: { h: 76, syl: 13, discs: [[28, 0], [56, 0], [0, 0], [120, 0], [208, 0]] },
+  3: { h: 76, syl: 13, discs: [[35, 0], [70, 0], [0, 0], [105, 0], [208, 0]] },
 };
 
 /* ---------------- the galleries ----------------
