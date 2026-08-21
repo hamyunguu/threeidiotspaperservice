@@ -205,10 +205,9 @@ x/y/w/h)를 같이 씁니다. **좌표는 metadata 쪽이 정확합니다** — 
 
 ## 9. 남은 일
 
-- `assets/tips-lockup.png`가 1배수 PNG입니다. THREE / idiots / PAPER / SERVICE
-  락업인데 Futura와 Avara가 웹폰트 없는 유료 서체라 그림으로 내보냈고, Figma MCP가
-  원본 크기까지만 내줍니다. **고해상도 화면에서 무릅니다 — Figma에서 SVG로 뽑아
-  바꾸는 것이 좋습니다**
+- 로그인 락업은 `assets/tips-lockup.svg`를 씁니다. Futura와 Avara가 웹폰트 없는 유료
+  서체라 Figma 노드 `515:610`을 벡터로 내보낸 것입니다. 예전 1배수
+  `assets/tips-lockup.png`는 호환용 원본으로만 남아 있고 페이지에서는 쓰지 않습니다
 - `program-detail.html` / `program-detail.js`는 어디서도 링크되지 않습니다. 지울지
   결정이 필요합니다
 - 로그인의 회원가입 · 아이디 찾기 · 비밀번호 찾기 · 소셜 버튼, 카트의 주문하기는

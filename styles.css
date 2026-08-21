@@ -616,7 +616,7 @@ body.hero2 { --stage-h: 1080; background: #fff; }
 /* every page wears this, so it is not scoped to the hero */
 .h-rule {
   position: absolute; left: 0; top: calc(58px + var(--shift)); width: 1920px; height: 1px;
-  background: #000; z-index: 6;
+  background: repeating-linear-gradient(to right, #000 0 2px, transparent 2px 4px); z-index: 6;
   transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 
@@ -652,7 +652,7 @@ body.hero2 { --stage-h: 1080; background: #fff; }
 .is-head-open .hd-t { opacity: 0; }
 .hd-t { transition: opacity .2s ease; }
 
-.hd-menu { left: 71px; display: flex; gap: 50px; align-items: flex-start; transition: left .32s cubic-bezier(.4, 0, .2, 1); }
+.hd-menu { left: 115px; display: flex; gap: 50px; align-items: flex-start; transition: left .32s cubic-bezier(.4, 0, .2, 1); }
 .is-head-open .hd-menu { left: 115px; }
 .hd-menu-label { white-space: nowrap; cursor: default; }
 
@@ -745,9 +745,11 @@ body.page-sub .hd-nav a.is-current { display: block; }
 
 .hero-ko {
   position: absolute; left: 965px; top: calc(126px + var(--shift)); width: 463px; z-index: 3;
-  font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 24px; line-height: 1.4; color: #000;
-  transition: top .32s cubic-bezier(.4, 0, .2, 1);
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 20px; line-height: 1.4;
+  letter-spacing: -0.5px; color: #000;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1), font-size .32s cubic-bezier(.4, 0, .2, 1);
 }
+.is-head-open .hero-ko { font-size: 24px; letter-spacing: 0; }
 /* the English block sits 62px lower when the header is open, not 65 (Figma) */
 .hero-en {
   position: absolute; left: 965px; top: 387px; width: 447px; z-index: 3;
@@ -823,8 +825,8 @@ body.page-sub .hd-nav a.is-current { display: block; }
 /* ---- right-bottom: chatbot ---- */
 
 .cb {
-  position: absolute; left: 1487px; top: calc(541px + var(--shift));
-  width: 365px; height: calc(471px - var(--shift));
+  position: absolute; left: 1486px; top: calc(541px + var(--shift));
+  width: 366px; height: calc(471px - var(--shift));
   border: 1px solid #000; z-index: 7;
   transition: top .32s cubic-bezier(.4, 0, .2, 1), height .32s cubic-bezier(.4, 0, .2, 1);
 }
@@ -1088,7 +1090,7 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
   transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
 .arc-next {
-  position: absolute; left: 1743px; top: calc(126px + var(--shift)); width: 63px; height: 43px;
+  position: absolute; left: 1743px; top: calc(151px + var(--shift)); width: 63px; height: 43px;
   border: none; background: none; padding: 0; cursor: pointer; z-index: 6;
   transition: top .32s cubic-bezier(.4, 0, .2, 1);
 }
@@ -1096,7 +1098,7 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
 .arc-back:hover, .arc-next:hover { opacity: .6; }
 
 .arc-next-label {
-  position: absolute; left: 1751px; top: calc(179px + var(--shift)); transform: translateX(-50%);
+  position: absolute; left: 1751px; top: calc(204px + var(--shift)); transform: translateX(-50%);
   font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 20px;
   line-height: 1.4; letter-spacing: -0.5px; color: #000; white-space: nowrap; z-index: 6;
   transition: top .32s cubic-bezier(.4, 0, .2, 1);
@@ -1117,12 +1119,12 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
   line-height: 1; color: var(--ink); white-space: nowrap;
 }
 
-.arc-blob { position: absolute; left: 115px; top: calc(126px + var(--shift)); width: 284px; z-index: 4; transition: top .32s cubic-bezier(.4, 0, .2, 1); }
+.arc-blob { position: absolute; left: 115px; top: calc(151px + var(--shift)); width: 284px; z-index: 4; transition: top .32s cubic-bezier(.4, 0, .2, 1); }
 
 /* ---- the copy, and the button under it ---- */
 
 .arc-copy {
-  position: absolute; left: 495px; top: calc(126px + var(--shift));
+  position: absolute; left: 495px; top: calc(151px + var(--shift));
   display: flex; gap: 10px; align-items: flex-start;
   font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 24px; line-height: 1.4;
   color: #000; z-index: 4;
@@ -1147,14 +1149,12 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
 .arc-cta:hover img { filter: invert(1); }
 
 /* ---- the gallery ----
-   Four columns with a 20 gutter between them. Where they start and how wide
-   they are is a different number on each of the three frames, and 묶기 even
-   gives its first column its own tile gutter, so archive.js sets them from
-   the session. Each tile keeps the height Figma gave it, so the columns
-   stagger the way they do there. */
+   Four columns with a 20 gutter between them. All three current frames begin
+   at 115,545; 묶기 alone narrows its final track and gives its first column a
+   10px tile gutter. archive.js supplies the per-session widths and heights. */
 
 .arc-grid {
-  position: absolute; left: var(--grid-x, 115px); top: var(--grid-y, 389px);
+  position: absolute; left: var(--grid-x, 115px); top: var(--grid-y, 545px);
   display: flex; gap: 20px; align-items: flex-start; z-index: 3;
   transform: translateY(var(--shift));
   transition: transform .32s cubic-bezier(.4, 0, .2, 1);

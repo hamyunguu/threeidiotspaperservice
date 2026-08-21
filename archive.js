@@ -10,21 +10,20 @@
    The mark is a different shape on each, and each gallery sits at its own
    x, y and column width. Those are the numbers, straight off the design:
 
-              mark          gallery x, y      column   gutter
-     꿰기     284 × 114     115, 389          408      20 / 20
-     묶기     284 ×  76      41, 597          440      20 / 10 in col 1
-     풀기     284 ×  76      55, 595          440      20 / 20
+              mark          gallery x, y      columns                    gutter
+     꿰기     284 × 114     115, 545          408 · 408 · 408 · 408     20 / 20
+     묶기     284 ×  76     115, 545          440 · 440 · 440 · 310     20 / 10 in col 1
+     풀기     284 ×  76     115, 545          408 · 408 · 408 · 408     20 / 20
 
-   Figma hangs this page's head 93 under the rule where the rest of the site
-   hangs 68, so everything here is 25 up from the artboard and then rides the
-   rule the way every other page does.
+   The archive intro starts at y=151 in all three current frames. The gallery
+   begins at y=545, leaving the same deliberate breathing room below the copy.
 
    The gallery runs well past the 1080 frame, so this is the page whose
    stage grows to its content (see body.archive in the stylesheet) and
    the window scrolls it.
    --------------------------------------------------------------- */
 
-const V = '?v=60';
+const V = '?v=61';
 
 /* ---------------- the session mark (476:719) ----------------
    Five 76px discs on a 284 box, with the two syllables laid over the
@@ -46,50 +45,60 @@ const MARKS = {
    in — which is how Figma stacks them. */
 
 const P1_HEIGHTS = [
-  [473.103, 337.224, 461.441, 436.045, 437.361, 557.291],
-  [349.189, 520.865, 470.268, 474.963, 499, 513.709],
-  [419.657, 785.543, 583.175, 543.866, 331.036],
-  [550.231, 336.875, 556.714, 332.95, 579.138, 340.309],
+  [473.103, 337.224, 461.441, 436.045, 437.361, 601],
+  [349.189, 520.865, 470.268, 474.963, 499, 554],
+  [419.657, 785.543, 583.175, 543.866, 357],
+  [550.231, 336.875, 556.714, 332.95, 579.138, 367],
+];
+
+/* The four final 꿰기 pieces are 440 wide in Figma even though their column
+   tracks are 408. They intentionally overhang the track rather than scale. */
+const P1_WIDTHS = [
+  [null, null, null, null, null, 440],
+  [null, null, null, null, null, 440],
+  [null, null, null, null, 440],
+  [null, null, null, null, null, 440],
 ];
 
 const P2_HEIGHTS = [
-  [564.831, 575, 771, 405.692, 549.305],
-  [603.68, 219, 458.857, 785.543, 361.319, 512.651],
-  [434.72, 464.129, 500.593, 625.079, 707.183],
-  [473.103, 282.509, 386.638, 779.116, 497.538, 629.843],
+  [564.831, 575, 771, 406, 549],
+  [603.68, 219, 458.857, 785, 361, 512],
+  [434.72, 464.129, 500, 625, 707],
+  [333.323, 199.041, 272.404, 548.923, 350.538, 443.753],
 ];
 
 const P3_HEIGHTS = [
-  [327.741, 578.374, 504.697, 499.51, 466.75],
-  [504.697, 389.245, 812.764, 591.257],
-  [761.449, 405.927, 471.455, 746.656],
-  [502.435, 327.741, 594.844, 614.316, 792.219],
+  [304, 536, 468, 463, 433],
+  [467.991, 360.936, 753.653, 548.257],
+  [706.071, 376.405, 437.167, 692.354],
+  [466, 304, 552, 570, 735],
 ];
 
 const SESSIONS = {
   1: {
     ink: '#00a0ff',
     mark: ['꿰', '기'],
-    ctaTop: '280px',
+    ctaTop: '305px',
     copy: [
       '꿰기 세션은 바늘과 실이라는 익숙한 제본<br>방식에서 출발해, 꿸 수 있는 모든 재료와<br>방법을 탐색하는 프로그램입니다. 종이에<br>구멍을 내고 실을 통과 시키는 것부터, 천과<br>플라스틱, 철사와 케이블처럼 제본과는 멀어<br>보이는 재료까지 자유롭게 연결해 봅니다.',
       '재료의 한계도, 방식의 제약도, 정해진 결과도<br>없습니다.<br><span class="is-note">꿰고 연결하며 발견하는 가능성만 있습니다.</span>',
     ],
-    grid: { x: 115, y: 389, col: 408, gaps: [20, 20, 20, 20] },
+    grid: { x: 115, y: 545, cols: [408, 408, 408, 408], gaps: [20, 20, 20, 20] },
     count: 23,
     file: (n) => `assets/archive/a1-${String(n).padStart(2, '0')}.jpg`,
     heights: P1_HEIGHTS,
+    widths: P1_WIDTHS,
   },
   2: {
     ink: '#ec008c',
     mark: ['묶', '기'],
-    ctaTop: '280px',
+    ctaTop: '305px',
     copy: [
       '묶기 세션은 흩어진 재료들을 기상천외한<br>방식으로 한데 모으며, 묶는 행위가 어떻게<br>하나의 제본이 될 수 있는지 경험하는<br>프로그램 입니다.',
       '끈을 감고 매듭을 만들거나, 고무줄과 테이프,<br>밴드와 철사 등 손에 잡히는 다양한 재료를<br>이용해 새로운 책의 구조를 만들어 봅니다.',
     ],
     /* Figma gives this one's first column a 10 gutter and the rest 20 */
-    grid: { x: 41, y: 597, col: 440, gaps: [10, 20, 20, 20] },
+    grid: { x: 115, y: 545, cols: [440, 440, 440, 310], gaps: [10, 20, 20, 20] },
     count: 20,
     file: (n) => `assets/archive/a2-${String(n).padStart(2, '0')}.jpg`,
     heights: P2_HEIGHTS,
@@ -98,11 +107,11 @@ const SESSIONS = {
     ink: '#ffff00',
     mark: ['풀', '기'],
     /* the only session whose button sits up on the copy's own line */
-    ctaTop: '126px',
+    ctaTop: '271px',
     copy: [
       '풀기는 이미 만들어진 책과 제본의 구조를<br>거꾸로 따라가는 세션입니다. 실을 빼고,<br>매듭을 풀고, 접힌 면을 펼치며 하나의 책이<br>어떤 순서와 방식으로 만들어졌는지<br>발견합니다.',
     ],
-    grid: { x: 55, y: 595, col: 440, gaps: [20, 20, 20, 20] },
+    grid: { x: 115, y: 545, cols: [408, 408, 408, 408], gaps: [20, 20, 20, 20] },
     count: 20,
     file: (n) => `assets/archive/a3-${String(n).padStart(2, '0')}.jpg`,
     heights: P3_HEIGHTS,
@@ -149,7 +158,6 @@ const COLS = 4;
 
 grid.style.setProperty('--grid-x', `${s.grid.x}px`);
 grid.style.setProperty('--grid-y', `${s.grid.y}px`);
-grid.style.setProperty('--col-w', `${s.grid.col}px`);
 
 /* Figma fills a column before starting the next, so the pieces are dealt in
    runs rather than round-robin. A run is as long as the column Figma drew;
@@ -171,7 +179,9 @@ grid.innerHTML = columns.map((col, c) => {
   const tiles = col.map((n, r) => {
     /* a Figma height where we have one, otherwise the piece's own shape */
     const h = s.heights[c] && s.heights[c][r];
-    const style = h ? ` style="height:${h}px"` : '';
+    const w = s.widths && s.widths[c] && s.widths[c][r];
+    const dims = [h && `height:${h}px`, w && `width:${w}px`].filter(Boolean).join(';');
+    const style = dims ? ` style="${dims}"` : '';
     const cls = h ? 'arc-tile is-cropped' : 'arc-tile';
     /* no lazy loading on the tiles that size themselves: a tile with no
        height is flat, a flat tile is never "near the viewport", and the
@@ -179,7 +189,7 @@ grid.innerHTML = columns.map((col, c) => {
     return `<button type="button" class="${cls}"${style}>` +
       `<img src="${s.file(n)}${V}" alt="아카이브 ${n}"${h ? ' loading="lazy"' : ''} /></button>`;
   }).join('');
-  return `<div class="arc-col" style="--tile-gap:${s.grid.gaps[c]}px">${tiles}</div>`;
+  return `<div class="arc-col" style="--col-w:${s.grid.cols[c]}px;--tile-gap:${s.grid.gaps[c]}px">${tiles}</div>`;
 }).join('');
 
 /* ---- give the frame the gallery's height ----
