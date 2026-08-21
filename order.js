@@ -900,6 +900,8 @@ function paintCaption() {
   }
 
   const primary = MODES[state.mode].uploads[0].slot;
+  const hasArtwork = Boolean(state.images[primary]);
+  preview.classList.toggle('has-artwork', hasArtwork);
   dropHint.textContent = state.images[primary]
     ? '드래그로 돌려 보세요 · 휠로 확대'
     : '1번에서 파일을 올리거나 여기에 끌어다 놓으면 바로 3D에 반영됩니다';
@@ -1963,6 +1965,10 @@ async function createEngine(mount) {
       o.castShadow = true;
       o.receiveShadow = true;
     });
+    /* Figma's untouched state is an empty white preview. The physical model
+       appears only after artwork is supplied, while all form options are
+       still ready to alter it immediately once it is visible. */
+    root.visible = Object.keys(state.images).length > 0;
     root.updateMatrixWorld(true);
     fitCamera();
   }
@@ -2040,6 +2046,7 @@ async function createEngine(mount) {
         o.castShadow = true;
         o.receiveShadow = true;
       });
+      root.visible = Object.keys(state.images).length > 0;
       root.updateMatrixWorld(true);
       fitCamera(true);              // an option change must not steal the view
     },
