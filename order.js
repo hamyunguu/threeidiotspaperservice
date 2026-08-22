@@ -1122,6 +1122,13 @@ common.addEventListener('change', (e) => {
 
 common.addEventListener('pointerdown', () => setEditingPane('common'));
 
+/* This pane scrolls vertically only. Safari can still pan a nominally
+   vertical overflow box sideways with a trackpad or while focusing a field;
+   once that happens the beginning of an uploaded file name disappears. */
+common.addEventListener('scroll', () => {
+  if (common.scrollLeft !== 0) common.scrollLeft = 0;
+}, { passive: true });
+
 common.addEventListener('input', (e) => {
   const el = e.target;
   const key = el.getAttribute('data-common-key');
@@ -1643,6 +1650,7 @@ function switchMode(mode) {
   paintCaption();
   if (engine) engine.rebuild(derive(), state.images);
   common.scrollTop = 0;
+  common.scrollLeft = 0;
   form.scrollTop = 0;
 }
 
