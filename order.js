@@ -85,6 +85,7 @@ const MODES = {
     label: 'Book', goods: '인디고 책자인쇄', code: 'S0073',
     uploads: [
       { slot: 'cover', label: '앞 표지' },
+      { slot: 'spine', label: '책등' },
       { slot: 'coverBack', label: '뒷 표지' },
       { slot: 'inner', label: '내지' },
     ],
@@ -242,6 +243,17 @@ const state = {
   detailActive: false,
 };
 
+/* Interior PDFs stay as PDF documents and only the pages around the current
+   spread are rasterised. This keeps a 300-page book from decoding hundreds
+   of full-size images into memory before the first page can be inspected. */
+const innerPreview = {
+  doc: null,
+  total: 0,
+  cache: new Map(),
+  pending: new Map(),
+  token: 0,
+};
+
 const form = document.getElementById('ordForm');
 const tabs = document.getElementById('ordTabs');
 const common = document.getElementById('ordCommon');
@@ -252,6 +264,8 @@ const productKinds = document.getElementById('ordProductKinds');
 const preview = document.getElementById('ordPreview');
 const dropHint = document.getElementById('ordDropHint');
 const dimLabel = document.getElementById('ordDim');
+const bookNav = document.getElementById('ordBookNav');
+const bookPage = document.getElementById('ordBookPage');
 
 const esc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
@@ -868,6 +882,8 @@ function derive() {
     spine: bind === '제본 없음' ? 0 : senecaMm(o),
     direction: o.goods_jebon_direction || '세로',
     pages: totalPages(o),
+    innerPages: innerPreview.doc ? innerPreview.total : totalPages(o),
+    hasInner: Boolean(state.images.inner),
     wings: o.cover_nalgae === '날개있음',
     cover: Boolean(o.use_cover),
     ringColor: o.goods_opt_ring === '흰색' ? 0xf2f2f2 : 0x2b2b2b,
@@ -900,10 +916,15 @@ function paintCaption() {
   }
 
   const primary = MODES[state.mode].uploads[0].slot;
-  const hasArtwork = Boolean(state.images[primary]);
+  const hasInner = state.mode === 'book' && Boolean(state.images.inner);
+  const hasArtwork = MODES[state.mode].uploads.some((upload) => Boolean(state.images[upload.slot]));
   preview.classList.toggle('has-artwork', hasArtwork);
-  dropHint.textContent = state.images[primary]
-    ? '드래그로 돌려 보세요 · 휠로 확대'
+  preview.classList.toggle('has-inner-preview', hasInner);
+  bookNav?.classList.toggle('is-visible', hasInner);
+  dropHint.textContent = hasInner
+    ? '책이 펼쳐지면 페이지를 좌우로 드래그해 내지를 넘겨보세요'
+    : state.images[primary]
+      ? '드래그로 돌려 보세요 · 휠로 확대'
     : '1번에서 파일을 올리거나 여기에 끌어다 놓으면 바로 3D에 반영됩니다';
 }
 
@@ -1227,6 +1248,7 @@ function takeFile(file, slot) {
     return;
   }
   if (!file.type.startsWith('image/')) return;
+  if (slot === 'inner' && state.mode === 'book') resetInnerPreview();
 
   const reader = new FileReader();
   reader.onload = () => {
@@ -1241,9 +1263,22 @@ function takeFile(file, slot) {
 
 function landArtwork(slot, img, label) {
   state.images[slot] = img;
+  if (slot === 'inner' && state.mode === 'book') {
+    innerPreview.cache.set(1, img);
+    if (!innerPreview.total) innerPreview.total = Math.max(1, +state.opts.in_page_val || 1);
+  }
   markUpload(slot, label);
   paintCaption();
-  if (engine) engine.setTexture(slot, img);
+  if (engine) engine.setTexture(slot, img, derive());
+}
+
+function resetInnerPreview() {
+  innerPreview.token++;
+  innerPreview.doc = null;
+  innerPreview.total = 0;
+  innerPreview.cache.clear();
+  innerPreview.pending.clear();
+  if (bookPage) bookPage.textContent = '1 / 1';
 }
 
 /* pdf.js is pulled in only when a PDF is actually handed over */
@@ -1259,10 +1294,10 @@ function loadPdfJs() {
   return pdfjs;
 }
 
-async function renderPdfPage(doc, number) {
+async function renderPdfPage(doc, number, maxEdge) {
   const page = await doc.getPage(number);
   const raw = page.getViewport({ scale: 1 });
-  const view = page.getViewport({ scale: 2400 / Math.max(raw.width, raw.height) });
+  const view = page.getViewport({ scale: (maxEdge || 2400) / Math.max(raw.width, raw.height) });
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(view.width);
   canvas.height = Math.round(view.height);
@@ -1282,24 +1317,64 @@ async function renderPdfPage(doc, number) {
    hand. A two-page flat PDF also maps page 2 to the reverse side, matching
    the way a print-ready duplex file is actually supplied. */
 async function takePdf(file, slot) {
+  const isInner = slot === 'inner' && state.mode === 'book';
+  const innerToken = isInner ? (resetInnerPreview(), innerPreview.token) : 0;
   markUpload(slot, `${file.name} · 읽는 중…`, true);
   try {
     const lib = await loadPdfJs();
     const doc = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
-    const img = await renderPdfPage(doc, 1);
-    const isInner = slot === 'inner' && state.mode === 'book';
+    if (isInner) {
+      if (innerToken !== innerPreview.token || state.mode !== 'book') return;
+      innerPreview.doc = doc;
+      innerPreview.total = doc.numPages;
+    }
+    const img = await renderPdfPage(doc, 1, isInner ? 1800 : 2400);
+    if (isInner && innerToken !== innerPreview.token) return;
     landArtwork(slot, img, `${file.name} · ${doc.numPages}p`);
     if (isInner) setInnerPages(doc.numPages);
 
     if (slot === 'front' && doc.numPages > 1) {
       const back = await renderPdfPage(doc, 2);
       state.images.back = back;
-      if (engine) engine.setTexture('back', back);
+      if (engine) engine.setTexture('back', back, derive());
     }
+    if (isInner) requestInnerPages([1, 2, 3, 4, 5]);
   } catch (err) {
     markUpload(slot, `${file.name} · 읽지 못했습니다`);
     console.error('[order] PDF read failed:', err);
   }
+}
+
+function requestInnerPages(numbers) {
+  const doc = innerPreview.doc;
+  const token = innerPreview.token;
+  const requested = [...new Set(numbers.map((page) => Math.round(page)))];
+  const keep = new Set(requested.filter((page) => page > 0));
+  if (innerPreview.cache.size > 12) {
+    [...innerPreview.cache.keys()].forEach((page) => {
+      if (page !== 1 && !keep.has(page)) innerPreview.cache.delete(page);
+    });
+  }
+  requested.forEach((raw) => {
+    const page = Math.round(raw);
+    if (page < 1 || page > innerPreview.total) return;
+    const cached = innerPreview.cache.get(page);
+    if (cached) {
+      if (engine) engine.setBookPageTexture(page, cached);
+      return;
+    }
+    if (!doc || innerPreview.pending.has(page)) return;
+    const pending = renderPdfPage(doc, page, 1800).then((img) => {
+      if (token !== innerPreview.token) return;
+      innerPreview.cache.set(page, img);
+      if (engine) engine.setBookPageTexture(page, img);
+    }).catch((err) => {
+      console.error(`[order] inner PDF page ${page} failed:`, err);
+    }).finally(() => {
+      if (token === innerPreview.token) innerPreview.pending.delete(page);
+    });
+    innerPreview.pending.set(page, pending);
+  });
 }
 
 /* the 페이지 field only takes even counts within its own range */
@@ -1309,6 +1384,8 @@ function setInnerPages(n) {
     .rows.find((r) => r.key === 'in_page_val');
   const even = n % 2 ? n + 1 : n;
   state.opts.in_page_val = Math.min(row.max, Math.max(row.min, even));
+  const commonPages = common.querySelector('[data-common-key="in_page_val"]');
+  if (commonPages) commonPages.value = state.opts.in_page_val;
   renderForm(state.mode);
   refreshDynamic();
   paintCaption();
@@ -1333,6 +1410,24 @@ document.getElementById('ordViewReset').addEventListener('click', () => {
   if (engine) engine.resetView();
 });
 
+bookNav?.addEventListener('click', (e) => {
+  const button = e.target.closest('[data-book-turn]');
+  if (button && engine) engine.turnBookPage(+button.dataset.bookTurn);
+});
+
+function updateBookPageUi(info) {
+  if (!bookPage || !bookNav) return;
+  const left = info.left > 0 && info.left <= info.total ? info.left : null;
+  const right = info.right <= info.total ? info.right : null;
+  bookPage.textContent = left && right
+    ? `${left}–${right} / ${info.total}`
+    : `${left || right || 1} / ${info.total || 1}`;
+  const previous = bookNav.querySelector('[data-book-turn="-1"]');
+  const next = bookNav.querySelector('[data-book-turn="1"]');
+  if (previous) previous.disabled = !info.canPrevious;
+  if (next) next.disabled = !info.canNext;
+}
+
 /* ---------------- product tabs ---------------- */
 
 tabs.addEventListener('click', (e) => {
@@ -1353,6 +1448,7 @@ productKinds.addEventListener('click', (e) => {
 
 function switchMode(mode) {
   if (!MODES[mode]) return;
+  resetInnerPreview();
   state.mode = mode;
   state.images = {};                 // artwork is per product
   state.files = {};
@@ -1391,7 +1487,10 @@ let engine = null;
 
 switchMode('poster');
 
-createEngine(ordStage).then((eng) => {
+createEngine(ordStage, {
+  requestPages: requestInnerPages,
+  onPageChange: updateBookPageUi,
+}).then((eng) => {
   engine = eng;
   stageNote.remove();
   engine.rebuild(derive(), state.images);
@@ -1412,7 +1511,7 @@ window.addEventListener('resize', () => { if (engine) engine.resize(); });
    B2 poster equally readable in the same frame.
    ========================================================================== */
 
-async function createEngine(mount) {
+async function createEngine(mount, bookCallbacks) {
   const THREE = await import('three');
   const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
 
@@ -1509,6 +1608,24 @@ async function createEngine(mount) {
     displacement: 0, velocity: 0, motion: 0, phase: 0,
     lastTime: 0, normalFrame: 0, lastView: new THREE.Vector3(),
   };
+  const bookMotion = {
+    rig: null,
+    active: false,
+    open: 0,
+    targetOpen: 0,
+    leaf: 0,
+    total: 0,
+    progress: 0,
+    targetProgress: 0,
+    direction: 1,
+    dragging: false,
+    settling: false,
+    pointerId: null,
+    startX: 0,
+    queuedDirection: 0,
+  };
+  const bookRaycaster = new THREE.Raycaster();
+  const bookPointer = new THREE.Vector2();
 
   /* ---- textures ---- */
 
@@ -1719,6 +1836,11 @@ async function createEngine(mount) {
 
   function clear() {
     flexibleSheet = null;
+    bookMotion.rig = null;
+    bookMotion.dragging = false;
+    bookMotion.settling = false;
+    bookMotion.pointerId = null;
+    controls.enabled = true;
     flexDynamics.displacement = 0;
     flexDynamics.velocity = 0;
     flexDynamics.motion = 0;
@@ -1875,7 +1997,7 @@ async function createEngine(mount) {
 
   /* A book, closed, seen from the spine side: cover, page block, spine —
      with rings, staples or a glued back depending on 제본 방식. */
-  function buildBook(D) {
+  function buildClosedBook(D) {
     const s = unit(D);
     const w = D.w * s;
     const h = D.h * s;
@@ -1956,7 +2078,7 @@ async function createEngine(mount) {
         const spine = new THREE.Mesh(
           new THREE.CylinderGeometry(d / 2 + cover, d / 2 + cover, h, 24, 1, true,
             Math.PI / 2, Math.PI),
-          coverMat('cover', '표지'));
+          coverMat('spine', '책등'));
         spine.position.x = -w / 2;
         g.add(spine);
 
@@ -1998,6 +2120,227 @@ async function createEngine(mount) {
 
     centre(g);
     root.add(g);
+  }
+
+  function bookPageMaterial(D, page) {
+    if (page < 1 || page > bookMotion.total) return pageBlock();
+    const slot = page === 1 ? 'inner' : `innerPage${page}`;
+    return paperMat(D.coating, D.paper, texFor(slot, `내지 ${page}p`));
+  }
+
+  function bookPageMaterials(D, frontPage, backPage) {
+    const edge = cutEdge();
+    return [edge, edge, edge, edge,
+      bookPageMaterial(D, frontPage), bookPageMaterial(D, backPage)];
+  }
+
+  function replaceMaterials(mesh, materials) {
+    const old = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    new Set(old).forEach((material) => material?.dispose());
+    mesh.material = materials;
+  }
+
+  function notifyBookSpread() {
+    if (!bookMotion.active) return;
+    const left = bookMotion.leaf * 2;
+    const right = left + 1;
+    pruneBookTextures(right);
+    bookCallbacks?.onPageChange?.({
+      left,
+      right,
+      total: bookMotion.total,
+      canPrevious: bookMotion.leaf > 0,
+      canNext: bookMotion.leaf < Math.floor(bookMotion.total / 2),
+    });
+    bookCallbacks?.requestPages?.([
+      left - 2, left - 1, left, right, right + 1, right + 2, right + 3, right + 4,
+    ]);
+  }
+
+  function pruneBookTextures(center) {
+    Object.keys(texCache).forEach((slot) => {
+      const match = slot.match(/^innerPage(\d+)$/);
+      if (!match || Math.abs(+match[1] - center) <= 7) return;
+      texCache[slot].dispose();
+      delete texCache[slot];
+    });
+    Object.keys(blanks).forEach((label) => {
+      const match = label.match(/^내지 (\d+)p$/);
+      if (!match || Math.abs(+match[1] - center) <= 7) return;
+      blanks[label].dispose();
+      delete blanks[label];
+    });
+  }
+
+  function configureBookRig(direction) {
+    const rig = bookMotion.rig;
+    if (!rig) return;
+    const D = rig.D;
+    const left = bookMotion.leaf * 2;
+    const right = left + 1;
+    bookMotion.direction = direction;
+
+    if (direction > 0) {
+      replaceMaterials(rig.leftPage, bookPageMaterials(D, left, 0));
+      replaceMaterials(rig.rightPage, bookPageMaterials(D, right + 2, 0));
+      replaceMaterials(rig.flipPage, bookPageMaterials(D, right, right + 1));
+      rig.leftPage.visible = left > 0;
+      rig.flipPage.visible = right <= bookMotion.total;
+      rig.leftPage.userData.bookSide = 'left';
+      rig.rightPage.userData.bookSide = 'right';
+      rig.flipPage.userData.bookSide = 'right';
+    } else {
+      replaceMaterials(rig.leftPage, bookPageMaterials(D, left - 2, 0));
+      replaceMaterials(rig.rightPage, bookPageMaterials(D, right, 0));
+      replaceMaterials(rig.flipPage, bookPageMaterials(D, right - 2, left));
+      rig.leftPage.visible = left > 2;
+      rig.flipPage.visible = bookMotion.leaf > 0;
+      rig.leftPage.userData.bookSide = 'left';
+      rig.rightPage.userData.bookSide = 'right';
+      rig.flipPage.userData.bookSide = 'left';
+    }
+  }
+
+  function poseBookLeaf(progress) {
+    const rig = bookMotion.rig;
+    if (!rig) return;
+    const p = THREE.MathUtils.clamp(progress, 0, 1);
+    const angle = bookMotion.direction > 0 ? -Math.PI * p : -Math.PI * (1 - p);
+    rig.flipPivot.rotation.y = angle;
+
+    const pos = rig.flipPage.geometry.attributes.position;
+    const base = rig.flipBase;
+    const bend = Math.sin(Math.PI * p) * rig.w * 0.115;
+    for (let i = 0; i < pos.count; i++) {
+      const n = i * 3;
+      const u = THREE.MathUtils.clamp(base[n] / rig.w + 0.5, 0, 1);
+      const curl = Math.sin(Math.PI * u) * 0.72 + u * 0.28;
+      pos.array[n + 2] = base[n + 2] + bend * curl;
+    }
+    pos.needsUpdate = true;
+    rig.flipPage.geometry.computeVertexNormals();
+  }
+
+  function poseBookOpen(progress) {
+    const rig = bookMotion.rig;
+    if (!rig) return;
+    const p = THREE.MathUtils.clamp(progress, 0, 1);
+    const eased = p * p * (3 - 2 * p);
+    rig.frontPivot.rotation.y = -Math.PI * eased;
+    rig.frontPivot.position.z = THREE.MathUtils.lerp(rig.closedCoverZ, rig.openCoverZ, eased);
+    rig.pageLayer.visible = p > 0.08;
+  }
+
+  /* Once an interior is supplied, the closed cover becomes a real hinge.
+     The current leaf is a subdivided physical sheet: its pivot supplies the
+     turn while its vertices curl most strongly halfway through the motion. */
+  function buildOpenBook(D) {
+    const s = unit(D);
+    const w = D.w * s;
+    const h = D.h * s;
+    const d = Math.max(0.035, D.spine * s);
+    const cover = 0.008;
+    const pageT = Math.max(0.0022, d / Math.max(18, D.pages / 2));
+    const firstOpen = !bookMotion.active;
+    bookMotion.active = true;
+    bookMotion.total = Math.max(1, D.innerPages || D.pages || 1);
+    bookMotion.leaf = Math.min(bookMotion.leaf, Math.floor(bookMotion.total / 2));
+    if (firstOpen) {
+      bookMotion.open = 0;
+      bookMotion.leaf = 0;
+      bookMotion.progress = 0;
+    }
+    bookMotion.targetOpen = 1;
+    bookMotion.targetProgress = 0;
+
+    const g = new THREE.Group();
+    const coverMat = (slot, label) =>
+      paperMat(D.coverCoating, D.coverPaper, D.cover ? texFor(slot, label) : null);
+    const leaves = Math.max(2, D.pages / 2);
+    const blockEdge = [
+      stackedEdge(leaves, false), stackedEdge(leaves, false),
+      stackedEdge(leaves, true), stackedEdge(leaves, true),
+      pageBlock(), pageBlock(),
+    ];
+
+    const rightBlock = new THREE.Mesh(
+      new THREE.BoxGeometry(w * 0.985, h * 0.985, d), blockEdge);
+    rightBlock.position.x = w / 2;
+    g.add(rightBlock);
+
+    const backCover = sheet(w, h, cover, pageBlock(), coverMat('coverBack', '뒷표지'));
+    backCover.position.set(w / 2, 0, -(d / 2 + cover / 2));
+    g.add(backCover);
+
+    const spine = new THREE.Mesh(
+      new THREE.CylinderGeometry(d / 2 + cover, d / 2 + cover, h, 28, 1, true),
+      coverMat('spine', '책등'));
+    spine.position.z = -cover / 2;
+    g.add(spine);
+
+    const frontPivot = new THREE.Group();
+    const closedCoverZ = d / 2 + cover * 4;
+    const openCoverZ = d / 2 + cover * 0.25;
+    frontPivot.position.z = closedCoverZ;
+    const frontCover = sheet(w, h, cover,
+      coverMat('cover', '앞표지'), pageBlock(), w * 0.012);
+    frontCover.position.x = w / 2;
+    frontPivot.add(frontCover);
+    g.add(frontPivot);
+
+    const pageLayer = new THREE.Group();
+    pageLayer.position.z = d / 2 + cover * 2;
+    const leftPage = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, pageT, 1, 4, 1), bookPageMaterials(D, 0, 0));
+    leftPage.position.x = -w / 2;
+    const rightPage = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, pageT, 1, 4, 1), bookPageMaterials(D, 3, 0));
+    rightPage.position.x = w / 2;
+    pageLayer.add(leftPage, rightPage);
+
+    const flipPivot = new THREE.Group();
+    flipPivot.position.z = pageT * 1.8;
+    const flipGeometry = new THREE.BoxGeometry(w, h, pageT, 36, 10, 1);
+    bow(flipGeometry, w * 0.004);
+    const flipPage = new THREE.Mesh(flipGeometry, bookPageMaterials(D, 1, 2));
+    flipPage.position.x = w / 2;
+    flipPivot.add(flipPage);
+    pageLayer.add(flipPivot);
+    g.add(pageLayer);
+
+    /* Transparent geometry keeps the camera fitted to the final two-page
+       spread throughout the automatic opening motion. */
+    const fitProxy = new THREE.Mesh(
+      new THREE.BoxGeometry(w * 2.04, h * 1.02, d + cover * 4),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+    g.add(fitProxy);
+
+    bookMotion.rig = {
+      D, group: g, frontPivot, pageLayer, leftPage, rightPage, flipPivot, flipPage,
+      flipBase: Float32Array.from(flipGeometry.attributes.position.array), w, h,
+      closedCoverZ, openCoverZ,
+    };
+    configureBookRig(1);
+    poseBookLeaf(0);
+    poseBookOpen(bookMotion.open);
+    notifyBookSpread();
+
+    if (D.direction === '가로') g.rotation.z = -Math.PI / 2;
+    centre(g);
+    root.add(g);
+  }
+
+  function buildBook(D) {
+    if (!D.hasInner) {
+      bookMotion.active = false;
+      bookMotion.open = 0;
+      bookMotion.targetOpen = 0;
+      bookMotion.leaf = 0;
+      bookMotion.queuedDirection = 0;
+      buildClosedBook(D);
+      return;
+    }
+    buildOpenBook(D);
   }
 
   /* drop a group onto the ground and centre it over the origin */
@@ -2108,10 +2451,125 @@ async function createEngine(mount) {
     if ((D.normalFrame++ & 1) === 0) geo.computeVertexNormals();
   }
 
+  function beginBookTurn(direction, dragging) {
+    if (!bookMotion.rig || bookMotion.settling || bookMotion.dragging) return false;
+    const maxLeaves = Math.floor(bookMotion.total / 2);
+    if ((direction > 0 && bookMotion.leaf >= maxLeaves) ||
+        (direction < 0 && bookMotion.leaf <= 0)) return false;
+    configureBookRig(direction);
+    bookMotion.progress = 0;
+    bookMotion.targetProgress = dragging ? 0 : 1;
+    bookMotion.dragging = Boolean(dragging);
+    bookMotion.settling = !dragging;
+    poseBookLeaf(0);
+    return true;
+  }
+
+  function settleBookTurn(commit) {
+    if (!bookMotion.rig) return;
+    bookMotion.dragging = false;
+    bookMotion.settling = true;
+    bookMotion.targetProgress = commit ? 1 : 0;
+    controls.enabled = true;
+  }
+
+  let bookLastTime = 0;
+  function animateBook(now) {
+    if (!bookMotion.rig) {
+      bookLastTime = now;
+      return;
+    }
+    const dt = Math.min(0.04, Math.max(0.001, (now - (bookLastTime || now)) / 1000));
+    bookLastTime = now;
+    bookMotion.open = THREE.MathUtils.damp(bookMotion.open, bookMotion.targetOpen, 5.8, dt);
+    if (Math.abs(bookMotion.open - bookMotion.targetOpen) < 0.001) {
+      bookMotion.open = bookMotion.targetOpen;
+    }
+    poseBookOpen(bookMotion.open);
+
+    if (bookMotion.open > 0.965 && bookMotion.queuedDirection) {
+      const queued = bookMotion.queuedDirection;
+      bookMotion.queuedDirection = 0;
+      beginBookTurn(queued, false);
+    }
+
+    if (!bookMotion.dragging && bookMotion.settling) {
+      bookMotion.progress = THREE.MathUtils.damp(
+        bookMotion.progress, bookMotion.targetProgress, 12.5, dt);
+      poseBookLeaf(bookMotion.progress);
+      if (Math.abs(bookMotion.progress - bookMotion.targetProgress) < 0.006) {
+        const committed = bookMotion.targetProgress === 1;
+        if (committed) {
+          bookMotion.leaf = THREE.MathUtils.clamp(
+            bookMotion.leaf + bookMotion.direction, 0, Math.floor(bookMotion.total / 2));
+        }
+        bookMotion.progress = 0;
+        bookMotion.targetProgress = 0;
+        bookMotion.settling = false;
+        configureBookRig(1);
+        poseBookLeaf(0);
+        if (committed) notifyBookSpread();
+      }
+    }
+  }
+
+  function hitBookPage(event) {
+    const rig = bookMotion.rig;
+    if (!rig || bookMotion.open < 0.94) return null;
+    const rect = renderer.domElement.getBoundingClientRect();
+    bookPointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    bookPointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    bookRaycaster.setFromCamera(bookPointer, camera);
+    const hits = bookRaycaster.intersectObjects(
+      [rig.flipPage, rig.leftPage, rig.rightPage].filter((mesh) => mesh.visible), false);
+    return hits[0]?.object.userData.bookSide || null;
+  }
+
+  function onBookPointerDown(event) {
+    if (event.button !== 0 || !bookMotion.rig) return;
+    const side = hitBookPage(event);
+    const direction = side === 'right' ? 1 : side === 'left' ? -1 : 0;
+    if (!direction || !beginBookTurn(direction, true)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    bookMotion.pointerId = event.pointerId;
+    bookMotion.startX = event.clientX;
+    controls.enabled = false;
+    try { renderer.domElement.setPointerCapture?.(event.pointerId); } catch (_) { /* synthetic test pointer */ }
+  }
+
+  function onBookPointerMove(event) {
+    if (!bookMotion.dragging || event.pointerId !== bookMotion.pointerId) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const rect = renderer.domElement.getBoundingClientRect();
+    const dx = bookMotion.direction > 0
+      ? bookMotion.startX - event.clientX
+      : event.clientX - bookMotion.startX;
+    bookMotion.progress = THREE.MathUtils.clamp(dx / (rect.width * 0.34), 0, 1);
+    poseBookLeaf(bookMotion.progress);
+  }
+
+  function onBookPointerUp(event) {
+    if (!bookMotion.dragging || event.pointerId !== bookMotion.pointerId) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    try { renderer.domElement.releasePointerCapture?.(event.pointerId); } catch (_) { /* already released */ }
+    bookMotion.pointerId = null;
+    settleBookTurn(bookMotion.progress > 0.32);
+  }
+
+  renderer.domElement.addEventListener('pointerdown', onBookPointerDown, true);
+  renderer.domElement.addEventListener('pointermove', onBookPointerMove, true);
+  renderer.domElement.addEventListener('pointerup', onBookPointerUp, true);
+  renderer.domElement.addEventListener('pointercancel', onBookPointerUp, true);
+
   function frame(now) {
     if (!running) return;
     controls.update();
-    animateFlexibleSheet(now || performance.now());
+    const stamp = now || performance.now();
+    animateFlexibleSheet(stamp);
+    animateBook(stamp);
     renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
   }
@@ -2156,10 +2614,29 @@ async function createEngine(mount) {
       root.updateMatrixWorld(true);
       fitCamera(true);              // an option change must not steal the view
     },
-    setTexture(slot, img) {
+    setTexture(slot, img, nextState) {
       if (texCache[slot]) texCache[slot].dispose();
       texCache[slot] = fromImage(img);
+      if (nextState) current = nextState;
       if (current) this.update(current);
+    },
+    setBookPageTexture(page, img) {
+      const slot = page === 1 ? 'inner' : `innerPage${page}`;
+      if (texCache[slot]) texCache[slot].dispose();
+      texCache[slot] = fromImage(img);
+      if (bookMotion.rig) {
+        configureBookRig(bookMotion.direction || 1);
+        poseBookLeaf(bookMotion.progress);
+      }
+    },
+    turnBookPage(direction) {
+      const turn = direction < 0 ? -1 : 1;
+      if (!bookMotion.rig) return;
+      if (bookMotion.open < 0.94) {
+        bookMotion.queuedDirection = turn;
+        return;
+      }
+      beginBookTurn(turn, false);
     },
     resetView() { fitCamera(false); },
     resize,
