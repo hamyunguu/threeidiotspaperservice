@@ -550,7 +550,7 @@ function formatBoard(prefix, label, mode) {
     formatButton(fs[1], `is-${prefix.toLowerCase()}2`) +
     formatButton(fs[2], `is-${prefix.toLowerCase()}3`) +
     formatButton(fs[3], `is-${prefix.toLowerCase()}4`) +
-    '</div></div>';
+    '<i class="ord-format-hover" aria-hidden="true"><span></span></i></div></div>';
 }
 
 function commonDone() {
@@ -1095,11 +1095,21 @@ function restoreFormatDimension(set) {
   if (!output) return;
   const picked = set.querySelector(`.ord-format[data-format="${state.pickedSize}"]`);
   output.textContent = picked ? formatDimensionText(picked) : '000×000';
+  set.querySelector('.ord-format-hover')?.classList.remove('is-visible');
 }
 
 function previewFormatDimension(format) {
-  const output = format.closest('.ord-format-set')?.querySelector('[data-format-dim]');
+  const set = format.closest('.ord-format-set');
+  const output = set?.querySelector('[data-format-dim]');
   if (output) output.textContent = formatDimensionText(format);
+  const hover = set?.querySelector('.ord-format-hover');
+  if (!hover) return;
+  hover.style.left = `${format.offsetLeft}px`;
+  hover.style.top = `${format.offsetTop}px`;
+  hover.style.width = `${format.offsetWidth}px`;
+  hover.style.height = `${format.offsetHeight}px`;
+  hover.querySelector('span').textContent = format.dataset.format;
+  hover.classList.add('is-visible');
 }
 
 common.addEventListener('pointerover', (e) => {
@@ -1422,7 +1432,7 @@ async function createEngine(mount) {
      albedo and only compresses the highlights, which is exactly the trade
      a product viewer wants. */
   renderer.toneMapping = THREE.NeutralToneMapping;
-  renderer.toneMappingExposure = 1.04;
+  renderer.toneMappingExposure = 0.96;
   renderer.domElement.className = 'ord-canvas';
   mount.appendChild(renderer.domElement);
 
@@ -1463,10 +1473,10 @@ async function createEngine(mount) {
        horizon, a bounce floor below. The spread top to bottom is small — it
        only has to be enough to tell one face of a sheet from another */
     grd.addColorStop(0, '#ffffff');      // softbox
-    grd.addColorStop(0.44, '#fbfbfb');
-    grd.addColorStop(0.52, '#ededed');   // horizon
-    grd.addColorStop(0.8, '#d0d0d0');
-    grd.addColorStop(1, '#bcbcbc');      // bounce floor
+    grd.addColorStop(0.4, '#faf9f6');
+    grd.addColorStop(0.52, '#e1ded7');   // horizon
+    grd.addColorStop(0.82, '#aaa59b');
+    grd.addColorStop(1, '#817c72');      // bounce floor
     g.fillStyle = grd;
     g.fillRect(0, 0, 512, 256);
     const t = new THREE.CanvasTexture(c);
@@ -1477,7 +1487,7 @@ async function createEngine(mount) {
 
   /* the key only sets which way the highlight runs; the environment carries
      the exposure, so it stays gentle */
-  const key = new THREE.DirectionalLight(0xffffff, 1.15);
+  const key = new THREE.DirectionalLight(0xfffdf8, 1.75);
   key.position.set(-3.5, 9, 6.5);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -1495,11 +1505,11 @@ async function createEngine(mount) {
 
   /* and the rim draws the bright line down every edge that used to be told
      by the drop shadow */
-  const rim = new THREE.DirectionalLight(0xffffff, 0.65);
+  const rim = new THREE.DirectionalLight(0xf4f7ff, 0.9);
   rim.position.set(2, 3, -6);
   scene.add(rim);
 
-  const fill = new THREE.HemisphereLight(0xffffff, 0xd8d1c4, 0.42);
+  const fill = new THREE.HemisphereLight(0xffffff, 0x8e887e, 0.48);
   scene.add(fill);
 
   /* A transparent shadow catcher grounds the product without changing the
@@ -1507,7 +1517,7 @@ async function createEngine(mount) {
      remains based only on the printable object. */
   const shadowFloor = new THREE.Mesh(
     new THREE.PlaneGeometry(14, 14),
-    new THREE.ShadowMaterial({ color: 0x594f44, opacity: 0.1 }));
+    new THREE.ShadowMaterial({ color: 0x403a34, opacity: 0.2 }));
   shadowFloor.rotation.x = -Math.PI / 2;
   shadowFloor.position.y = -0.012;
   shadowFloor.receiveShadow = true;
@@ -1529,12 +1539,12 @@ async function createEngine(mount) {
     const g = c.getContext('2d');
     /* not paper-white but stock-white: leaving headroom above the albedo is
        what lets the lighting model the sheet instead of clipping it */
-    g.fillStyle = '#f2f0ec';
+    g.fillStyle = '#f1eee7';
     g.fillRect(0, 0, c.width, c.height);
-    g.strokeStyle = '#d6d6d6';
+    g.strokeStyle = '#bbb7af';
     g.lineWidth = 6;
     g.strokeRect(28, 28, c.width - 56, c.height - 56);
-    g.fillStyle = '#b4b4b4';
+    g.fillStyle = '#969189';
     g.font = '52px "IBM Plex Mono", monospace';
     g.textAlign = 'center';
     g.fillText(label || '', c.width / 2, c.height / 2 + 12);
@@ -1673,7 +1683,7 @@ async function createEngine(mount) {
     const matt = coating === '무광';
     const m = new THREE.MeshPhysicalMaterial({
       map: map || null,
-      color: map ? 0xffffff : 0xf2f0ec,
+      color: map ? 0xffffff : 0xf1eee7,
       roughness: gloss ? 0.13 : matt ? 0.44 : (uncoated ? 0.9 : 0.7),
       roughnessMap: finishMap,
       normalMap: fibreMap,
@@ -1681,6 +1691,9 @@ async function createEngine(mount) {
         uncoated && !gloss ? 0.16 : 0.07,
         uncoated && !gloss ? 0.16 : 0.07),
       metalness: 0,
+      ior: 1.47,
+      anisotropy: uncoated && !gloss ? 0.22 : 0.06,
+      anisotropyRotation: Math.PI / 2,
       clearcoat: gloss ? 1 : matt ? 0.28 : 0,
       clearcoatRoughness: gloss ? 0.08 : 0.4,
       /* uncoated stock scatters at the surface — that soft off-angle glow is
@@ -2006,10 +2019,11 @@ async function createEngine(mount) {
       o.castShadow = true;
       o.receiveShadow = true;
     });
-    /* Figma's untouched state is an empty white preview. The physical model
-       appears only after artwork is supplied, while all form options are
-       still ready to alter it immediately once it is visible. */
-    root.visible = Object.keys(state.images).length > 0;
+    /* The stock itself is part of the preview, not merely a carrier for an
+       uploaded texture. Keep the physical object visible from the first
+       frame so size, thickness, paper finish and binding changes can be read
+       before artwork exists; an upload only replaces the placeholder face. */
+    root.visible = true;
     root.updateMatrixWorld(true);
     fitCamera();
   }
@@ -2026,7 +2040,7 @@ async function createEngine(mount) {
     const vFov = (camera.fov * Math.PI) / 180;
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
     fitDist = Math.max(sphere.radius / Math.sin(vFov / 2),
-      sphere.radius / Math.sin(hFov / 2)) * 1.25;
+      sphere.radius / Math.sin(hFov / 2)) * 1.08;
     controls.minDistance = fitDist * 0.35;
     controls.maxDistance = fitDist * 2.2;
 
@@ -2087,7 +2101,7 @@ async function createEngine(mount) {
         o.castShadow = true;
         o.receiveShadow = true;
       });
-      root.visible = Object.keys(state.images).length > 0;
+      root.visible = true;
       root.updateMatrixWorld(true);
       fitCamera(true);              // an option change must not steal the view
     },
