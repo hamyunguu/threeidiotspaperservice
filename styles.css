@@ -1781,6 +1781,7 @@ body.order .h-rule {
 .ord-detail-pane { top: calc(559px + var(--shift)); height: calc(501px - var(--shift)); z-index: 4; background: #fff; }
 .ord-common-pane.is-active,
 .ord-detail-pane.is-active { background: var(--ord-ink); }
+.ord-common-pane.is-active { box-shadow: 0 1px 0 var(--ord-ink); }
 
 .ord-product-side,
 .ord-detail-title {
@@ -1907,9 +1908,6 @@ body.order .h-rule {
 .ord-format.is-custom {
   position: relative; width: 148px; height: 148px; border-style: dashed;
 }
-.ord-custom-size { display: none; align-items: center; gap: 7px; margin: 13px 0 0 482px; font-size: 12px; }
-.ord-custom-size.is-on { display: flex; }
-.ord-custom-size input { width: 55px; height: 25px; box-sizing: border-box; border: 1px solid #000; font: 12px 'IBM Plex Mono', monospace; }
 
 .ord-common-row { display: grid; grid-template-columns: 101px 1fr; align-items: center; min-height: 40px; margin: 0 0 32px; font-size: 18px; }
 .ord-common-field {
@@ -1991,16 +1989,16 @@ body.order .h-rule {
 .ord-tab { height: 38px; gap: 12px; font-size: 18px; line-height: 18px; }
 .ord-tab i {
   width: 20px; height: 20px; margin-top: 9px; border: 0; border-radius: 0;
-  background: transparent url('assets/order-point-off.svg?v=77') 0 0 / 20px 20px no-repeat;
+  background: transparent url('assets/order-point-off.svg?v=79') 0 0 / 20px 20px no-repeat;
 }
-.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=77'); background-color: transparent; }
+.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=79'); background-color: transparent; }
 .ord-tab.is-on i::before,
 .ord-tab.is-on i::after {
   left: 0; top: 9px; width: 20px; height: 1px; background-color: transparent;
   background-position: center; background-size: 20px 1px; background-repeat: no-repeat;
 }
-.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=77'); }
-.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=77'); }
+.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=79'); }
+.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=79'); }
 .ord-common-pane button:focus,
 .ord-detail-pane button:focus,
 .ord-preview button:focus { outline: 0; }
@@ -2012,10 +2010,10 @@ body.order .h-rule {
 }
 .ord-product-kinds button::before {
   content: ''; position: absolute; left: 0; top: 3px; width: 12px; height: 12px;
-  background: url('assets/order-point-off.svg?v=77') center / 12px 12px no-repeat;
+  background: url('assets/order-point-off.svg?v=79') center / 12px 12px no-repeat;
 }
 .ord-product-kinds button.is-on { border: 0; }
-.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=77'); }
+.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=79'); }
 .ord-service-note {
   left: 0; top: 350px; bottom: auto; width: 179px;
   font-size: 14px; line-height: 17px; font-weight: 350;
@@ -2065,7 +2063,7 @@ body.order .h-rule {
 }
 .ord-field-mark {
   position: absolute; z-index: 3; width: 13px; height: 13px;
-  background: url('assets/order-field-left.svg?v=77') center / 13px 13px no-repeat;
+  background: url('assets/order-field-left.svg?v=79') center / 13px 13px no-repeat;
   pointer-events: none;
 }
 .ord-field-mark.is-lt { left: 0; top: 0; transform: scaleY(-1); }
@@ -2110,12 +2108,29 @@ body.order .h-rule {
 .ord-format.is-b2 span { left: 153px; }
 .ord-format.is-b3 span,
 .ord-format.is-b4 span { left: 65px; }
-.ord-format.is-custom span { left: 87px; top: 6px; white-space: nowrap; }
+.ord-format.is-custom > span {
+  left: 87px; top: 6px; white-space: nowrap; color: #595959;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.ord-format.is-custom:hover > span { color: #fff; }
 .ord-format-set.is-custom .ord-format { display: block; }
 .ord-common-step[data-common-step="size"] { position: relative; }
-.ord-custom-size {
-  position: absolute; left: 493px; top: 128px; z-index: 8; margin: 0;
-  padding: 6px; background: var(--ord-ink); font-size: 12px;
+.ord-custom-dim {
+  display: flex; align-items: center; justify-content: flex-end; width: 58px;
+  margin-left: auto !important; font: 400 14px/14px 'IBM Plex Mono', monospace !important;
+}
+.ord-custom-dim input {
+  width: 25px; height: 14px; box-sizing: border-box; border: 0; outline: 0;
+  margin: 0; padding: 0; background: transparent; color: #000;
+  font: 400 14px/14px 'IBM Plex Mono', monospace; text-align: center;
+  appearance: textfield; -moz-appearance: textfield;
+}
+.ord-custom-dim input::-webkit-inner-spin-button,
+.ord-custom-dim input::-webkit-outer-spin-button { margin: 0; appearance: none; }
+.ord-custom-dim input::placeholder { color: #000; opacity: 1; }
+.ord-custom-dim > span {
+  position: static; flex: none; width: 8px; color: #000;
+  font: 400 14px/14px 'IBM Plex Mono', monospace;
 }
 
 .ord-common-step[data-common-step="order"] .ord-common-head { margin-bottom: 0; }
@@ -2230,19 +2245,25 @@ body.order .h-rule {
 .ord-field-core,
 .ord-format,
 .ord-format-hover {
+  --ord-dash: #000;
   border: 0;
   background-color: #fff;
   background-image:
-    linear-gradient(to right, #000 0 50%, transparent 50% 100%),
-    linear-gradient(to right, #000 0 50%, transparent 50% 100%),
-    linear-gradient(to bottom, #000 0 50%, transparent 50% 100%),
-    linear-gradient(to bottom, #000 0 50%, transparent 50% 100%);
+    linear-gradient(to right, var(--ord-dash) 0 50%, transparent 50% 100%),
+    linear-gradient(to right, var(--ord-dash) 0 50%, transparent 50% 100%),
+    linear-gradient(to bottom, var(--ord-dash) 0 50%, transparent 50% 100%),
+    linear-gradient(to bottom, var(--ord-dash) 0 50%, transparent 50% 100%);
   background-size: 4px 1px, 4px 1px, 1px 4px, 1px 4px;
   background-position: 3px 0, 3px 100%, 0 3px, 100% 3px;
   background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
 }
 .ord-format { background-color: transparent; }
-.ord-format-hover { background-color: var(--ord-ink); }
+.ord-format:hover,
+.ord-format-hover {
+  --ord-dash: #fff;
+  background-color: #000;
+  color: #fff;
+}
 
 /* The nested paper sizes share most of their edges. Drawing four complete
    rectangles double-strokes those shared edges after scaling and turns the

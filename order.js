@@ -240,6 +240,7 @@ const state = {
   images: {},    // slot -> decoded artwork the model textures itself from
   files: {},     // slot -> { label, busy } for the upload row
   pickedSize: '',
+  customSize: { w: '', h: '' },
   detailActive: false,
 };
 
@@ -592,11 +593,13 @@ function commonDone() {
   const schema = MODES[state.mode];
   const files = schema.uploads.every((u) =>
     state.files[u.slot] && !state.files[u.slot].busy && !state.files[u.slot].error);
+  const customSizeDone = state.pickedSize !== 'custom' ||
+    ((parseInt(state.customSize.w, 10) || 0) > 0 && (parseInt(state.customSize.h, 10) || 0) > 0);
   const order = Boolean(String(state.opts.customer_name || '').trim()) &&
     (parseInt(String(state.opts.goods_ea || '').replace(/[^\d]/g, ''), 10) || 0) > 0 &&
     (state.mode !== 'book' || (parseInt(state.opts.in_page_val, 10) || 0) > 0) &&
     Boolean(state.opts.quick_no);
-  return { files, size: Boolean(state.pickedSize), order };
+  return { files, size: Boolean(state.pickedSize) && customSizeDone, order };
 }
 
 function renderCommon(mode) {
@@ -623,13 +626,12 @@ function renderCommon(mode) {
   out.push(`<section class="ord-common-step" data-common-step="size">${commonHead(2, '작업 크기', done.size)}` +
     '<p class="ord-common-help">드래그 혹은 클릭하여 크기를 지정하세요.</p><div class="ord-format-groups">' +
     formatBoard('A', 'A판형', mode) + formatBoard('B', 'B판형', mode) +
-    `<div class="ord-format-set is-custom"><p><span>사용자 지정</span><b data-format-dim>${state.pickedSize === 'custom' ? `${esc(o.goods_size_w)}×${esc(o.goods_size_h)}` : '000×000'}</b></p>` +
+    `<div class="ord-format-set is-custom"><p><span>사용자 지정</span><b class="ord-custom-dim" data-format-dim>` +
+      `<input type="number" min="1" inputmode="numeric" data-common-key="custom_w" value="${esc(state.customSize.w)}" placeholder="000" aria-label="사용자 지정 가로">` +
+      '<span aria-hidden="true">×</span>' +
+      `<input type="number" min="1" inputmode="numeric" data-common-key="custom_h" value="${esc(state.customSize.h)}" placeholder="000" aria-label="사용자 지정 세로"></b></p>` +
       `<button type="button" class="ord-format is-custom${state.pickedSize === 'custom' ? ' is-on' : ''}" data-format="custom">` +
         '<span>직접 입력</span></button></div></div>' +
-    `<div class="ord-custom-size${state.pickedSize === 'custom' ? ' is-on' : ''}">` +
-      `<input type="number" min="1" data-common-key="custom_w" value="${esc(o.goods_size_w)}" aria-label="사용자 지정 가로">` +
-      '<span>×</span>' +
-      `<input type="number" min="1" data-common-key="custom_h" value="${esc(o.goods_size_h)}" aria-label="사용자 지정 세로"><span>㎜</span></div>` +
     '</section>');
 
   const qty = parseInt(String(o.goods_ea || '').replace(/[^\d]/g, ''), 10) || 0;
@@ -1131,26 +1133,33 @@ common.addEventListener('input', (e) => {
     return;
   }
   if (key === 'custom_w' || key === 'custom_h') {
-    const mm = Math.max(1, parseInt(el.value, 10) || 1);
+    const side = key === 'custom_w' ? 'w' : 'h';
+    const raw = String(el.value || '').replace(/[^\d]/g, '');
+    state.customSize[side] = raw;
     state.pickedSize = 'custom';
-    if (key === 'custom_w') state.opts.goods_size_w = state.opts.size_w_plus = mm;
-    else state.opts.goods_size_h = state.opts.size_h_plus = mm;
-    state.opts.goods_size = `사용자입력(${state.opts.goods_size_w}*${state.opts.goods_size_h})`;
+    const w = parseInt(state.customSize.w, 10) || 0;
+    const h = parseInt(state.customSize.h, 10) || 0;
     common.querySelectorAll('.ord-format').forEach((b) =>
       b.classList.toggle('is-on', b.dataset.format === 'custom'));
     paintCommonCompletion();
-    onOptionChange();
+    if (w > 0 && h > 0) {
+      state.opts.goods_size_w = state.opts.size_w_plus = w;
+      state.opts.goods_size_h = state.opts.size_h_plus = h;
+      state.opts.goods_size = `사용자입력(${w}*${h})`;
+      onOptionChange();
+    }
   }
 });
 
 function formatDimensionText(format) {
   if (format.dataset.format === 'custom') {
-    return `${state.opts.goods_size_w}×${state.opts.goods_size_h}`;
+    return `${state.customSize.w || '000'}×${state.customSize.h || '000'}`;
   }
   return `${format.dataset.w}×${format.dataset.h}`;
 }
 
 function restoreFormatDimension(set) {
+  if (set?.classList.contains('is-custom')) return;
   const output = set && set.querySelector('[data-format-dim]');
   if (!output) return;
   const picked = set.querySelector(`.ord-format[data-format="${state.pickedSize}"]`);
@@ -1161,7 +1170,7 @@ function restoreFormatDimension(set) {
 function previewFormatDimension(format) {
   const set = format.closest('.ord-format-set');
   const output = set?.querySelector('[data-format-dim]');
-  if (output) output.textContent = formatDimensionText(format);
+  if (output && !set.classList.contains('is-custom')) output.textContent = formatDimensionText(format);
   const hover = set?.querySelector('.ord-format-hover');
   if (!hover) return;
   hover.style.left = `${format.offsetLeft}px`;
@@ -1199,14 +1208,31 @@ common.addEventListener('click', (e) => {
   const format = e.target.closest('[data-format]');
   if (format) {
     state.pickedSize = format.dataset.format;
-    if (state.pickedSize !== 'custom') {
+    let customReady = false;
+    if (state.pickedSize === 'custom') {
+      const w = parseInt(state.customSize.w, 10) || 0;
+      const h = parseInt(state.customSize.h, 10) || 0;
+      customReady = w > 0 && h > 0;
+      if (customReady) {
+        state.opts.goods_size_w = state.opts.size_w_plus = w;
+        state.opts.goods_size_h = state.opts.size_h_plus = h;
+        state.opts.goods_size = `사용자입력(${w}*${h})`;
+      }
+    } else {
       const f = SERVICE_FORMATS.find((x) => x.name === state.pickedSize);
       state.opts.goods_size = `${f.name}(${f.w}*${f.h})`;
       state.opts.goods_size_w = state.opts.size_w_plus = f.w;
       state.opts.goods_size_h = state.opts.size_h_plus = f.h;
     }
     renderCommon(state.mode);
-    onOptionChange();
+    if (state.pickedSize !== 'custom' || customReady) onOptionChange();
+    if (state.pickedSize === 'custom') {
+      requestAnimationFrame(() => {
+        const input = common.querySelector('[data-common-key="custom_w"]');
+        input?.focus({ preventScroll: true });
+        input?.select();
+      });
+    }
     return;
   }
 
@@ -1598,6 +1624,7 @@ function switchMode(mode) {
   state.images = {};                 // artwork is per product
   state.files = {};
   state.pickedSize = '';
+  state.customSize = { w: '', h: '' };
   state.detailActive = false;
   state.opts = seedDefaults(mode);
   const meta = SERVICE_MODES[mode];
