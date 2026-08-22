@@ -1421,8 +1421,10 @@ async function createEngine(mount) {
   });
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.VSMShadowMap;
+  /* The preview is framed like a print inspection table, not a product-shot
+     set. Keep physical lighting on the materials but do not project a drop
+     shadow onto the white Figma canvas. */
+  renderer.shadowMap.enabled = false;
   /* filmic response: the highlights on coated stock roll off instead of
      clipping to flat white, which is most of what makes paper look shot
      rather than drawn */
@@ -1489,18 +1491,6 @@ async function createEngine(mount) {
      the exposure, so it stays gentle */
   const key = new THREE.DirectionalLight(0xfffdf8, 1.75);
   key.position.set(-3.5, 9, 6.5);
-  key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
-  key.shadow.camera.left = -5;
-  key.shadow.camera.right = 5;
-  key.shadow.camera.top = 5;
-  key.shadow.camera.bottom = -5;
-  key.shadow.camera.near = 0.1;
-  key.shadow.camera.far = 18;
-  key.shadow.bias = -0.00015;
-  key.shadow.normalBias = 0.015;
-  key.shadow.radius = 10;
-  key.shadow.blurSamples = 16;
   scene.add(key);
 
   /* and the rim draws the bright line down every edge that used to be told
@@ -1512,19 +1502,13 @@ async function createEngine(mount) {
   const fill = new THREE.HemisphereLight(0xffffff, 0x8e887e, 0.48);
   scene.add(fill);
 
-  /* A transparent shadow catcher grounds the product without changing the
-     Figma-white preview. It is deliberately outside `root`, so camera fitting
-     remains based only on the printable object. */
-  const shadowFloor = new THREE.Mesh(
-    new THREE.PlaneGeometry(14, 14),
-    new THREE.ShadowMaterial({ color: 0x403a34, opacity: 0.2 }));
-  shadowFloor.rotation.x = -Math.PI / 2;
-  shadowFloor.position.y = -0.012;
-  shadowFloor.receiveShadow = true;
-  scene.add(shadowFloor);
-
   let root = new THREE.Group();
   scene.add(root);
+  let flexibleSheet = null;
+  const flexDynamics = {
+    displacement: 0, velocity: 0, motion: 0, phase: 0,
+    lastTime: 0, normalFrame: 0, lastView: new THREE.Vector3(),
+  };
 
   /* ---- textures ---- */
 
@@ -1734,6 +1718,14 @@ async function createEngine(mount) {
   /* ---- helpers ---- */
 
   function clear() {
+    flexibleSheet = null;
+    flexDynamics.displacement = 0;
+    flexDynamics.velocity = 0;
+    flexDynamics.motion = 0;
+    flexDynamics.phase = 0;
+    flexDynamics.lastTime = 0;
+    flexDynamics.normalFrame = 0;
+    flexDynamics.lastView.set(0, 0, 0);
     root.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
       if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
@@ -1778,11 +1770,21 @@ async function createEngine(mount) {
     return geo;
   }
 
-  function sheet(w, h, t, frontMat, backMat, curve) {
-    const geo = new THREE.BoxGeometry(w, h, t, curve ? 40 : 1, 1, 1);
+  function sheet(w, h, t, frontMat, backMat, curve, flexible) {
+    const geo = new THREE.BoxGeometry(
+      w, h, t, curve ? 40 : 1, flexible ? 28 : 1, 1);
     if (curve) bow(geo, curve);
     const edge = cutEdge();
-    return new THREE.Mesh(geo, [edge, edge, edge, edge, frontMat, backMat]);
+    const mesh = new THREE.Mesh(geo, [edge, edge, edge, edge, frontMat, backMat]);
+    if (flexible) {
+      flexibleSheet = {
+        mesh,
+        base: Float32Array.from(geo.attributes.position.array),
+        width: w,
+        height: h,
+      };
+    }
+    return mesh;
   }
 
   /* ---- the four products ---- */
@@ -1802,7 +1804,7 @@ async function createEngine(mount) {
 
     if (panels === 1) {
       const m = sheet(w, h, t, paperMat(D.coating, D.paper, front),
-        paperMat(D.coating, D.paper, back), w * 0.016);
+        paperMat(D.coating, D.paper, back), w * 0.016, D.mode === 'poster');
       m.position.y = h / 2;
       m.rotation.x = -0.03;                 // a sheet never stands plumb
       root.add(m);
@@ -2016,8 +2018,8 @@ async function createEngine(mount) {
     else buildSheet(D);
     root.traverse((o) => {
       if (!o.isMesh) return;
-      o.castShadow = true;
-      o.receiveShadow = true;
+      o.castShadow = false;
+      o.receiveShadow = false;
     });
     /* The stock itself is part of the preview, not merely a carrier for an
        uploaded texture. Keep the physical object visible from the first
@@ -2058,9 +2060,58 @@ async function createEngine(mount) {
   let running = false;
   let current = null;
 
-  function frame() {
+  /* A poster is not a rigid card. OrbitControls turns the camera, but to the
+     person dragging it that is equivalent to turning the sheet in their
+     hand. Camera angular velocity therefore drives a damped spring in the
+     paper surface. The motion persists briefly after release, then settles
+     back onto the original gentle bow. */
+  function animateFlexibleSheet(now) {
+    if (!flexibleSheet) return;
+    const D = flexDynamics;
+    const view = camera.position.clone().sub(controls.target).normalize();
+    if (!D.lastTime || D.lastView.lengthSq() === 0) {
+      D.lastTime = now;
+      D.lastView.copy(view);
+      return;
+    }
+
+    const dt = Math.min(0.034, Math.max(0.001, (now - D.lastTime) / 1000));
+    const yaw = D.lastView.x * view.z - D.lastView.z * view.x;
+    const pitch = (view.y - D.lastView.y) * 0.55;
+    const angularSpeed = THREE.MathUtils.clamp((yaw + pitch) / dt, -3, 3);
+    const speedAbs = Math.abs(angularSpeed);
+
+    D.velocity += (angularSpeed * 1.15 - D.displacement * 30 - D.velocity * 7.2) * dt;
+    D.displacement = THREE.MathUtils.clamp(
+      D.displacement + D.velocity * dt, -0.085, 0.085);
+    D.motion = Math.max(D.motion * Math.exp(-5.2 * dt), Math.min(0.036, speedAbs * 0.014));
+    D.phase += dt * (6.5 + D.motion * 95);
+    D.lastTime = now;
+    D.lastView.copy(view);
+
+    const geo = flexibleSheet.mesh.geometry;
+    const pos = geo.attributes.position;
+    const base = flexibleSheet.base;
+    const halfW = flexibleSheet.width / 2;
+    const h = flexibleSheet.height;
+    for (let i = 0; i < pos.count; i++) {
+      const n = i * 3;
+      const xn = base[n] / halfW;
+      const yn = base[n + 1] / h + 0.5;
+      const freeEdge = 0.18 + 0.82 * Math.pow(Math.abs(xn), 1.35);
+      const primary = Math.sin(yn * Math.PI * 1.55 + D.phase + xn * 0.8);
+      const ripple = Math.sin(yn * Math.PI * 3.1 - D.phase * 1.4 + xn * 1.7);
+      pos.array[n + 2] = base[n + 2] +
+        D.displacement * freeEdge * primary + D.motion * freeEdge * ripple;
+    }
+    pos.needsUpdate = true;
+    if ((D.normalFrame++ & 1) === 0) geo.computeVertexNormals();
+  }
+
+  function frame(now) {
     if (!running) return;
     controls.update();
+    animateFlexibleSheet(now || performance.now());
     renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
   }
@@ -2098,8 +2149,8 @@ async function createEngine(mount) {
       else buildSheet(D);
       root.traverse((o) => {
         if (!o.isMesh) return;
-        o.castShadow = true;
-        o.receiveShadow = true;
+        o.castShadow = false;
+        o.receiveShadow = false;
       });
       root.visible = true;
       root.updateMatrixWorld(true);

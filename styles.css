@@ -1734,7 +1734,7 @@ body.order .h-rule {
 
 .ord-split {
   left: 960px; top: calc(57px + var(--shift)); width: 1px;
-  height: calc(1025px - var(--shift)); border: 0; background: #000;
+  height: calc(1003px - var(--shift)); border: 0; background: #000;
   transition: top .32s cubic-bezier(.4, 0, .2, 1), height .32s cubic-bezier(.4, 0, .2, 1);
 }
 
@@ -1943,7 +1943,7 @@ body.order .h-rule {
 /* SERVICE V3 — exact component geometry from Figma 684:601 / 948 / 770. */
 .ord-common-pane { top: calc(57px + var(--shift)); width: 935px; }
 .ord-common-pane { border-bottom: 0; }
-.ord-detail-pane { border-top: 1px solid #000; border-bottom: 0; }
+.ord-detail-pane { border-top: 1px solid #000; border-bottom: 1px solid #000; }
 .ord-product-side,
 .ord-detail-title { border-right: 0; }
 .ord-product-side { width: 213px; }
@@ -1951,16 +1951,16 @@ body.order .h-rule {
 .ord-tab { height: 38px; gap: 12px; font-size: 18px; line-height: 18px; }
 .ord-tab i {
   width: 20px; height: 20px; margin-top: 9px; border: 0; border-radius: 0;
-  background: transparent url('assets/order-point-off.svg?v=71') 0 0 / 20px 20px no-repeat;
+  background: transparent url('assets/order-point-off.svg?v=72') 0 0 / 20px 20px no-repeat;
 }
-.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=71'); background-color: transparent; }
+.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=72'); background-color: transparent; }
 .ord-tab.is-on i::before,
 .ord-tab.is-on i::after {
   left: 0; top: 9px; width: 20px; height: 1px; background-color: transparent;
   background-position: center; background-size: 20px 1px; background-repeat: no-repeat;
 }
-.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=71'); }
-.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=71'); }
+.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=72'); }
+.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=72'); }
 .ord-tab small { margin-top: 2px; font-size: 18px; line-height: 18px; }
 .ord-product-kinds { left: 32px; top: 182px; gap: 6px; }
 .ord-product-kinds button {
@@ -1969,10 +1969,10 @@ body.order .h-rule {
 }
 .ord-product-kinds button::before {
   content: ''; position: absolute; left: 0; top: 3px; width: 12px; height: 12px;
-  background: url('assets/order-point-off.svg?v=71') center / 12px 12px no-repeat;
+  background: url('assets/order-point-off.svg?v=72') center / 12px 12px no-repeat;
 }
 .ord-product-kinds button.is-on { border: 0; }
-.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=71'); }
+.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=72'); }
 .ord-service-note {
   left: 0; top: 350px; bottom: auto; width: 179px;
   font-size: 14px; line-height: 17px; font-weight: 350;
@@ -2022,7 +2022,7 @@ body.order .h-rule {
 }
 .ord-field-mark {
   position: absolute; z-index: 3; width: 13px; height: 13px;
-  background: url('assets/order-field-left.svg?v=71') center / 13px 13px no-repeat;
+  background: url('assets/order-field-left.svg?v=72') center / 13px 13px no-repeat;
   pointer-events: none;
 }
 .ord-field-mark.is-lt { left: 0; top: 0; transform: scaleY(-1); }
@@ -2196,3 +2196,24 @@ body.order .h-rule {
 }
 .ord-format { background-color: transparent; }
 .ord-format-hover { background-color: var(--ord-ink); }
+
+/* The nested paper sizes share most of their edges. Drawing four complete
+   rectangles double-strokes those shared edges after scaling and turns the
+   2px dash into irregular solid fragments. B1/A1 owns the outer frame; the
+   remaining sizes contribute each internal divider exactly once. */
+.ord-format.is-a2,
+.ord-format.is-b2,
+.ord-format.is-a4,
+.ord-format.is-b4 {
+  background-image: linear-gradient(to right, #000 0 50%, transparent 50% 100%);
+  background-size: 4px 1px;
+  background-position: 3px 0;
+  background-repeat: repeat-x;
+}
+.ord-format.is-a3,
+.ord-format.is-b3 {
+  background-image: linear-gradient(to bottom, #000 0 50%, transparent 50% 100%);
+  background-size: 1px 4px;
+  background-position: 100% 3px;
+  background-repeat: repeat-y;
+}
