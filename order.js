@@ -243,6 +243,14 @@ const state = {
   detailActive: false,
 };
 
+function setEditingPane(pane) {
+  const commonActive = pane === 'common';
+  const detailActive = pane === 'detail';
+  state.detailActive = detailActive;
+  commonPane.classList.toggle('is-active', commonActive);
+  detailPane.classList.toggle('is-active', detailActive);
+}
+
 /* Interior PDFs stay as PDF documents and only the pages around the current
    spread are rasterised. This keeps a 300-page book from decoding hundreds
    of full-size images into memory before the first page can be inspected. */
@@ -1081,6 +1089,8 @@ common.addEventListener('change', (e) => {
   }
 });
 
+common.addEventListener('pointerdown', () => setEditingPane('common'));
+
 common.addEventListener('input', (e) => {
   const el = e.target;
   const key = el.getAttribute('data-common-key');
@@ -1146,6 +1156,7 @@ common.addEventListener('pointerout', (e) => {
 });
 
 common.addEventListener('focusin', (e) => {
+  setEditingPane('common');
   const format = e.target.closest('[data-format]');
   if (format) previewFormatDimension(format);
 });
@@ -1185,12 +1196,14 @@ common.addEventListener('click', (e) => {
   }
 
   if (e.target.closest('#ordNext')) {
-    state.detailActive = true;
-    detailPane.classList.add('is-active');
+    setEditingPane('detail');
     form.scrollTo({ top: 0, behavior: 'smooth' });
     detailPane.focus({ preventScroll: true });
   }
 });
+
+form.addEventListener('pointerdown', () => setEditingPane('detail'));
+form.addEventListener('focusin', () => setEditingPane('detail'));
 
 form.addEventListener('change', (e) => {
   const el = e.target;
@@ -1435,6 +1448,7 @@ tabs.addEventListener('click', (e) => {
   if (!btn || btn.classList.contains('is-on')) return;
   tabs.querySelectorAll('.ord-tab').forEach((b) => b.classList.toggle('is-on', b === btn));
   switchMode(btn.dataset.mode);
+  setEditingPane('common');
 });
 
 productKinds.addEventListener('click', (e) => {
@@ -1460,7 +1474,7 @@ function switchMode(mode) {
   document.body.style.setProperty('--ord-ink', meta.ink);
   commonPane.style.setProperty('--ord-ink', meta.ink);
   detailPane.style.setProperty('--ord-ink', meta.ink);
-  detailPane.classList.remove('is-active');
+  setEditingPane(null);
   tabs.querySelectorAll('.ord-tab').forEach((b) => b.classList.toggle('is-on', b.dataset.mode === mode));
   productKinds.classList.toggle('is-visible', mode === 'product');
   productKinds.querySelectorAll('[data-kind]').forEach((b) =>
