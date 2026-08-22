@@ -1459,9 +1459,9 @@ async function createEngine(mount) {
   controls.maxPolarAngle = Math.PI * 0.52;
 
   /* The environment IS the light, the way a paper product is actually shot:
-     a big soft source overhead falling off to a darker floor. That gradient
-     puts tone across a white sheet; a low-opacity shadow catcher supplies
-     the remaining contact cue without tinting the Figma-white preview. */
+     a big soft source overhead falling off to a darker floor. The entire
+     gradient stays neutral so an unselected stock begins as true neutral
+     white; a named paper can add its own colour later. */
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = (() => {
     /* an equirectangular map has to be 2:1 — at any other aspect the
@@ -1475,10 +1475,10 @@ async function createEngine(mount) {
        horizon, a bounce floor below. The spread top to bottom is small — it
        only has to be enough to tell one face of a sheet from another */
     grd.addColorStop(0, '#ffffff');      // softbox
-    grd.addColorStop(0.4, '#faf9f6');
-    grd.addColorStop(0.52, '#e1ded7');   // horizon
-    grd.addColorStop(0.82, '#aaa59b');
-    grd.addColorStop(1, '#817c72');      // bounce floor
+    grd.addColorStop(0.4, '#fafafa');
+    grd.addColorStop(0.52, '#dedede');   // horizon
+    grd.addColorStop(0.82, '#a6a6a6');
+    grd.addColorStop(1, '#7f7f7f');      // bounce floor
     g.fillStyle = grd;
     g.fillRect(0, 0, 512, 256);
     const t = new THREE.CanvasTexture(c);
@@ -1489,17 +1489,17 @@ async function createEngine(mount) {
 
   /* the key only sets which way the highlight runs; the environment carries
      the exposure, so it stays gentle */
-  const key = new THREE.DirectionalLight(0xfffdf8, 1.75);
+  const key = new THREE.DirectionalLight(0xffffff, 1.75);
   key.position.set(-3.5, 9, 6.5);
   scene.add(key);
 
   /* and the rim draws the bright line down every edge that used to be told
      by the drop shadow */
-  const rim = new THREE.DirectionalLight(0xf4f7ff, 0.9);
+  const rim = new THREE.DirectionalLight(0xffffff, 0.9);
   rim.position.set(2, 3, -6);
   scene.add(rim);
 
-  const fill = new THREE.HemisphereLight(0xffffff, 0x8e887e, 0.48);
+  const fill = new THREE.HemisphereLight(0xffffff, 0x8f8f8f, 0.48);
   scene.add(fill);
 
   let root = new THREE.Group();
@@ -1523,12 +1523,12 @@ async function createEngine(mount) {
     const g = c.getContext('2d');
     /* not paper-white but stock-white: leaving headroom above the albedo is
        what lets the lighting model the sheet instead of clipping it */
-    g.fillStyle = '#f1eee7';
+    g.fillStyle = '#f2f2f2';
     g.fillRect(0, 0, c.width, c.height);
-    g.strokeStyle = '#bbb7af';
+    g.strokeStyle = '#b8b8b8';
     g.lineWidth = 6;
     g.strokeRect(28, 28, c.width - 56, c.height - 56);
-    g.fillStyle = '#969189';
+    g.fillStyle = '#929292';
     g.font = '52px "IBM Plex Mono", monospace';
     g.textAlign = 'center';
     g.fillText(label || '', c.width / 2, c.height / 2 + 12);
@@ -1642,10 +1642,10 @@ async function createEngine(mount) {
     c.width = w;
     c.height = h;
     const g = c.getContext('2d');
-    g.fillStyle = '#f6f0e2';
+    g.fillStyle = '#f3f3f3';
     g.fillRect(0, 0, w, h);
     for (let x = 0; x < w; x += 2) {
-      g.fillStyle = `rgba(176,164,140,${0.18 + Math.random() * 0.3})`;
+      g.fillStyle = `rgba(166,166,166,${0.18 + Math.random() * 0.3})`;
       g.fillRect(x, 0, 1, h);
     }
     const t = new THREE.CanvasTexture(c);
@@ -1667,7 +1667,7 @@ async function createEngine(mount) {
     const matt = coating === '무광';
     const m = new THREE.MeshPhysicalMaterial({
       map: map || null,
-      color: map ? 0xffffff : 0xf1eee7,
+      color: map ? 0xffffff : 0xf2f2f2,
       roughness: gloss ? 0.13 : matt ? 0.44 : (uncoated ? 0.9 : 0.7),
       roughnessMap: finishMap,
       normalMap: fibreMap,
@@ -1684,10 +1684,10 @@ async function createEngine(mount) {
          sheen, not specular */
       sheen: uncoated && !gloss ? 0.5 : 0.15,
       sheenRoughness: 0.85,
-      sheenColor: new THREE.Color(0xfff8ec),
+      sheenColor: new THREE.Color(0xf7f7f7),
       envMapIntensity: gloss ? 1.15 : 0.95,
       specularIntensity: gloss ? 1 : (uncoated ? 0.32 : 0.55),
-      specularColor: new THREE.Color(uncoated ? 0xfff4df : 0xffffff),
+      specularColor: new THREE.Color(uncoated ? 0xf2f2f2 : 0xffffff),
       clearcoatNormalMap: gloss || matt ? fibreMap : null,
       clearcoatNormalScale: new THREE.Vector2(0.025, 0.025),
     });
@@ -1697,11 +1697,11 @@ async function createEngine(mount) {
 
   /* the cut edge is what makes a sheet look like paper and not a plane */
   const cutEdge = () => new THREE.MeshStandardMaterial({
-    color: 0xe8e1d2, roughness: 0.94, roughnessMap: finishMap,
+    color: 0xe3e3e3, roughness: 0.94, roughnessMap: finishMap,
   });
 
   const pageBlock = () => new THREE.MeshStandardMaterial({
-    color: 0xf4eddd, roughness: 0.95, roughnessMap: finishMap,
+    color: 0xeeeeee, roughness: 0.95, roughnessMap: finishMap,
   });
 
   /* the fore edge and the head and tail of a book, ruled into sheets. The
