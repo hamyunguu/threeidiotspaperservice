@@ -262,6 +262,19 @@ const innerPreview = {
   token: 0,
 };
 
+/* Poster and Products also keep the source PDF alive. A single-sided job
+   makes one physical sheet per PDF page; a duplex job pairs two consecutive
+   PDF pages as the front and back of one sheet. */
+const flatPreview = {
+  doc: null,
+  total: 0,
+  sheet: 0,
+  cache: new Map(),
+  pending: new Map(),
+  token: 0,
+  request: 0,
+};
+
 const form = document.getElementById('ordForm');
 const tabs = document.getElementById('ordTabs');
 const common = document.getElementById('ordCommon');
@@ -446,7 +459,7 @@ function renderLegacyForm(mode) {
     out.push('<label class="ord-upload">' +
       `<span class="ord-upload-label">${esc(u.label)}</span>` +
       `<span class="ord-upload-state" data-slot-state="${u.slot}">파일 선택 / 드래그</span>` +
-      `<input type="file" accept="image/*,.pdf" data-upload="${u.slot}" /></label>`);
+      `<input type="file" accept="application/pdf,.pdf" data-upload="${u.slot}" /></label>`);
   });
   out.push('</div></section>');
 
@@ -577,7 +590,8 @@ function formatBoard(prefix, label, mode) {
 
 function commonDone() {
   const schema = MODES[state.mode];
-  const files = schema.uploads.every((u) => state.files[u.slot] && !state.files[u.slot].busy);
+  const files = schema.uploads.every((u) =>
+    state.files[u.slot] && !state.files[u.slot].busy && !state.files[u.slot].error);
   const order = Boolean(String(state.opts.customer_name || '').trim()) &&
     (parseInt(String(state.opts.goods_ea || '').replace(/[^\d]/g, ''), 10) || 0) > 0 &&
     (state.mode !== 'book' || (parseInt(state.opts.in_page_val, 10) || 0) > 0) &&
@@ -596,9 +610,10 @@ function renderCommon(mode) {
   schema.uploads.forEach((u) => {
     const file = state.files[u.slot];
     const upload = framedControl(
-      `<span data-slot-state="${u.slot}">${file ? esc(file.label) : '파일 선택 혹은 드래그(.pdf/.png/.jpeg)'}</span>` +
-      `<input type="file" accept="image/*,.pdf" data-upload="${u.slot}">`,
-      `ord-common-upload${file && !file.busy ? ' is-complete' : ''}`, 'label');
+      `<span data-slot-state="${u.slot}">${file ? esc(file.label) : 'PDF 파일 선택 혹은 드래그(.pdf)'}</span>` +
+      `<input type="file" accept="application/pdf,.pdf" data-upload="${u.slot}">`,
+      `ord-common-upload${file && !file.busy && !file.error ? ' is-complete' : ''}` +
+        `${file && file.error ? ' is-error' : ''}`, 'label');
     out.push(mode === 'book'
       ? `<div class="ord-book-upload-row"><b>${esc(u.label)}</b>${upload}</div>`
       : upload);
@@ -691,17 +706,20 @@ function paintUploads() {
   common.querySelectorAll('[data-slot-state]').forEach((el) => {
     const slot = el.getAttribute('data-slot-state');
     const f = state.files[slot];
-    el.textContent = f ? f.label : '파일 선택 혹은 드래그(.pdf/.png/.jpeg)';
-    el.classList.toggle('is-set', Boolean(f) && !f.busy);
+    el.textContent = f ? f.label : 'PDF 파일 선택 혹은 드래그(.pdf)';
+    el.classList.toggle('is-set', Boolean(f) && !f.busy && !f.error);
     el.classList.toggle('is-busy', Boolean(f && f.busy));
     const label = el.closest('.ord-common-upload');
-    if (label) label.classList.toggle('is-complete', Boolean(f) && !f.busy);
+    if (label) {
+      label.classList.toggle('is-complete', Boolean(f) && !f.busy && !f.error);
+      label.classList.toggle('is-error', Boolean(f && f.error));
+    }
   });
   paintCommonCompletion();
 }
 
-function markUpload(slot, label, busy) {
-  state.files[slot] = { label, busy: Boolean(busy) };
+function markUpload(slot, label, busy, error) {
+  state.files[slot] = { label, busy: Boolean(busy), error: Boolean(error) };
   paintUploads();
 }
 
@@ -865,6 +883,8 @@ function derive() {
   const previewMode = state.mode === 'product'
     ? (o.product_kind === '소책자' ? 'book' : o.product_kind === '리플렛' ? 'leaflet' : 'print')
     : state.mode;
+  const productBook = state.mode === 'product' && previewMode === 'book';
+  const productPages = productBook && flatPreview.doc ? flatPreview.total : 0;
   return {
     mode: previewMode,
     w: Math.max(1, +o.goods_size_w || 210),
@@ -889,11 +909,11 @@ function derive() {
     bind,
     spine: bind === '제본 없음' ? 0 : senecaMm(o),
     direction: o.goods_jebon_direction || '세로',
-    pages: totalPages(o),
+    pages: productBook ? Math.max(2, productPages) : totalPages(o),
     innerPages: innerPreview.doc ? innerPreview.total : totalPages(o),
     hasInner: Boolean(state.images.inner),
     wings: o.cover_nalgae === '날개있음',
-    cover: Boolean(o.use_cover),
+    cover: productBook || Boolean(o.use_cover),
     ringColor: o.goods_opt_ring === '흰색' ? 0xf2f2f2 : 0x2b2b2b,
   };
 }
@@ -925,12 +945,17 @@ function paintCaption() {
 
   const primary = MODES[state.mode].uploads[0].slot;
   const hasInner = state.mode === 'book' && Boolean(state.images.inner);
+  const hasFlatPages = (state.mode === 'poster' || state.mode === 'product') &&
+    Boolean(flatPreview.doc) && flatSheetCount() > 1;
   const hasArtwork = MODES[state.mode].uploads.some((upload) => Boolean(state.images[upload.slot]));
   preview.classList.toggle('has-artwork', hasArtwork);
-  preview.classList.toggle('has-inner-preview', hasInner);
-  bookNav?.classList.toggle('is-visible', hasInner);
+  preview.classList.toggle('has-inner-preview', hasInner || hasFlatPages);
+  bookNav?.classList.toggle('is-visible', hasInner || hasFlatPages);
+  if (hasFlatPages) updateFlatPageUi();
   dropHint.textContent = hasInner
     ? '책이 펼쳐지면 페이지를 좌우로 드래그해 내지를 넘겨보세요'
+    : hasFlatPages
+      ? '화살표로 인쇄물을 넘겨보세요 · 드래그로 돌려 보세요 · 휠로 확대'
     : state.images[primary]
       ? '드래그로 돌려 보세요 · 휠로 확대'
     : '1번에서 파일을 올리거나 여기에 끌어다 놓으면 바로 3D에 반영됩니다';
@@ -1041,7 +1066,11 @@ function setOpt(key, value) {
   form.querySelectorAll(`.ord-size[data-key="${key}"]`).forEach((b) =>
     b.classList.toggle('is-on', b.getAttribute('data-val') === value));
 
+  const regroupFlat = key === 'in_mun_values' && flatPreview.doc &&
+    (state.mode === 'poster' || state.mode === 'product');
+  if (regroupFlat) flatPreview.sheet = 0;
   onOptionChange();
+  if (regroupFlat) showFlatSheet(0);
 }
 
 function paintCommonCompletion() {
@@ -1253,25 +1282,15 @@ form.addEventListener('click', (e) => {
 
 /* ---------------- artwork ---------------- */
 
-/* the model wants a decoded image, so whatever comes in is turned into one */
+/* Production artwork is PDF-only. The accept attribute guides the picker,
+   and this second check also protects drag-and-drop and renamed files. */
 function takeFile(file, slot) {
   if (!file) return;
   if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
     takePdf(file, slot);
     return;
   }
-  if (!file.type.startsWith('image/')) return;
-  if (slot === 'inner' && state.mode === 'book') resetInnerPreview();
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    const img = new Image();
-    img.onload = () => {
-      landArtwork(slot, img, file.name);
-    };
-    img.src = reader.result;
-  };
-  reader.readAsDataURL(file);
+  markUpload(slot, `${file.name} · PDF 파일만 업로드할 수 있습니다`, false, true);
 }
 
 function landArtwork(slot, img, label) {
@@ -1292,6 +1311,99 @@ function resetInnerPreview() {
   innerPreview.cache.clear();
   innerPreview.pending.clear();
   if (bookPage) bookPage.textContent = '1 / 1';
+}
+
+function resetFlatPreview() {
+  flatPreview.token++;
+  flatPreview.request++;
+  flatPreview.doc = null;
+  flatPreview.total = 0;
+  flatPreview.sheet = 0;
+  flatPreview.cache.clear();
+  flatPreview.pending.clear();
+  if (bookPage) bookPage.textContent = '1 / 1';
+}
+
+function flatSheetCount() {
+  if (!flatPreview.doc || flatPreview.total < 1) return 0;
+  return state.opts.in_mun_values === '양면출력'
+    ? Math.ceil(flatPreview.total / 2)
+    : flatPreview.total;
+}
+
+function flatSheetPages(sheet) {
+  const duplex = state.opts.in_mun_values === '양면출력';
+  const front = duplex ? sheet * 2 + 1 : sheet + 1;
+  const back = duplex && front + 1 <= flatPreview.total ? front + 1 : 0;
+  return { front, back };
+}
+
+function flatPageImage(page) {
+  if (!page) return Promise.resolve(null);
+  const cached = flatPreview.cache.get(page);
+  if (cached) return Promise.resolve(cached);
+  if (flatPreview.pending.has(page)) return flatPreview.pending.get(page);
+  const token = flatPreview.token;
+  const pending = renderPdfPage(flatPreview.doc, page, 2400).then((img) => {
+    if (token !== flatPreview.token) return null;
+    flatPreview.cache.set(page, img);
+    return img;
+  }).finally(() => {
+    if (token === flatPreview.token) flatPreview.pending.delete(page);
+  });
+  flatPreview.pending.set(page, pending);
+  return pending;
+}
+
+async function showFlatSheet(nextSheet) {
+  const count = flatSheetCount();
+  if (!count) return;
+  const sheet = Math.max(0, Math.min(count - 1, nextSheet));
+  const request = ++flatPreview.request;
+  const token = flatPreview.token;
+  const pages = flatSheetPages(sheet);
+  let front;
+  let back;
+  try {
+    [front, back] = await Promise.all([
+      flatPageImage(pages.front),
+      flatPageImage(pages.back),
+    ]);
+  } catch (err) {
+    console.error('[order] flat PDF page failed:', err);
+    return;
+  }
+  if (token !== flatPreview.token || request !== flatPreview.request || !front) return;
+
+  flatPreview.sheet = sheet;
+  state.images.front = front;
+  state.images.cover = front;
+  if (back) {
+    state.images.back = back;
+    state.images.coverBack = back;
+  } else {
+    delete state.images.back;
+    delete state.images.coverBack;
+  }
+  if (engine) {
+    engine.setTextures({ front, back, cover: front, coverBack: back }, derive());
+  }
+  paintCaption();
+}
+
+function updateFlatPageUi() {
+  if (!bookPage || !bookNav) return;
+  const total = flatSheetCount();
+  const current = Math.min(flatPreview.sheet, Math.max(0, total - 1));
+  bookPage.textContent = `${current + 1} / ${Math.max(1, total)}장`;
+  const previous = bookNav.querySelector('[data-book-turn="-1"]');
+  const next = bookNav.querySelector('[data-book-turn="1"]');
+  if (previous) previous.disabled = current <= 0;
+  if (next) next.disabled = current >= total - 1;
+}
+
+function turnFlatSheet(direction) {
+  showFlatSheet(flatPreview.sheet + (direction < 0 ? -1 : 1));
 }
 
 /* pdf.js is pulled in only when a PDF is actually handed over */
@@ -1327,11 +1439,14 @@ async function renderPdfPage(doc, number, maxEdge) {
 }
 
 /* A PDF says how many pages it has, so 내지 no longer has to be counted by
-   hand. A two-page flat PDF also maps page 2 to the reverse side, matching
-   the way a print-ready duplex file is actually supplied. */
+   hand. Flat jobs retain every page and group them into physical sheets in
+   showFlatSheet according to the selected single/duplex setting. */
 async function takePdf(file, slot) {
   const isInner = slot === 'inner' && state.mode === 'book';
+  const isFlat = slot === 'front' && (state.mode === 'poster' || state.mode === 'product');
   const innerToken = isInner ? (resetInnerPreview(), innerPreview.token) : 0;
+  const flatToken = isFlat ? (resetFlatPreview(), flatPreview.token) : 0;
+  if (isFlat) paintCaption();
   markUpload(slot, `${file.name} · 읽는 중…`, true);
   try {
     const lib = await loadPdfJs();
@@ -1340,6 +1455,16 @@ async function takePdf(file, slot) {
       if (innerToken !== innerPreview.token || state.mode !== 'book') return;
       innerPreview.doc = doc;
       innerPreview.total = doc.numPages;
+    }
+    if (isFlat) {
+      if (flatToken !== flatPreview.token) return;
+      flatPreview.doc = doc;
+      flatPreview.total = doc.numPages;
+      await showFlatSheet(0);
+      if (flatToken !== flatPreview.token) return;
+      markUpload(slot, `${file.name} · ${doc.numPages}p`);
+      paintCaption();
+      return;
     }
     const img = await renderPdfPage(doc, 1, isInner ? 1800 : 2400);
     if (isInner && innerToken !== innerPreview.token) return;
@@ -1353,7 +1478,7 @@ async function takePdf(file, slot) {
     }
     if (isInner) requestInnerPages([1, 2, 3, 4, 5]);
   } catch (err) {
-    markUpload(slot, `${file.name} · 읽지 못했습니다`);
+    markUpload(slot, `${file.name} · 읽지 못했습니다`, false, true);
     console.error('[order] PDF read failed:', err);
   }
 }
@@ -1425,7 +1550,12 @@ document.getElementById('ordViewReset').addEventListener('click', () => {
 
 bookNav?.addEventListener('click', (e) => {
   const button = e.target.closest('[data-book-turn]');
-  if (button && engine) engine.turnBookPage(+button.dataset.bookTurn);
+  if (!button) return;
+  if (state.mode === 'book') {
+    if (engine) engine.turnBookPage(+button.dataset.bookTurn);
+  } else {
+    turnFlatSheet(+button.dataset.bookTurn);
+  }
 });
 
 function updateBookPageUi(info) {
@@ -1463,6 +1593,7 @@ productKinds.addEventListener('click', (e) => {
 function switchMode(mode) {
   if (!MODES[mode]) return;
   resetInnerPreview();
+  resetFlatPreview();
   state.mode = mode;
   state.images = {};                 // artwork is per product
   state.files = {};
@@ -2629,8 +2760,14 @@ async function createEngine(mount, bookCallbacks) {
       fitCamera(true);              // an option change must not steal the view
     },
     setTexture(slot, img, nextState) {
-      if (texCache[slot]) texCache[slot].dispose();
-      texCache[slot] = fromImage(img);
+      this.setTextures({ [slot]: img }, nextState);
+    },
+    setTextures(entries, nextState) {
+      Object.entries(entries).forEach(([slot, img]) => {
+        if (texCache[slot]) texCache[slot].dispose();
+        if (img) texCache[slot] = fromImage(img);
+        else delete texCache[slot];
+      });
       if (nextState) current = nextState;
       if (current) this.update(current);
     },

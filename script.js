@@ -442,7 +442,7 @@ document.querySelectorAll('.ball[data-letter]').forEach((el) => {
   el.style.setProperty('--gh', `${m.gh}px`);
   el.classList.toggle('is-dark', m.dark);
   const img = document.createElement('img');
-  img.src = `assets/${m.file}?v=75`;
+  img.src = `assets/${m.file}?v=76`;
   img.alt = '';
   el.appendChild(img);
 });
@@ -478,7 +478,7 @@ function openTip(b) {
   overlay.className = 'tip-overlay';
   overlay.innerHTML =
     `<div class="tip-circle${meta.dark ? ' is-dark' : ''}" style="--tip:${meta.color}; --gh:${meta.gh}px">
-       <img class="tip-letter" src="assets/${meta.file}?v=75" alt="">
+       <img class="tip-letter" src="assets/${meta.file}?v=76" alt="">
        <div class="tip-copy">
          <div class="tip-title"></div>
          <div class="tip-body"></div>
