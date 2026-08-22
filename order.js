@@ -545,7 +545,7 @@ function formatBoard(prefix, label, mode) {
   const picked = fs.find((f) => f.name === state.pickedSize);
   const widthText = picked ? `${picked.w}×${picked.h}` : '000×000';
   return `<div class="ord-format-set is-${prefix.toLowerCase()}">` +
-    `<p><span>${label}</span><b>${widthText}</b></p><div class="ord-format-board">` +
+    `<p><span>${label}</span><b data-format-dim>${widthText}</b></p><div class="ord-format-board">` +
     formatButton(fs[0], `is-${prefix.toLowerCase()}1`) +
     formatButton(fs[1], `is-${prefix.toLowerCase()}2`) +
     formatButton(fs[2], `is-${prefix.toLowerCase()}3`) +
@@ -586,7 +586,7 @@ function renderCommon(mode) {
   out.push(`<section class="ord-common-step" data-common-step="size">${commonHead(2, '작업 크기', done.size)}` +
     '<p class="ord-common-help">드래그 혹은 클릭하여 크기를 지정하세요.</p><div class="ord-format-groups">' +
     formatBoard('A', 'A판형', mode) + formatBoard('B', 'B판형', mode) +
-    `<div class="ord-format-set is-custom"><p><span>사용자 지정</span><b>${state.pickedSize === 'custom' ? `${esc(o.goods_size_w)}×${esc(o.goods_size_h)}` : '000×000'}</b></p>` +
+    `<div class="ord-format-set is-custom"><p><span>사용자 지정</span><b data-format-dim>${state.pickedSize === 'custom' ? `${esc(o.goods_size_w)}×${esc(o.goods_size_h)}` : '000×000'}</b></p>` +
       `<button type="button" class="ord-format is-custom${state.pickedSize === 'custom' ? ' is-on' : ''}" data-format="custom">` +
         '<span>직접 입력</span></button></div></div>' +
     `<div class="ord-custom-size${state.pickedSize === 'custom' ? ' is-on' : ''}">` +
@@ -1081,6 +1081,47 @@ common.addEventListener('input', (e) => {
     paintCommonCompletion();
     onOptionChange();
   }
+});
+
+function formatDimensionText(format) {
+  if (format.dataset.format === 'custom') {
+    return `${state.opts.goods_size_w}×${state.opts.goods_size_h}`;
+  }
+  return `${format.dataset.w}×${format.dataset.h}`;
+}
+
+function restoreFormatDimension(set) {
+  const output = set && set.querySelector('[data-format-dim]');
+  if (!output) return;
+  const picked = set.querySelector(`.ord-format[data-format="${state.pickedSize}"]`);
+  output.textContent = picked ? formatDimensionText(picked) : '000×000';
+}
+
+function previewFormatDimension(format) {
+  const output = format.closest('.ord-format-set')?.querySelector('[data-format-dim]');
+  if (output) output.textContent = formatDimensionText(format);
+}
+
+common.addEventListener('pointerover', (e) => {
+  const format = e.target.closest('[data-format]');
+  if (!format || format.contains(e.relatedTarget)) return;
+  previewFormatDimension(format);
+});
+
+common.addEventListener('pointerout', (e) => {
+  const format = e.target.closest('[data-format]');
+  if (!format || format.contains(e.relatedTarget)) return;
+  restoreFormatDimension(format.closest('.ord-format-set'));
+});
+
+common.addEventListener('focusin', (e) => {
+  const format = e.target.closest('[data-format]');
+  if (format) previewFormatDimension(format);
+});
+
+common.addEventListener('focusout', (e) => {
+  const format = e.target.closest('[data-format]');
+  if (format) restoreFormatDimension(format.closest('.ord-format-set'));
 });
 
 common.addEventListener('click', (e) => {
