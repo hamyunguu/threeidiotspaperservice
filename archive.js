@@ -1,19 +1,19 @@
 /* ---------------------------------------------------------------
-   Program archive — Figma 476:821 (꿰기) / 476:1289 (묶기) / 476:1363 (풀기),
+   Program archive — Figma 559:606 (꿰기) / 695:886 (묶기) / 695:984 (풀기),
    session mark 476:719, all measured off the 1920 × 1080 frame.
 
    One page, three sessions, picked with ?p=1|2|3. Everything Figma draws
    differently between the three lives in SESSIONS below; the frame around
    it — header, rule, crop marks, back arrow — is the same on all three.
 
-   The three frames are NOT the same layout with different photos in it.
-   The mark is a different shape on each, and each gallery sits at its own
-   x, y and column width. Those are the numbers, straight off the design:
+   The new archive gallery shares one system across all three sessions:
+   five 322 × 384 black frames, 20px apart, with every photograph centred
+   at exactly 200px wide. Only the gallery origin differs slightly:
 
-              mark          gallery x, y      columns                    gutter
-     꿰기     284 × 114     115, 545          408 · 408 · 408 · 408     20 / 20
-     묶기     284 ×  76     115, 545          440 · 440 · 440 · 310     20 / 10 in col 1
-     풀기     284 ×  76     115, 545          408 · 408 · 408 · 408     20 / 20
+              mark          gallery x, y      frame / gap
+     꿰기     284 × 114     115, 545          322 × 384 / 20
+     묶기     284 ×  76     120, 540          322 × 384 / 20
+     풀기     284 ×  76     120, 545          322 × 384 / 20
 
    The archive intro starts at y=151 in all three current frames. The gallery
    begins at y=545, leaving the same deliberate breathing room below the copy.
@@ -23,7 +23,7 @@
    the window scrolls it.
    --------------------------------------------------------------- */
 
-const V = '?v=81';
+const V = '?v=83';
 
 /* ---------------- the session mark (476:719) ----------------
    Five 76px discs on a 284 box, with the two syllables laid over the
@@ -39,40 +39,34 @@ const MARKS = {
 };
 
 /* ---------------- the galleries ----------------
-   A tile's height is the one Figma draws it at, normalised to the column
-   width where Figma drew the piece wider than its column. Dealt column by
-   column, so the order down each column is the order the pieces are listed
-   in — which is how Figma stacks them. */
+   Every tuple is [badge, photo height, photo top].  The last value matters:
+   Figma rounds some vertically-centred photographs by half a pixel, so using
+   top:50% would still leave a visible 1px mismatch.  These are the literal
+   metadata coordinates from 559:635 / 727:1501 / 727:1534. */
 
-const P1_HEIGHTS = [
-  [473.103, 337.224, 461.441, 436.045, 437.361, 601],
-  [349.189, 520.865, 470.268, 474.963, 499, 554],
-  [419.657, 785.543, 583.175, 543.866, 357],
-  [550.231, 336.875, 556.714, 332.95, 579.138, 367],
-];
-
-/* The four final 꿰기 pieces are 440 wide in Figma even though their column
-   tracks are 408. They intentionally overhang the track rather than scale. */
-const P1_WIDTHS = [
-  [null, null, null, null, null, 440],
-  [null, null, null, null, null, 440],
-  [null, null, null, null, 440],
-  [null, null, null, null, null, 440],
-];
-
-const P2_HEIGHTS = [
-  [564.831, 575, 771, 406, 549],
-  [603.68, 219, 458.857, 785, 361, 512],
-  [434.72, 464.129, 500, 625, 707],
-  [333.323, 199.041, 272.404, 548.923, 350.538, 443.753],
-];
-
-const P3_HEIGHTS = [
-  [304, 536, 468, 463, 433],
-  [467.991, 360.936, 753.653, 548.257],
-  [706.071, 376.405, 437.167, 692.354],
-  [466, 304, 552, 570, 735],
-];
+const GALLERIES = {
+  1: [
+    [1, 232, 76], [2, 171, 107], [3, 206, 89], [4, 270, 57], [5, 165, 110],
+    [6, 256, 64], [7, 165, 110], [8, 227, 79], [9, 231, 77], [10, 273, 56],
+    [11, 286, 49], [12, 214, 85], [13, 233, 76], [14, 163, 111], [15, 214, 85],
+    [16, 245, 70], [17, 267, 59], [18, 284, 50], [19, 273, 56], [20, 252, 66],
+    [21, 163, 111], [22, 167, 109],
+  ],
+  2: [
+    [1, 232, 76], [2, 274.400024, 55.299988], [3, 206, 89], [4, 270, 57],
+    [5, 226.153809, 79.423096], [6, 256, 64], [7, 165, 110], [8, 227, 79],
+    [9, 231, 77], [10, 273, 56], [11, 286, 49], [13, 233, 76], [14, 163, 111],
+    [15, 214, 85], [16, 245, 70], [17, 267, 59], [18, 284, 50], [19, 273, 56],
+    [20, 252, 66], [21, 249.684082, 67.657959], [22, 167, 109],
+  ],
+  3: [
+    [1, 232, 76], [2, 249.684204, 67.657898], [3, 206, 89], [4, 270, 57],
+    [5, 203.870972, 90.564514], [6, 256, 64], [7, 165, 110], [8, 227, 79],
+    [9, 231, 77], [10, 273, 56], [11, 286, 49], [12, 214, 85], [13, 233, 76],
+    [14, 216.901367, 84.049316], [15, 214, 85], [16, 245, 70], [17, 267, 59],
+    [18, 284, 50],
+  ],
+};
 
 const SESSIONS = {
   1: {
@@ -83,11 +77,9 @@ const SESSIONS = {
       '꿰기 세션은 바늘과 실이라는 익숙한 제본<br>방식에서 출발해, 꿸 수 있는 모든 재료와<br>방법을 탐색하는 프로그램입니다. 종이에<br>구멍을 내고 실을 통과 시키는 것부터, 천과<br>플라스틱, 철사와 케이블처럼 제본과는 멀어<br>보이는 재료까지 자유롭게 연결해 봅니다.',
       '재료의 한계도, 방식의 제약도, 정해진 결과도<br>없습니다. <span class="is-note">꿰고 연결하며 발견하는 가능성만<br>있습니다.</span>',
     ],
-    grid: { x: 115, y: 545, cols: [408, 408, 408, 408], gaps: [20, 20, 20, 20] },
-    count: 23,
-    file: (n) => `assets/archive/a1-${String(n).padStart(2, '0')}.jpg`,
-    heights: P1_HEIGHTS,
-    widths: P1_WIDTHS,
+    grid: { x: 115, y: 545 },
+    items: GALLERIES[1],
+    file: (n) => `assets/archive/figma/p1-${String(n).padStart(2, '0')}.png`,
   },
   2: {
     ink: '#ec008c',
@@ -97,11 +89,9 @@ const SESSIONS = {
       '묶기 세션은 서로 다른 종이와 재료를<br>다양한 방식으로 묶어 하나의 형태로 만드는<br>프로그램입니다. 끈을 감거나 매듭을 짓고,<br>고무줄이나 밴드처럼 주변에서 쉽게 접할 수<br>있는 재료를 활용해 여러 가지 제본 구조를<br>만들어 봅니다.',
       '어떤 형태로 완성할지는 모두 열려 있습니다.<br><span class="is-note">서로 다른 재료를 하나의 구조로 묶어보며<br>제본의 범위를 넓혀갑니다.</span>',
     ],
-    /* Figma gives this one's first column a 10 gutter and the rest 20 */
-    grid: { x: 115, y: 545, cols: [440, 440, 440, 310], gaps: [10, 20, 20, 20] },
-    count: 20,
-    file: (n) => `assets/archive/a2-${String(n).padStart(2, '0')}.jpg`,
-    heights: P2_HEIGHTS,
+    grid: { x: 120, y: 540 },
+    items: GALLERIES[2],
+    file: (n) => `assets/archive/figma/p2-${String(n).padStart(2, '0')}.png`,
   },
   3: {
     ink: '#ffff00',
@@ -113,10 +103,9 @@ const SESSIONS = {
       '풀기 세션은 책장을 펼쳐 넘겨보는 익숙한<br>방식에서 벗어나, 풀어가는 과정을 통해<br>내용을 읽는 새로운 책의 형태를 탐색하는<br>프로그램입니다. 손의 움직임에 따라<br>내용과 구조가 드러나는 책을 만들어 봅니다.',
       '<span class="is-note">풀고 펼치는 움직임 자체가 새로운 책의<br>형태이자 읽기의 방식이 됩니다.</span>',
     ],
-    grid: { x: 115, y: 545, cols: [408, 408, 408, 408], gaps: [20, 20, 20, 20] },
-    count: 20,
-    file: (n) => `assets/archive/a3-${String(n).padStart(2, '0')}.jpg`,
-    heights: P3_HEIGHTS,
+    grid: { x: 120, y: 545 },
+    items: GALLERIES[3],
+    file: (n) => `assets/archive/figma/p3-${String(n).padStart(2, '0')}.png`,
   },
 };
 
@@ -157,42 +146,14 @@ document.getElementById('arcNext').addEventListener('click', () => {
 /* ---- the gallery ---- */
 
 const grid = document.getElementById('arcGrid');
-const COLS = 4;
-
 grid.style.setProperty('--grid-x', `${s.grid.x}px`);
 grid.style.setProperty('--grid-y', `${s.grid.y}px`);
 
-/* Figma fills a column before starting the next, so the pieces are dealt in
-   runs rather than round-robin. A run is as long as the column Figma drew;
-   where a session has more photos than Figma has tiles, the overflow keeps
-   going down the last columns at its own shape. */
-const runs = s.heights.map((col) => col.length);
-const drawn = runs.reduce((a, b) => a + b, 0);
-for (let i = 0; s.count - drawn - i > 0; i++) runs[(COLS - 1) - (i % COLS)] += 1;
-
-const columns = [];
-let n = 1;
-runs.forEach((len) => {
-  const col = [];
-  for (let i = 0; i < len && n <= s.count; i++) col.push(n++);
-  columns.push(col);
-});
-
-grid.innerHTML = columns.map((col, c) => {
-  const tiles = col.map((n, r) => {
-    /* a Figma height where we have one, otherwise the piece's own shape */
-    const h = s.heights[c] && s.heights[c][r];
-    const w = s.widths && s.widths[c] && s.widths[c][r];
-    const dims = [h && `height:${h}px`, w && `width:${w}px`].filter(Boolean).join(';');
-    const style = dims ? ` style="${dims}"` : '';
-    const cls = h ? 'arc-tile is-cropped' : 'arc-tile';
-    /* no lazy loading on the tiles that size themselves: a tile with no
-       height is flat, a flat tile is never "near the viewport", and the
-       image that would give it a height then never loads */
-    return `<button type="button" class="${cls}"${style}>` +
-      `<img src="${s.file(n)}${V}" alt="아카이브 ${n}"${h ? ' loading="lazy"' : ''} /></button>`;
-  }).join('');
-  return `<div class="arc-col" style="--col-w:${s.grid.cols[c]}px;--tile-gap:${s.grid.gaps[c]}px">${tiles}</div>`;
+grid.innerHTML = s.items.map(([n, h, top]) => {
+  const style = ` style="--photo-h:${h}px;--photo-top:${top}px"`;
+  return `<button type="button" class="arc-tile is-cropped"${style}>` +
+    `<img src="${s.file(n)}${V}" alt="아카이브 ${n}" loading="lazy" />` +
+    `<span class="arc-index">${n}</span></button>`;
 }).join('');
 
 /* ---- give the frame the gallery's height ----

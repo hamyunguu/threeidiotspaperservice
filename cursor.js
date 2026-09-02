@@ -22,8 +22,8 @@
   cur.className = 'cursor';
   cur.setAttribute('aria-hidden', 'true');
   cur.innerHTML =
-    '<img class="cur-g" src="assets/cursor-gray.svg?v=15" alt="">' +
-    '<img class="cur-b" src="assets/cursor-black.svg?v=15" alt="">';
+    '<img class="cur-g" src="assets/cursor-gray.svg?v=83" alt="">' +
+    '<img class="cur-b" src="assets/cursor-black.svg?v=83" alt="">';
   document.body.appendChild(cur);
 
   const CLICKABLE = 'a[href], button, input, textarea, select, label, summary,' +

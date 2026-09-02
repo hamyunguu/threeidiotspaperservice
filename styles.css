@@ -1062,7 +1062,7 @@ body.program2 { --stage-h: 1080; background: #fff; }
 }
 
 /* ===============================================================
-   PROGRAM ARCHIVE — Figma 476:821 / 476:1289 / 476:1363
+   PROGRAM ARCHIVE — Figma 559:606 / 695:886 / 695:984
    One page per session, painted in that session's process colour. The
    masonry runs far past the 1080 frame, so this is the one page whose
    stage grows to its content and scrolls with the document.
@@ -1148,36 +1148,39 @@ body.archive .mark.r-bot { top: auto; bottom: 20px; }
 .arc-cta:hover img { filter: invert(1); }
 
 /* ---- the gallery ----
-   Four columns with a 20 gutter between them. All three current frames begin
-   at 115,545; 묶기 alone narrows its final track and gives its first column a
-   10px tile gutter. archive.js supplies the per-session widths and heights. */
+   Five 322 × 384 black frames with 20px gutters. Every photo is exactly
+   200px wide and centred inside its frame, matching the current Figma. */
 
 .arc-grid {
   position: absolute; left: var(--grid-x, 115px); top: var(--grid-y, 545px);
-  display: flex; gap: 20px; align-items: flex-start; z-index: 3;
+  display: grid; grid-template-columns: repeat(5, 322px); grid-auto-rows: 384px;
+  gap: 20px; width: 1690px; z-index: 3;
   transform: translateY(var(--shift));
   transition: transform .32s cubic-bezier(.4, 0, .2, 1);
 }
-.arc-col {
-  display: flex; flex-direction: column;
-  gap: var(--tile-gap, 20px); width: var(--col-w, 408px);
-}
 
 .arc-tile {
-  position: relative; width: 100%; overflow: hidden; display: block;
-  border: none; padding: 0; background: none; cursor: pointer;
+  position: relative; width: 322px; height: 384px; overflow: hidden; display: block;
+  border: none; padding: 0; background: #000; cursor: pointer;
 }
-/* a piece without a Figma height keeps its own shape; one with a height is
-   cropped into it. Without this the tile would be flat until its image
-   decoded, and the column would have nothing to stand on. */
 .arc-tile img {
-  display: block; width: 100%; height: auto;
+  position: absolute; left: 61px; top: var(--photo-top, 76px); display: block;
+  width: 200px; height: var(--photo-h, auto); max-height: 352px;
+  object-fit: cover; transform-origin: center;
   transition: filter .3s ease, transform .3s ease;
 }
-.arc-tile.is-cropped img { height: 100%; object-fit: cover; }
+.arc-index {
+  position: absolute; left: 16px; top: 16px; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  width: 29px; height: 29px; border-radius: 50%; background: var(--ink);
+  font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 300;
+  line-height: 1; letter-spacing: -0.675px; color: #000;
+}
 /* hovering a piece pushes it out of focus, the way the open programme card
    frosts its own photo */
-.arc-tile:hover img, .arc-tile:focus-visible img { filter: blur(6px); transform: scale(1.04); }
+.arc-tile:hover img, .arc-tile:focus-visible img {
+  filter: blur(6px); transform: scale(1.04);
+}
 
 @media (prefers-reduced-motion: reduce) {
   .arc-tile img { transition: filter .2s ease; }
@@ -1989,16 +1992,16 @@ body.order .h-rule {
 .ord-tab { height: 38px; gap: 12px; font-size: 18px; line-height: 18px; }
 .ord-tab i {
   width: 20px; height: 20px; margin-top: 9px; border: 0; border-radius: 0;
-  background: transparent url('assets/order-point-off.svg?v=81') 0 0 / 20px 20px no-repeat;
+  background: transparent url('assets/order-point-off.svg?v=83') 0 0 / 20px 20px no-repeat;
 }
-.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=81'); background-color: transparent; }
+.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=83'); background-color: transparent; }
 .ord-tab.is-on i::before,
 .ord-tab.is-on i::after {
   left: 0; top: 9px; width: 20px; height: 1px; background-color: transparent;
   background-position: center; background-size: 20px 1px; background-repeat: no-repeat;
 }
-.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=81'); }
-.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=81'); }
+.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=83'); }
+.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=83'); }
 .ord-common-pane button:focus,
 .ord-detail-pane button:focus,
 .ord-preview button:focus { outline: 0; }
@@ -2010,10 +2013,10 @@ body.order .h-rule {
 }
 .ord-product-kinds button::before {
   content: ''; position: absolute; left: 0; top: 3px; width: 12px; height: 12px;
-  background: url('assets/order-point-off.svg?v=81') center / 12px 12px no-repeat;
+  background: url('assets/order-point-off.svg?v=83') center / 12px 12px no-repeat;
 }
 .ord-product-kinds button.is-on { border: 0; }
-.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=81'); }
+.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=83'); }
 .ord-service-note {
   left: 0; top: 350px; bottom: auto; width: 179px;
   font-size: 14px; line-height: 17px; font-weight: 350;
@@ -2065,7 +2068,7 @@ body.order .h-rule {
 }
 .ord-field-mark {
   position: absolute; z-index: 3; width: 13px; height: 13px;
-  background: url('assets/order-field-left.svg?v=81') center / 13px 13px no-repeat;
+  background: url('assets/order-field-left.svg?v=83') center / 13px 13px no-repeat;
   pointer-events: none;
 }
 .ord-field-mark.is-lt { left: 0; top: 0; transform: scaleY(-1); }
