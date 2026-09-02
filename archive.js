@@ -23,7 +23,7 @@
    the window scrolls it.
    --------------------------------------------------------------- */
 
-const V = '?v=83';
+const V = '?v=84';
 
 /* ---------------- the session mark (476:719) ----------------
    Five 76px discs on a 284 box, with the two syllables laid over the
@@ -79,7 +79,7 @@ const SESSIONS = {
     ],
     grid: { x: 115, y: 545 },
     items: GALLERIES[1],
-    file: (n) => `assets/archive/figma/p1-${String(n).padStart(2, '0')}.png`,
+    file: (n) => `assets/archive/figma/p1-${String(n).padStart(2, '0')}.jpg`,
   },
   2: {
     ink: '#ec008c',
@@ -91,7 +91,7 @@ const SESSIONS = {
     ],
     grid: { x: 120, y: 540 },
     items: GALLERIES[2],
-    file: (n) => `assets/archive/figma/p2-${String(n).padStart(2, '0')}.png`,
+    file: (n) => `assets/archive/figma/p2-${String(n).padStart(2, '0')}.jpg`,
   },
   3: {
     ink: '#ffff00',
@@ -105,7 +105,7 @@ const SESSIONS = {
     ],
     grid: { x: 120, y: 545 },
     items: GALLERIES[3],
-    file: (n) => `assets/archive/figma/p3-${String(n).padStart(2, '0')}.png`,
+    file: (n) => `assets/archive/figma/p3-${String(n).padStart(2, '0')}.jpg`,
   },
 };
 
