@@ -9,19 +9,21 @@
    --------------------------------------------------------------- */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { ARCHIVE_SPECS } from '../archive-data.js';
 
 /* ---------------- 상담 캐릭터 ---------------- */
 
 const SYSTEM = `너는 TiPS(Three Idiots Paper Service)의 인쇄·제본 상담 챗봇이다.
 
-# TiPS는 어떤 곳인가
-"인쇄 앞에서는 우리 모두가 조금은 얼간이가 됩니다." — 어떤 종이를 고를지, 어떻게 묶을지,
-무엇을 물어봐야 할지 몰라 매번 묻고 찾고 다시 확인하는 사람들을 위해 시작한 브랜드다.
-제본을 세 방향의 실험으로 나눠 워크숍(세션)을 운영한다.
-- 꿰기 세션(program-detail.html?p=1): 바늘과 실에서 출발해 천·플라스틱·철사·케이블까지 꿸 수 있는 모든 재료를 실험한다.
-- 묶기 세션(program-detail.html?p=2): 끈·매듭·고무줄·테이프·밴드·철사로 흩어진 재료를 한데 모아 새로운 책의 구조를 만든다.
-- 풀기 세션(program-detail.html?p=3): 이미 만들어진 책을 거꾸로 해체하며 어떤 순서와 방식으로 만들어졌는지 발견한다.
-페이지: 홈(index.html) · Identity(identity.html) · Program(program.html) · Service(service.html, 준비 중)
+# TiPS와 사이트에서 확인된 정보
+"인쇄 앞에서는 우리 모두가 조금은 얼간이가 됩니다."라는 생각에서 시작한 인쇄·제본 브랜드다.
+- 꿰기(archive.html?p=1): 바늘과 실에서 출발해 종이·천·플라스틱·철사·케이블 등 꿸 수 있는 재료와 방법을 실험한다.
+- 묶기(archive.html?p=2): 끈·매듭·고무줄·밴드·철사 등으로 서로 다른 재료를 묶어 책의 구조를 만든다.
+- 풀기(archive.html?p=3): 책을 해체하거나 풀고 펼치는 움직임을 통해 구조와 새로운 읽기 방식을 발견한다.
+- Program(program.html): 세 프로그램의 개요를 본다.
+- 각 Archive: 작품 이미지를 누르면 형태, 종이·재료, 평량·두께, 제본 방식, 인쇄·후가공 추정치를 본다.
+- Service(service.html): 포스터·책·제품의 사양을 입력하고 파일을 올려 미리보며 견적 문의를 준비한다.
+- Identity(identity.html), 로그인, 장바구니의 일부 기능은 아직 준비 중이다.
 
 # 역할
 너는 단순 안내원이 아니라 인쇄소 카운터에 앉은 상담자다. 손님이 만들려는 것이 무엇인지
@@ -41,14 +43,17 @@ const SYSTEM = `너는 TiPS(Three Idiots Paper Service)의 인쇄·제본 상담
 # 말투
 - 한국어 존댓말. 담백하고 다정하게. 과장·이모지·느낌표 남발 금지.
 - 3~4문장 이내. 길어지면 손님이 안 읽는다. 목록이 필요하면 최대 3줄.
-- 모르는 건 아는 척하지 않는다. 가격·일정·재고는 아직 정해진 정보가 없으므로
-  "서비스 페이지에서 곧 안내될 예정"이라고만 말한다.
+- 일반적인 제작 추천과 TiPS 사이트에서 확인된 사실을 구분한다.
+- 가격·일정·재고를 확정하지 않는다. 조건을 물은 뒤 Service에서 견적 문의를 준비하도록 안내한다.
+- 아카이브 제작 정보는 완성품 사진을 보고 추정한 값이다. 실제 제작 기록처럼 단정하지 않고,
+  정확한 종이명·평량·숨은 구조는 실물 확인과 인쇄소 협의가 필요하다고 밝힌다.
 
 # 링크
 답변 끝에, 도움이 될 페이지가 있을 때만 아래 형식을 정확히 한 줄 덧붙인다. 없으면 붙이지 않는다.
 [[link:주소|버튼 문구 →]]
-예: [[link:program-detail.html?p=1|꿰기 세션 →]]
-주소는 위에 적힌 페이지 중에서만 고른다. 본문에서는 이 형식을 절대 언급하지 않는다.
+예: [[link:archive.html?p=1|꿰기 아카이브 →]]
+허용 주소는 index.html, identity.html, program.html, archive.html?p=1, archive.html?p=2,
+archive.html?p=3, service.html뿐이다. 본문에서는 이 형식을 절대 언급하지 않는다.
 
 # 범위
 인쇄·제본·종이·책 만들기·TiPS 프로그램에 관한 질문만 답한다. 그 밖의 주제는
@@ -59,30 +64,51 @@ const SYSTEM = `너는 TiPS(Three Idiots Paper Service)의 인쇄·제본 상담
 const MAX_TURNS = 12;      // 프록시로 넘기는 최근 대화 수
 const MAX_CHARS = 1000;    // 한 메시지 최대 길이
 const MAX_TOKENS = 1024;   // 채팅 말풍선이라 짧게
+const MAX_BODY_BYTES = 16 * 1024;
 
 /* ---------------- 핸들러 ---------------- */
 
 export default {
   async fetch(request, env) {
-    const cors = corsFor(request, env);
+    const { allowed, headers: cors } = corsFor(request, env);
 
+    if (!allowed) return fail(403, 'origin not allowed', cors);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     if (request.method !== 'POST') return fail(405, 'POST only', cors);
-    if (!env.ANTHROPIC_API_KEY) return fail(500, 'ANTHROPIC_API_KEY secret is not set', cors);
+    if (!request.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) {
+      return fail(415, 'application/json required', cors);
+    }
+
+    const declaredSize = Number(request.headers.get('Content-Length') || 0);
+    if (declaredSize > MAX_BODY_BYTES) return fail(413, 'request too large', cors);
+
+    if (env.CHAT_RATE_LIMITER) {
+      try {
+        const key = request.headers.get('CF-Connecting-IP') || 'unknown';
+        const { success } = await env.CHAT_RATE_LIMITER.limit({ key });
+        if (!success) return fail(429, 'too many requests', cors, { 'Retry-After': '60' });
+      } catch (err) {
+        console.error('rate limiter failed open', err);
+      }
+    }
 
     let messages;
     try {
-      messages = clean((await request.json()).messages);
+      const raw = await readLimitedBody(request, MAX_BODY_BYTES);
+      if (raw === null) return fail(413, 'request too large', cors);
+      messages = clean(JSON.parse(raw).messages);
     } catch {
       return fail(400, 'bad request body', cors);
     }
     if (!messages.length) return fail(400, 'no messages', cors);
+    if (messages.at(-1).role !== 'user') return fail(400, 'last message must be user', cors);
+    if (!env.ANTHROPIC_API_KEY) return fail(500, 'chat service is not configured', cors);
 
     const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
     const stream = client.messages.stream({
-      model: env.MODEL || 'claude-opus-5',
+      model: env.MODEL || 'claude-sonnet-5',
       max_tokens: MAX_TOKENS,
-      system: SYSTEM,
+      system: SYSTEM + archiveContext(messages),
       output_config: { effort: 'low' },   // 짧은 상담 답변 — 깊게 생각할 필요 없음
       messages,
     });
@@ -128,23 +154,80 @@ function clean(list) {
     .slice(-MAX_TURNS);
 }
 
+// The model receives one matching archive record, only when the conversation
+// names both a session and an item. This keeps ordinary requests small while
+// allowing follow-up questions such as "그 작품 평량은?".
+function archiveContext(messages) {
+  let session;
+  let number;
+  const userMessages = messages.filter((m) => m.role === 'user').slice(-6).reverse();
+
+  for (const { content } of userMessages) {
+    if (!session) {
+      if (content.includes('꿰기')) session = '1';
+      else if (content.includes('묶기')) session = '2';
+      else if (content.includes('풀기')) session = '3';
+    }
+    if (!number) {
+      const numbered = content.match(/(?:아카이브|작품|사진|이미지)\s*#?\s*(\d{1,2})|\b(\d{1,2})\s*(?:번|번째)/);
+      number = Number(numbered?.[1] || numbered?.[2] || 0) || undefined;
+    }
+    if (session && number) break;
+  }
+
+  if (!session || !number) return '';
+  const archive = ARCHIVE_SPECS[session];
+  const item = archive?.items[number];
+  if (!item) {
+    return `\n\n# 이번 대화의 아카이브 조회\n${archive?.name || '해당'} 아카이브에는 ${number}번 작품 정보가 없다. 없는 정보를 만들지 않는다.`;
+  }
+
+  return `\n\n# 이번 대화의 아카이브 참고 정보\n` +
+    `${archive.name} 아카이브 ${number}번 (archive.html?p=${session})\n` +
+    `형태: ${item.form}\n종이·재료: ${item.material}\n평량·두께: ${item.weight}\n` +
+    `제본 방식: ${item.binding}\n인쇄·후가공: ${item.finish}\n` +
+    `위 값은 완성품 사진을 보고 추정한 정보다. 정확한 제작 사양으로 단정하지 않는다.`;
+}
+
+async function readLimitedBody(request, limit) {
+  if (!request.body) return '';
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    if (bytes > limit) {
+      await reader.cancel();
+      return null;
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+  return text + decoder.decode();
+}
+
 // ALLOWED_ORIGINS 가 있으면 그 목록만, 없으면 전부 허용.
 function corsFor(request, env) {
   const origin = request.headers.get('Origin') || '';
   const list = (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const allow = !list.length ? '*' : list.includes(origin) ? origin : list[0];
-  return {
-    'Access-Control-Allow-Origin': allow,
+  const allowed = !list.length || list.includes(origin);
+  const headers = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
   };
+  if (allowed) headers['Access-Control-Allow-Origin'] = list.length ? origin : '*';
+  return { allowed, headers };
 }
 
-function fail(status, message, cors) {
+function fail(status, message, cors, extra = {}) {
   return new Response(JSON.stringify({ error: message }), {
     status,
-    headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8' },
+    headers: { ...cors, ...extra, 'Content-Type': 'application/json; charset=utf-8' },
   });
 }
+
+export { archiveContext, clean, corsFor, readLimitedBody };

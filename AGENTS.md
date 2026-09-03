@@ -197,8 +197,13 @@ x/y/w/h)를 같이 씁니다. **좌표는 metadata 쪽이 정확합니다** — 
 히어로의 챗봇은 Cloudflare Worker를 거쳐 Claude API를 부릅니다. 정적 페이지에
 키를 둘 수 없어서입니다. `worker/README.md`에 배포 순서가 있습니다.
 
-`hero.js`의 `CHAT_API`가 비어 있으면 미리 적어 둔 답변으로 대신 동작합니다.
-**지금은 비어 있습니다** — 배포하지 않아도 사이트는 멀쩡합니다.
+Worker 코드는 `https://tips-chat.hcy070722.workers.dev`에 배포되어 있지만,
+**졸전 전까지 비용을 막기 위해 `ANTHROPIC_API_KEY`를 등록하지 않았고**
+`hero.js`의 `CHAT_API`도 비워 두었습니다. 현재는 미리 적어 둔 답변으로만 동작합니다.
+
+실제 AI를 켤 때는 Worker 시크릿에 키를 등록하고 `CHAT_API`에 위 주소를 넣은 뒤
+자산 버전을 올려 배포합니다. 아카이브 상세와 AI가 같은 `archive-data.js`를 사용하므로
+작품 정보는 한 곳에서만 수정해야 합니다.
 
 ---
 

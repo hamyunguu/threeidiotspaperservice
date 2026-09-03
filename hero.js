@@ -27,9 +27,9 @@ if (loader) {
 /* ---------------- left: the poster the numbering pages through ---------------- */
 
 const POSTERS = [
-  'assets/fig-poster.jpg?v=90',
-  'assets/card-hand.jpg?v=90',
-  'assets/gal-wood-a.jpg?v=90',
+  'assets/fig-poster.jpg?v=91',
+  'assets/card-hand.jpg?v=91',
+  'assets/gal-wood-a.jpg?v=91',
 ];
 
 const layers = [...document.querySelectorAll('.poster img')];
@@ -74,11 +74,14 @@ play();
    CHAT_API below. Leave it empty (or let a call fail) and the chat falls
    back to the local keyword map underneath, so the site never breaks. */
 
-const CHAT_API = ''; // ← 배포한 Worker 주소. 예: 'https://tips-chat.내계정.workers.dev'
+// 졸전 직전 실제 AI를 켤 때 아래 빈 문자열을 배포 주소로 바꾼다:
+// https://tips-chat.hcy070722.workers.dev
+const CHAT_API = '';
 
 const log = document.getElementById('chatLog');
 const form = document.getElementById('chatForm');
 const field = document.getElementById('chatField');
+const submit = document.getElementById('chatSend');
 
 const SEEDS = [
   '빈티지하고 클래식한 제본을 하고 싶어요.',
@@ -93,7 +96,7 @@ const INTENTS = [
   { re: /(제본|바인딩|bind)/, text: '제본은 꿰기·묶기·풀기 세 방향으로 실험할 수 있어요. 프로그램에서 세션별로 살펴보세요.', to: 'program.html', label: '프로그램 보기 →' },
   { re: /(종이|용지|평량|무광|유광|paper)/, text: '종이는 용도와 질감, 평량(g)에 따라 크게 달라져요. 제본 방식과 함께 고르면 실패가 줄어요. 프로그램에서 재료 실험을 참고해보세요.', to: 'program.html', label: '프로그램 보기 →' },
   { re: /(빈티지|클래식|고전)/, text: '빈티지·클래식한 느낌은 실제본(꿰기)과 크라프트·미색 계열 종이가 잘 어울려요.', to: 'archive.html?p=1', label: '꿰기 세션 →' },
-  { re: /(가격|비용|견적|price|얼마)/, text: '가격 안내는 서비스 페이지에서 곧 제공될 예정이에요.', to: 'service.html', label: '서비스 →' },
+  { re: /(가격|비용|견적|price|얼마)/, text: 'Service에서 제품과 사양을 선택하면 예상 비용을 확인하고 견적 문의를 준비할 수 있어요.', to: 'service.html', label: '서비스 →' },
   { re: /(아이덴티티|브랜드|identity|로고)/, text: 'TiPS의 브랜드 아이덴티티는 Identity 페이지에서 확인할 수 있어요.', to: 'identity.html', label: 'Identity →' },
 ];
 
@@ -150,6 +153,15 @@ function navbtn(m, to, label) {
    parsed into a button and never shown, so hide anything from '[[' while typing */
 const LINK = /\[\[link:([^|\]]+)\|([^\]]+)\]\]/;
 const shown = (s) => s.split('[[')[0];
+const CHAT_LINKS = new Set([
+  'index.html',
+  'identity.html',
+  'program.html',
+  'archive.html?p=1',
+  'archive.html?p=2',
+  'archive.html?p=3',
+  'service.html',
+]);
 
 const history = [];
 const MAX_TURNS = 12;
@@ -171,12 +183,15 @@ async function askClaude(q) {
   m.classList.add('is-typing');
   const b = m.querySelector('.bubble');
   let full = '';
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
 
   try {
     const res = await fetch(CHAT_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: history.slice(-MAX_TURNS) }),
+      signal: controller.signal,
     });
     if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
@@ -197,6 +212,8 @@ async function askClaude(q) {
     m.remove();
     await askLocal(q);
     return;
+  } finally {
+    clearTimeout(timeout);
   }
 
   const text = shown(full).trim();
@@ -204,7 +221,8 @@ async function askClaude(q) {
   history.push({ role: 'assistant', content: text });
 
   const hit = full.match(LINK);
-  if (hit) navbtn(m, hit[1].trim(), hit[2].trim());
+  const to = hit?.[1].trim();
+  if (to && CHAT_LINKS.has(to)) navbtn(m, to, hit[2].trim());
   log.scrollTop = log.scrollHeight;
 }
 
@@ -217,12 +235,16 @@ async function send(text) {
 
   busy = true;
   field.disabled = true;
+  submit.disabled = true;
+  form.setAttribute('aria-busy', 'true');
   try {
     if (CHAT_API) await askClaude(q);
     else await askLocal(q);
   } finally {
     busy = false;
     field.disabled = false;
+    submit.disabled = false;
+    form.removeAttribute('aria-busy');
     field.focus();
   }
 }
