@@ -23,7 +23,7 @@
    the window scrolls it.
    --------------------------------------------------------------- */
 
-const V = '?v=87';
+const V = '?v=88';
 
 /* ---------------- the session mark (476:719) ----------------
    Five 76px discs on a 284 box, with the two syllables laid over the
@@ -361,3 +361,26 @@ grid.querySelectorAll('img').forEach((img) => {
   img.addEventListener('error', fitStage, { once: true });
 });
 window.addEventListener('resize', fitStage);
+
+/* ---- keep the frame furniture pinned while the long gallery scrolls ----
+   The stage itself is scaled and scrolls with the document. Countering the
+   browser scroll in design pixels keeps the four registration marks and the
+   back arrow at y=78 / y=1012, exactly where the 1080 Figma frame puts them. */
+
+let archiveChromeRaf = 0;
+
+function syncArchiveChrome() {
+  archiveChromeRaf = 0;
+  const scale = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--scale')) || 1;
+  document.body.style.setProperty('--archive-scroll', `${window.scrollY / scale}px`);
+}
+
+function queueArchiveChromeSync() {
+  if (archiveChromeRaf) return;
+  archiveChromeRaf = requestAnimationFrame(syncArchiveChrome);
+}
+
+window.addEventListener('scroll', queueArchiveChromeSync, { passive: true });
+window.addEventListener('resize', queueArchiveChromeSync);
+queueArchiveChromeSync();
