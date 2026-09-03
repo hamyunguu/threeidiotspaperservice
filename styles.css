@@ -897,7 +897,7 @@ body.page-sub .hd-nav a.is-current { display: block; }
    overlay. Descendants inherit the current mark so old pointer/grab rules
    cannot bring the arrow back on top. */
 html.has-cursor {
-  cursor: url("assets/cursor-gray.svg?v=89") 15 15, default !important;
+  cursor: url("assets/cursor-gray.svg?v=90") 15 15, default !important;
 }
 html.has-cursor body,
 html.has-cursor * { cursor: inherit !important; }
@@ -908,7 +908,7 @@ html.has-cursor :is(
   .card-archive, .apply-btn, .chat-send, .nav-item[href],
   .gal.hoverable, .tip-circle
 ) {
-  cursor: url("assets/cursor-black.svg?v=89") 15 15, pointer !important;
+  cursor: url("assets/cursor-black.svg?v=90") 15 15, pointer !important;
 }
 
 /* loading page — CMYK registration logo, spins clockwise, ~1.5s on entry */
@@ -1074,24 +1074,9 @@ body.archive { background: var(--ink); }
 body.archive .stage { background: var(--ink); }
 body.archive .viewport, body.archive .stage { transition: none; }
 
-/* Archive content is taller than the 1080 frame, but its registration marks
-   and back arrow belong to the viewing frame. This fixed, screen-space layer
-   is centred and scaled exactly like .viewport without inheriting .stage's
-   document scroll. No scroll-time JS correction means no one-frame wobble. */
-.arc-frame-ui {
-  position: fixed; left: 0; right: 0; top: 0; z-index: 8;
-  width: calc(1920 * var(--scale) * 1px);
-  height: calc(1080 * var(--scale) * 1px);
-  margin: 0 auto; overflow: hidden;
-  pointer-events: none; contain: strict;
-}
-.arc-frame-canvas {
-  position: absolute; left: 0; top: 0; width: 1920px; height: 1080px;
-  transform: scale(var(--scale)); transform-origin: 0 0;
-}
-.arc-frame-ui .marks { position: absolute; inset: 0; }
-.arc-frame-ui .mark.r-bot { top: 1012px; }
-.arc-frame-ui .arc-back { pointer-events: auto; }
+/* The top pair scrolls away with the intro. The bottom pair belongs to the
+   end of the long archive and appears only when the gallery reaches its end. */
+body.archive .mark.r-bot { top: auto; bottom: 20px; }
 
 /* ---- back / next ---- */
 
@@ -2121,16 +2106,16 @@ body.order .h-rule {
 .ord-tab { height: 38px; gap: 12px; font-size: 18px; line-height: 18px; }
 .ord-tab i {
   width: 20px; height: 20px; margin-top: 9px; border: 0; border-radius: 0;
-  background: transparent url('assets/order-point-off.svg?v=89') 0 0 / 20px 20px no-repeat;
+  background: transparent url('assets/order-point-off.svg?v=90') 0 0 / 20px 20px no-repeat;
 }
-.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=89'); background-color: transparent; }
+.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=90'); background-color: transparent; }
 .ord-tab.is-on i::before,
 .ord-tab.is-on i::after {
   left: 0; top: 9px; width: 20px; height: 1px; background-color: transparent;
   background-position: center; background-size: 20px 1px; background-repeat: no-repeat;
 }
-.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=89'); }
-.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=89'); }
+.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=90'); }
+.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=90'); }
 .ord-common-pane button:focus,
 .ord-detail-pane button:focus,
 .ord-preview button:focus { outline: 0; }
@@ -2142,10 +2127,10 @@ body.order .h-rule {
 }
 .ord-product-kinds button::before {
   content: ''; position: absolute; left: 0; top: 3px; width: 12px; height: 12px;
-  background: url('assets/order-point-off.svg?v=89') center / 12px 12px no-repeat;
+  background: url('assets/order-point-off.svg?v=90') center / 12px 12px no-repeat;
 }
 .ord-product-kinds button.is-on { border: 0; }
-.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=89'); }
+.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=90'); }
 .ord-service-note {
   left: 0; top: 350px; bottom: auto; width: 179px;
   font-size: 14px; line-height: 17px; font-weight: 350;
@@ -2197,7 +2182,7 @@ body.order .h-rule {
 }
 .ord-field-mark {
   position: absolute; z-index: 3; width: 13px; height: 13px;
-  background: url('assets/order-field-left.svg?v=89') center / 13px 13px no-repeat;
+  background: url('assets/order-field-left.svg?v=90') center / 13px 13px no-repeat;
   pointer-events: none;
 }
 .ord-field-mark.is-lt { left: 0; top: 0; transform: scaleY(-1); }
