@@ -897,7 +897,7 @@ body.page-sub .hd-nav a.is-current { display: block; }
    overlay. Descendants inherit the current mark so old pointer/grab rules
    cannot bring the arrow back on top. */
 html.has-cursor {
-  cursor: url("assets/cursor-gray.svg?v=91") 15 15, default !important;
+  cursor: url("assets/cursor-gray.svg?v=92") 15 15, default !important;
 }
 html.has-cursor body,
 html.has-cursor * { cursor: inherit !important; }
@@ -908,7 +908,7 @@ html.has-cursor :is(
   .card-archive, .apply-btn, .chat-send, .nav-item[href],
   .gal.hoverable, .tip-circle
 ) {
-  cursor: url("assets/cursor-black.svg?v=91") 15 15, pointer !important;
+  cursor: url("assets/cursor-black.svg?v=92") 15 15, pointer !important;
 }
 
 /* loading page — CMYK registration logo, spins clockwise, ~1.5s on entry */
@@ -1299,6 +1299,297 @@ body.is-archive-modal-open { overflow: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
   .arc-modal, .arc-modal-panel { transition: none; }
+}
+
+/* ===============================================================
+   PROGRAM APPLICATION — interactive flow draft
+   Entered from a selected archive session. The outer frame keeps the
+   archive's process colour while a white paper-like panel contains the
+   reservation flow. Nothing on this page is submitted or persisted yet.
+   =============================================================== */
+
+body.apply { --stage-h: 1080; background: var(--ink, #00a0ff); }
+body.apply .stage { background: var(--ink, #00a0ff); transition: background .22s ease; }
+
+.ap-back {
+  position: absolute; left: 20px; top: calc(78px + var(--shift));
+  width: 37px; height: 37px; border: 0; padding: 0; background: none;
+  cursor: pointer; z-index: 7;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1), opacity .18s;
+}
+.ap-back img { display: block; width: 100%; height: 100%; }
+.ap-back:hover { opacity: .55; }
+
+.ap-shell {
+  position: absolute; left: 115px; top: calc(126px + var(--shift));
+  width: 1690px; height: calc(886px - var(--shift));
+  display: grid; grid-template-columns: 493px 1fr;
+  border: 1px solid #000; background: #fff; z-index: 3; overflow: hidden;
+  transition: top .32s cubic-bezier(.4, 0, .2, 1), height .32s cubic-bezier(.4, 0, .2, 1);
+}
+
+.ap-summary {
+  position: relative; min-width: 0; padding: 30px 32px;
+  border-right: 1px solid #000; background: var(--ink); color: #000;
+}
+.ap-summary-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.ap-kicker,
+.ap-draft,
+.ap-program-no,
+.ap-switch p,
+.ap-step-heading p,
+.ap-step-heading > span,
+.ap-complete > p:first-of-type,
+.ap-complete-no { font-family: 'IBM Plex Mono', monospace; }
+.ap-kicker { font-size: 16px; line-height: 1; }
+.ap-draft {
+  padding: 6px 10px; border: 1px solid #000; border-radius: 50px;
+  font-size: 12px; line-height: 1;
+}
+
+.ap-program-mark { position: relative; width: 284px; margin-top: 55px; }
+.ap-program-no { margin-top: 32px; font-size: 18px; line-height: 1; }
+.ap-summary h1 {
+  margin-top: 13px; font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 700; font-size: 42px; line-height: 1.2; letter-spacing: -1.4px;
+}
+.ap-program-desc {
+  width: 390px; margin-top: 18px; font-family: 'Noto Sans KR', sans-serif;
+  font-size: 20px; line-height: 1.5; letter-spacing: -0.5px;
+}
+
+.ap-summary-list {
+  position: absolute; left: 32px; right: 32px; bottom: 139px;
+  border-top: 1px solid #000;
+  font-family: 'Noto Sans KR', sans-serif; font-size: 17px; line-height: 1.3;
+}
+.ap-summary-list > div {
+  display: grid; grid-template-columns: 91px 1fr; padding: 9px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, .42);
+}
+.ap-summary-list dt { font-weight: 600; }
+.ap-summary-list dd { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ap-switch { position: absolute; left: 32px; right: 32px; bottom: 30px; }
+.ap-switch p { margin-bottom: 10px; font-size: 13px; line-height: 1; }
+.ap-switch div { display: flex; }
+.ap-switch button {
+  width: 48px; height: 38px; margin-right: -1px; border: 1px solid #000;
+  background: transparent; font-family: 'IBM Plex Mono', monospace;
+  font-size: 18px; cursor: pointer;
+}
+.ap-switch button:hover { background: rgba(255, 255, 255, .5); }
+.ap-switch button.is-on { background: #000; color: var(--ink); }
+
+.ap-flow { position: relative; min-width: 0; background: #fff; }
+.ap-progress {
+  height: 77px; padding: 0 44px; border-bottom: 1px solid #000;
+  display: grid; grid-template-columns: repeat(3, 1fr); list-style: none;
+}
+.ap-progress li {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  font-family: 'Noto Sans KR', sans-serif; font-size: 16px; color: #8c8c8c;
+}
+.ap-progress li:not(:last-child)::after {
+  content: ''; position: absolute; right: 22px; top: 38px; width: calc(100% - 145px);
+  border-top: 1px dotted #aaa;
+}
+.ap-progress b {
+  display: grid; place-items: center; width: 28px; height: 28px;
+  border: 1px solid #aaa; border-radius: 50%;
+  font-family: 'IBM Plex Mono', monospace; font-weight: 400; font-size: 14px;
+}
+.ap-progress li.is-on { color: #000; }
+.ap-progress li.is-on b { border-color: #000; background: #000; color: #fff; }
+
+#applyForm { height: calc(100% - 77px); }
+.ap-step {
+  position: relative; height: 100%; padding: 35px 44px 28px;
+  font-family: 'Noto Sans KR', sans-serif; color: #000;
+}
+.ap-step[hidden] { display: none; }
+.ap-step-heading { display: flex; align-items: flex-end; justify-content: space-between; }
+.ap-step-heading p { margin-bottom: 9px; font-size: 14px; line-height: 1; }
+.ap-step-heading h2 {
+  font-weight: 600; font-size: 30px; line-height: 1.25; letter-spacing: -1px;
+  outline: none;
+}
+.ap-step-heading > span { padding-bottom: 4px; font-size: 12px; color: #777; }
+
+.ap-fieldset { margin-top: 32px; border: 0; }
+.ap-fieldset legend {
+  width: 100%; padding-bottom: 12px; border-bottom: 1px solid #000;
+  font-size: 17px; font-weight: 600;
+}
+.ap-date-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 13px; }
+.ap-date-options button {
+  position: relative; height: 116px; border: 1px solid #b7b7b7; background: #fff;
+  text-align: left; padding: 12px 14px; cursor: pointer; color: #000;
+}
+.ap-date-options small { display: block; font: 12px/1 'IBM Plex Mono', monospace; }
+.ap-date-options strong { display: block; margin-top: 10px; font: 600 36px/1 'IBM Plex Mono', monospace; }
+.ap-date-options span { position: absolute; right: 13px; bottom: 12px; font-size: 14px; }
+
+.ap-time-fieldset { margin-top: 28px; }
+.ap-time-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 13px; }
+.ap-time-options button {
+  position: relative; height: 84px; padding: 12px 14px;
+  border: 1px solid #b7b7b7; background: #fff;
+  display: grid; grid-template-columns: 1fr auto; align-items: center;
+  text-align: left; cursor: pointer; color: #000;
+}
+.ap-time-options span { font-size: 14px; }
+.ap-time-options strong { grid-row: span 2; font: 600 25px/1 'IBM Plex Mono', monospace; }
+.ap-time-options small { font-size: 12px; color: #777; }
+.ap-date-options button:hover,
+.ap-time-options button:hover { border-color: #000; }
+.ap-date-options button.is-on,
+.ap-time-options button.is-on { border-color: #000; background: var(--ink); }
+.ap-date-options button.is-on::after,
+.ap-time-options button.is-on::after {
+  content: '●'; position: absolute; right: 12px; top: 10px;
+  font: 14px/1 'IBM Plex Mono', monospace;
+}
+
+.ap-step-note {
+  position: absolute; left: 44px; bottom: 38px; max-width: 600px;
+  font-size: 13px; color: #777;
+}
+.ap-actions {
+  position: absolute; right: 44px; bottom: 28px;
+  display: flex; align-items: center; justify-content: flex-end; gap: 16px;
+}
+.ap-actions-between { left: 44px; }
+.ap-actions-between .ap-error { margin-left: auto; }
+.ap-next {
+  display: flex; align-items: center; gap: 12px; padding: 10px 19px 10px 22px;
+  border: 1px solid #000; border-radius: 90px; background: var(--ink);
+  font-family: 'Noto Sans KR', sans-serif; font-size: 18px; font-weight: 600;
+  color: #000; cursor: pointer;
+}
+.ap-next img { display: block; width: 24px; height: 26px; }
+.ap-next:hover { background: #000; color: #fff; }
+.ap-next:hover img { filter: invert(1); }
+.ap-prev {
+  padding: 10px 0; border: 0; border-bottom: 1px solid #000; background: none;
+  font-family: 'Noto Sans KR', sans-serif; font-size: 16px; cursor: pointer;
+}
+.ap-error { font-size: 13px; color: #e00000; }
+
+.ap-info-grid {
+  margin-top: 31px; display: grid; grid-template-columns: 1fr 1fr; gap: 23px 20px;
+}
+.ap-input-field { display: block; }
+.ap-input-field > span { display: block; margin-bottom: 9px; font-size: 15px; font-weight: 600; }
+.ap-input-field small { font-size: 12px; font-weight: 400; color: #777; }
+.ap-input-field input,
+.ap-input-field textarea {
+  width: 100%; border: 0; border-bottom: 1px solid #000; border-radius: 0;
+  background: #f5f5f5; padding: 12px 14px; outline: none;
+  font-family: 'Noto Sans KR', sans-serif; font-size: 16px; color: #000;
+}
+.ap-input-field input { height: 47px; }
+.ap-input-field input:focus,
+.ap-input-field textarea:focus { background: color-mix(in srgb, var(--ink) 18%, white); }
+.ap-is-wide { grid-column: 1 / -1; }
+
+.ap-people-fieldset { margin-top: 25px; }
+.ap-people-control { display: flex; align-items: center; margin-top: 12px; }
+.ap-people-control button,
+.ap-people-control output {
+  display: grid; place-items: center; height: 40px; border: 1px solid #000;
+  background: #fff; font: 18px/1 'IBM Plex Mono', monospace;
+}
+.ap-people-control button { width: 42px; cursor: pointer; }
+.ap-people-control button:disabled { color: #bbb; border-color: #bbb; cursor: default; }
+.ap-people-control output { width: 72px; margin: 0 -1px; }
+.ap-people-control span { margin-left: 17px; font-size: 13px; color: #777; }
+.ap-request { margin-top: 22px; }
+.ap-input-field textarea { height: 70px; resize: none; }
+
+.ap-review {
+  display: grid; grid-template-columns: 1fr 1fr; margin-top: 30px; border-top: 1px solid #000;
+}
+.ap-review > div {
+  min-height: 65px; display: grid; grid-template-columns: 95px 1fr;
+  align-items: center; padding: 10px 14px 10px 0; border-bottom: 1px solid #bbb;
+}
+.ap-review > div:nth-child(odd) { margin-right: 22px; }
+.ap-review dt { font-size: 14px; font-weight: 600; }
+.ap-review dd { font-size: 15px; word-break: break-word; }
+
+.ap-agreements { margin-top: 24px; border-top: 1px solid #000; }
+.ap-check {
+  position: relative; min-height: 45px; display: flex; align-items: center;
+  border-bottom: 1px solid #d0d0d0; cursor: pointer; font-size: 14px;
+}
+.ap-check-row {
+  min-height: 45px; display: flex; align-items: center;
+  border-bottom: 1px solid #d0d0d0;
+}
+.ap-check-row .ap-check { flex: 1; border-bottom: 0; }
+.ap-check input { position: absolute; opacity: 0; pointer-events: none; }
+.ap-check i {
+  width: 19px; height: 19px; margin-right: 11px; border: 1px solid #000; flex: none;
+}
+.ap-check input:checked + i { background: #000; box-shadow: inset 0 0 0 4px #fff; }
+.ap-check input:focus-visible + i { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ap-check b { font-weight: 600; }
+.ap-check-row > button {
+  margin-left: auto; border: 0; border-bottom: 1px solid #000; background: none;
+  font: inherit; font-size: 12px; cursor: pointer;
+}
+.ap-check-all { min-height: 50px; font-size: 16px; font-weight: 600; }
+.ap-step[data-step="3"] .ap-step-note { bottom: 84px; }
+
+.ap-complete { display: grid; place-items: center; align-content: center; text-align: center; }
+.ap-complete-no { position: absolute; left: 44px; top: 35px; font-size: 14px; }
+.ap-complete-mark { position: relative; width: 112px; height: 112px; margin-bottom: 23px; }
+.ap-complete-mark i { position: absolute; width: 64px; height: 64px; border-radius: 50%; mix-blend-mode: multiply; }
+.ap-complete-mark i:nth-child(1) { left: 24px; top: 0; background: #00a0ff; }
+.ap-complete-mark i:nth-child(2) { left: 48px; top: 24px; background: #ec008c; }
+.ap-complete-mark i:nth-child(3) { left: 24px; top: 48px; background: #ffff00; }
+.ap-complete-mark i:nth-child(4) { left: 0; top: 24px; background: #000; }
+.ap-complete > p:first-of-type { font-size: 13px; }
+.ap-complete h2 { margin-top: 12px; font-size: 34px; line-height: 1.3; outline: none; }
+.ap-complete-copy { margin-top: 15px; font-size: 17px; line-height: 1.6; }
+.ap-complete-summary {
+  width: 640px; margin-top: 30px; border-top: 1px solid #000; text-align: left;
+}
+.ap-complete-summary > div { display: grid; grid-template-columns: 150px 1fr; padding: 10px 0; border-bottom: 1px solid #bbb; }
+.ap-complete-summary dt { font: 12px/1.4 'IBM Plex Mono', monospace; }
+.ap-complete-summary dd { font-size: 15px; }
+.ap-complete-actions { display: flex; gap: 12px; margin-top: 28px; }
+.ap-complete-actions button,
+.ap-complete-actions a {
+  display: flex; align-items: center; justify-content: center; min-height: 46px;
+  border: 1px solid #000; border-radius: 80px; background: #fff; padding: 8px 18px;
+  color: #000; text-decoration: none; font-family: 'Noto Sans KR', sans-serif;
+  font-size: 15px; cursor: pointer;
+}
+.ap-complete-actions a { background: var(--ink); gap: 10px; }
+.ap-complete-actions img { width: 21px; }
+
+.ap-term-dialog {
+  width: min(520px, calc(100vw - 40px)); margin: auto; padding: 32px;
+  border: 1px solid #000; background: #fff; color: #000;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.ap-term-dialog::backdrop { background: rgba(0, 0, 0, .55); }
+.ap-term-dialog > p { font: 12px/1 'IBM Plex Mono', monospace; }
+.ap-term-dialog h2 { margin-top: 10px; font-size: 24px; }
+.ap-term-dialog div { margin-top: 22px; font-size: 15px; line-height: 1.7; }
+.ap-term-close {
+  position: absolute; right: 18px; top: 13px; border: 0; background: none;
+  font-size: 29px; font-weight: 300; cursor: pointer;
+}
+.ap-term-confirm {
+  width: 100%; height: 44px; margin-top: 25px; border: 1px solid #000;
+  background: #000; color: #fff; font: 15px 'Noto Sans KR', sans-serif; cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.apply .stage, .ap-back, .ap-shell { transition: none; }
 }
 
 /* ===============================================================
@@ -2106,16 +2397,16 @@ body.order .h-rule {
 .ord-tab { height: 38px; gap: 12px; font-size: 18px; line-height: 18px; }
 .ord-tab i {
   width: 20px; height: 20px; margin-top: 9px; border: 0; border-radius: 0;
-  background: transparent url('assets/order-point-off.svg?v=91') 0 0 / 20px 20px no-repeat;
+  background: transparent url('assets/order-point-off.svg?v=92') 0 0 / 20px 20px no-repeat;
 }
-.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=91'); background-color: transparent; }
+.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=92'); background-color: transparent; }
 .ord-tab.is-on i::before,
 .ord-tab.is-on i::after {
   left: 0; top: 9px; width: 20px; height: 1px; background-color: transparent;
   background-position: center; background-size: 20px 1px; background-repeat: no-repeat;
 }
-.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=91'); }
-.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=91'); }
+.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=92'); }
+.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=92'); }
 .ord-common-pane button:focus,
 .ord-detail-pane button:focus,
 .ord-preview button:focus { outline: 0; }
@@ -2127,10 +2418,10 @@ body.order .h-rule {
 }
 .ord-product-kinds button::before {
   content: ''; position: absolute; left: 0; top: 3px; width: 12px; height: 12px;
-  background: url('assets/order-point-off.svg?v=91') center / 12px 12px no-repeat;
+  background: url('assets/order-point-off.svg?v=92') center / 12px 12px no-repeat;
 }
 .ord-product-kinds button.is-on { border: 0; }
-.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=91'); }
+.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=92'); }
 .ord-service-note {
   left: 0; top: 350px; bottom: auto; width: 179px;
   font-size: 14px; line-height: 17px; font-weight: 350;
@@ -2182,7 +2473,7 @@ body.order .h-rule {
 }
 .ord-field-mark {
   position: absolute; z-index: 3; width: 13px; height: 13px;
-  background: url('assets/order-field-left.svg?v=91') center / 13px 13px no-repeat;
+  background: url('assets/order-field-left.svg?v=92') center / 13px 13px no-repeat;
   pointer-events: none;
 }
 .ord-field-mark.is-lt { left: 0; top: 0; transform: scaleY(-1); }

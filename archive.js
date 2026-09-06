@@ -1,4 +1,4 @@
-import { ARCHIVE_SPECS } from './archive-data.js?v=91';
+import { ARCHIVE_SPECS } from './archive-data.js?v=92';
 
 /* ---------------------------------------------------------------
    Program archive — Figma 559:606 (꿰기) / 695:886 (묶기) / 695:984 (풀기),
@@ -25,7 +25,7 @@ import { ARCHIVE_SPECS } from './archive-data.js?v=91';
    the window scrolls it.
    --------------------------------------------------------------- */
 
-const V = '?v=91';
+const V = '?v=92';
 
 /* ---------------- the session mark (476:719) ----------------
    Five 76px discs on a 284 box, with the two syllables laid over the
@@ -135,7 +135,7 @@ document.getElementById('arcCopy').style.setProperty('--copy-col-2', s.copyWidth
 
 const cta = document.getElementById('arcCta');
 cta.style.setProperty('--cta-top', s.ctaTop);
-cta.addEventListener('click', () => { window.location.href = 'service.html'; });
+cta.addEventListener('click', () => { window.location.href = `apply.html?p=${which}`; });
 
 document.getElementById('arcBack').addEventListener('click', () => {
   window.location.href = 'program.html';

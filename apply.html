@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="expires" content="0" />
+<title>TiPS — 프로그램 신청</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=Noto+Sans+KR:wght@300;400;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css?v=92" />
+</head>
+<body class="apply page-sub">
+
+<div class="viewport" id="viewport">
+  <div class="stage" id="stage">
+    <span class="hd-t" id="hdLetter" aria-label="TiPS"><img alt="" /><img alt="" /></span>
+    <img class="hd-mark" src="assets/fig-logo-mark.svg?v=92" alt="TiPS" data-href="index.html" />
+
+    <div class="hd-menu" id="hdMenu">
+      <span class="hd-menu-label">MENU</span>
+      <nav class="hd-nav">
+        <a href="identity.html">Identity</a>
+        <a class="is-current" href="program.html">Program</a>
+        <a href="service.html">Service</a>
+      </nav>
+    </div>
+
+    <button type="button" class="hd-search" id="hdSearch">Search</button>
+    <a class="hd-cart" href="cart.html">Cart(0)</a>
+    <a class="hd-login" href="login.html">Login</a>
+
+    <div class="hd-field" id="hdField">
+      <span class="hd-caret" aria-hidden="true"></span>
+      <input class="hd-input" id="hdInput" type="text" autocomplete="off" placeholder="무엇을 찾고 계신가요?" />
+      <span class="hd-underline" aria-hidden="true"></span>
+      <button type="button" class="hd-close" id="hdClose" aria-label="검색 닫기">
+        <img src="assets/fig-search-icon.svg?v=92" alt="" />
+      </button>
+    </div>
+
+    <div class="h-rule" aria-hidden="true"></div>
+
+    <div class="marks" aria-hidden="true">
+      <div class="mark r-top" style="left:20px"><img src="assets/mark-corner.svg?v=92" style="transform:scaleY(-1)"></div>
+      <div class="mark r-top" style="left:1852px"><img src="assets/mark-corner.svg?v=92" style="transform:rotate(90deg) scaleY(-1)"></div>
+      <div class="mark r-top is-target" style="left:1852px"><img src="assets/mark-target.svg?v=92"></div>
+      <div class="mark r-bot" style="left:20px"><img src="assets/mark-corner.svg?v=92"></div>
+      <div class="mark r-bot" style="left:1852px"><img src="assets/mark-corner.svg?v=92" style="transform:rotate(-90deg)"></div>
+      <div class="mark r-bot is-target" style="left:20px"><img src="assets/mark-target.svg?v=92"></div>
+      <div class="mark r-bot is-target" style="left:1852px"><img src="assets/mark-target.svg?v=92"></div>
+    </div>
+
+    <button type="button" class="ap-back" id="applyBack" aria-label="프로그램 아카이브로 돌아가기">
+      <img src="assets/arc-back.svg?v=92" alt="" />
+    </button>
+
+    <main class="ap-shell" aria-labelledby="applyTitle">
+      <aside class="ap-summary">
+        <div class="ap-summary-top">
+          <p class="ap-kicker">PROGRAM APPLICATION</p>
+          <span class="ap-draft">FLOW DRAFT</span>
+        </div>
+
+        <div class="ap-program-mark blob" id="applyMark" aria-hidden="true"></div>
+        <p class="ap-program-no" id="applyProgramNo">PROGRAM 1</p>
+        <h1 id="applyTitle"><span id="applyProgramName">꿰기</span> 세션 신청</h1>
+        <p class="ap-program-desc" id="applyProgramDesc"></p>
+
+        <dl class="ap-summary-list">
+          <div><dt>일정</dt><dd id="summaryDate">선택 전</dd></div>
+          <div><dt>회차</dt><dd id="summaryTime">선택 전</dd></div>
+          <div><dt>인원</dt><dd id="summaryPeople">1명</dd></div>
+          <div><dt>참가비</dt><dd>운영 전 확정</dd></div>
+        </dl>
+
+        <div class="ap-switch" aria-label="프로그램 변경">
+          <p>PROGRAM CHANGE</p>
+          <div>
+            <button type="button" data-program="1" aria-label="꿰기 세션으로 변경">1</button>
+            <button type="button" data-program="2" aria-label="묶기 세션으로 변경">2</button>
+            <button type="button" data-program="3" aria-label="풀기 세션으로 변경">3</button>
+          </div>
+        </div>
+      </aside>
+
+      <section class="ap-flow">
+        <ol class="ap-progress" aria-label="신청 단계">
+          <li class="is-on" data-progress="1"><b>1</b><span>일정 선택</span></li>
+          <li data-progress="2"><b>2</b><span>신청자 정보</span></li>
+          <li data-progress="3"><b>3</b><span>신청 확인</span></li>
+        </ol>
+
+        <form id="applyForm" novalidate>
+          <section class="ap-step is-on" data-step="1" aria-labelledby="step1Title">
+            <div class="ap-step-heading">
+              <div>
+                <p>STEP 01</p>
+                <h2 id="step1Title" tabindex="-1">방문할 날짜와 회차를 선택해 주세요.</h2>
+              </div>
+              <span>예시 일정 · 운영 전 교체</span>
+            </div>
+
+            <fieldset class="ap-fieldset">
+              <legend>날짜</legend>
+              <div class="ap-date-options">
+                <button type="button" data-date="09.12 (토)"><small>SEP</small><strong>12</strong><span>토요일</span></button>
+                <button type="button" data-date="09.13 (일)"><small>SEP</small><strong>13</strong><span>일요일</span></button>
+                <button type="button" data-date="09.19 (토)"><small>SEP</small><strong>19</strong><span>토요일</span></button>
+                <button type="button" data-date="09.20 (일)"><small>SEP</small><strong>20</strong><span>일요일</span></button>
+              </div>
+            </fieldset>
+
+            <fieldset class="ap-fieldset ap-time-fieldset">
+              <legend>회차</legend>
+              <div class="ap-time-options">
+                <button type="button" data-time="11:00"><span>1회차</span><strong>11:00</strong><small>약 120분</small></button>
+                <button type="button" data-time="14:00"><span>2회차</span><strong>14:00</strong><small>약 120분</small></button>
+                <button type="button" data-time="17:00"><span>3회차</span><strong>17:00</strong><small>약 120분</small></button>
+              </div>
+            </fieldset>
+
+            <p class="ap-step-note">현재 화면의 일정과 참가비는 신청 흐름 확인을 위한 가안입니다.</p>
+            <div class="ap-actions">
+              <span class="ap-error" id="step1Error" role="alert"></span>
+              <button type="button" class="ap-next" data-next="2"><span>다음 단계</span><img src="assets/arc-cta.svg?v=92" alt="" /></button>
+            </div>
+          </section>
+
+          <section class="ap-step" data-step="2" aria-labelledby="step2Title" hidden>
+            <div class="ap-step-heading">
+              <div>
+                <p>STEP 02</p>
+                <h2 id="step2Title" tabindex="-1">신청자 정보를 입력해 주세요.</h2>
+              </div>
+              <span>* 필수 입력</span>
+            </div>
+
+            <div class="ap-info-grid">
+              <label class="ap-input-field">
+                <span>이름 *</span>
+                <input id="applicantName" name="name" type="text" autocomplete="name" placeholder="이름을 입력해 주세요" required />
+              </label>
+              <label class="ap-input-field">
+                <span>휴대전화 *</span>
+                <input id="applicantPhone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="010-0000-0000" required />
+              </label>
+              <label class="ap-input-field ap-is-wide">
+                <span>이메일 *</span>
+                <input id="applicantEmail" name="email" type="email" autocomplete="email" placeholder="email@example.com" required />
+              </label>
+            </div>
+
+            <fieldset class="ap-fieldset ap-people-fieldset">
+              <legend>신청 인원 *</legend>
+              <div class="ap-people-control">
+                <button type="button" id="peopleMinus" aria-label="인원 줄이기">−</button>
+                <output id="peopleCount" aria-live="polite">1명</output>
+                <button type="button" id="peoplePlus" aria-label="인원 늘리기">＋</button>
+                <span>최대 4명까지 신청할 수 있습니다.</span>
+              </div>
+            </fieldset>
+
+            <label class="ap-input-field ap-request">
+              <span>요청사항 <small>(선택)</small></span>
+              <textarea id="applicantRequest" name="request" maxlength="200" placeholder="준비가 필요한 내용이 있다면 남겨 주세요"></textarea>
+            </label>
+
+            <div class="ap-actions ap-actions-between">
+              <button type="button" class="ap-prev" data-prev="1">이전</button>
+              <span class="ap-error" id="step2Error" role="alert"></span>
+              <button type="button" class="ap-next" data-next="3"><span>신청 내용 확인</span><img src="assets/arc-cta.svg?v=92" alt="" /></button>
+            </div>
+          </section>
+
+          <section class="ap-step" data-step="3" aria-labelledby="step3Title" hidden>
+            <div class="ap-step-heading">
+              <div>
+                <p>STEP 03</p>
+                <h2 id="step3Title" tabindex="-1">신청 내용을 확인해 주세요.</h2>
+              </div>
+              <span>아직 실제 접수되지 않습니다</span>
+            </div>
+
+            <dl class="ap-review" id="applyReview"></dl>
+
+            <div class="ap-agreements">
+              <label class="ap-check ap-check-all"><input type="checkbox" id="agreeAll" /><i></i><span>전체 동의</span></label>
+              <div class="ap-check-row">
+                <label class="ap-check"><input type="checkbox" class="agree-required" /><i></i><span><b>[필수]</b> 개인정보 수집 및 이용 동의</span></label>
+                <button type="button" data-term="privacy">보기</button>
+              </div>
+              <div class="ap-check-row">
+                <label class="ap-check"><input type="checkbox" class="agree-required" /><i></i><span><b>[필수]</b> 프로그램 유의사항 확인</span></label>
+                <button type="button" data-term="notice">보기</button>
+              </div>
+              <label class="ap-check"><input type="checkbox" /><i></i><span>[선택] 프로그램 소식 수신 동의</span></label>
+            </div>
+
+            <p class="ap-step-note">최종 버튼은 현재 가안 완료 화면만 보여주며, 개인정보를 저장하거나 전송하지 않습니다.</p>
+            <div class="ap-actions ap-actions-between">
+              <button type="button" class="ap-prev" data-prev="2">이전</button>
+              <span class="ap-error" id="step3Error" role="alert"></span>
+              <button type="submit" class="ap-next"><span>가안 신청 완료</span><img src="assets/arc-cta.svg?v=92" alt="" /></button>
+            </div>
+          </section>
+
+          <section class="ap-step ap-complete" data-step="4" aria-labelledby="completeTitle" hidden>
+            <span class="ap-complete-no">04</span>
+            <div class="ap-complete-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <p>APPLICATION FLOW COMPLETE</p>
+            <h2 id="completeTitle" tabindex="-1">가안 신청서가 완성되었습니다.</h2>
+            <p class="ap-complete-copy">실제 접수와 결제는 아직 연결되어 있지 않습니다.<br />운영 일정과 신청 시스템이 확정되면 이 단계에서 접수가 완료됩니다.</p>
+            <dl class="ap-complete-summary" id="completeSummary"></dl>
+            <div class="ap-complete-actions">
+              <button type="button" id="editApplication">신청 내용 다시 보기</button>
+              <a id="backToArchive" href="archive.html?p=1">아카이브로 돌아가기 <img src="assets/arc-cta.svg?v=92" alt="" /></a>
+            </div>
+          </section>
+        </form>
+      </section>
+    </main>
+  </div>
+</div>
+
+<dialog class="ap-term-dialog" id="termDialog" aria-labelledby="termTitle">
+  <button type="button" class="ap-term-close" id="termClose" aria-label="약관 닫기">×</button>
+  <p>TiPS PROGRAM</p>
+  <h2 id="termTitle"></h2>
+  <div id="termCopy"></div>
+  <button type="button" class="ap-term-confirm" id="termConfirm">확인</button>
+</dialog>
+
+<script src="header.js?v=92"></script>
+<script type="module" src="apply.js?v=92"></script>
+<script src="script.js?v=92"></script>
+<script src="cursor.js?v=92"></script>
+</body>
+</html>
