@@ -22,6 +22,7 @@
 
 const PAPER_FLAT = ['- 선방입고', '뉴플러스', '랑데뷰 울트라', '미색모조', '반누보',
                     '백색모조', '스노우', '아트', '인스퍼M러프EW(구.몽블랑)'];
+const PAPER_LEAFLET = [...PAPER_FLAT];
 const PAPER_BOOK = ['- 선방입고', '뉴플러스', '랑데뷰 울트라', '레자크연미', '미색모조',
                     '반누보', '백색모조', '색지', '스노우', '아트', '인스퍼M러프EW(구.몽블랑)'];
 const PAPER_CARD = ['- 선방입고', '랑데뷰 울트라', '마쉬멜로우', '반누보', '스노우', '아트',
@@ -56,6 +57,17 @@ const PAPER_WEIGHTS = {
     '아트': ['100g', '120g', '150g', '180g', '200g', '250g', '300g'],
     '인스퍼M러프EW(구.몽블랑)': ['90g', '100g', '130g', '160g', '190g', '210g', '240g'],
   },
+  leaflet: {
+    '- 선방입고': ['입고 시 별도 확인'],
+    '뉴플러스': ['미색 80g', '미색 100g', '백색 80g', '백색 100g'],
+    '랑데뷰 울트라': ['105g', '130g', '160g', '190g', '210g', '240g'],
+    '미색모조': ['80g', '100g'],
+    '반누보': ['227g'],
+    '백색모조': ['80g', '100g', '120g', '150g', '180g', '220g', '260g'],
+    '스노우': ['100g', '120g', '150g', '180g', '200g', '250g', '300g'],
+    '아트': ['100g', '120g', '150g', '180g', '200g', '250g', '300g'],
+    '인스퍼M러프EW(구.몽블랑)': ['90g', '100g', '130g', '160g', '190g', '210g', '240g'],
+  },
   product: {
     '- 선방입고': ['입고 시 별도 확인'],
     '랑데뷰 울트라': ['210g', '240g'],
@@ -67,8 +79,23 @@ const PAPER_WEIGHTS = {
   },
 };
 
-function paperWeightsFor(mode, paper) {
-  const product = mode === 'book' ? 'book' : mode === 'product' ? 'product' : 'poster';
+function paperProductFor(mode, productKind) {
+  if (mode === 'book' || productKind === '소책자') return 'book';
+  if (productKind === '리플렛') return 'leaflet';
+  if (mode === 'product') return 'product';
+  return 'poster';
+}
+
+function paperCatalogFor(mode, productKind) {
+  const product = paperProductFor(mode, productKind);
+  if (product === 'book') return PAPER_BOOK;
+  if (product === 'leaflet') return PAPER_LEAFLET;
+  if (product === 'product') return PAPER_CARD;
+  return PAPER_FLAT;
+}
+
+function paperWeightsFor(mode, paper, productKind) {
+  const product = paperProductFor(mode, productKind);
   return PAPER_WEIGHTS[product][paper] || [];
 }
 
@@ -408,7 +435,7 @@ function whRow(label, kw, kh, o) {
 /* 용지 그룹 → 평량, the second select staying shut until a paper is picked */
 function paperRows(p, label, groups, o) {
   const g = o[p + '_paper_group'];
-  const availableWeights = paperWeightsFor(state.mode, g);
+  const availableWeights = paperWeightsFor(state.mode, g, o.product_kind);
   const weights = g
     ? '<option value="">::: 평량선택 :::</option>' + availableWeights
       .map((w) => `<option${w === o[p + '_paper'] ? ' selected' : ''}>${esc(w)}</option>`).join('')
@@ -741,8 +768,8 @@ function detailChoice(key, value, label) {
 function renderForm(mode) {
   const meta = SERVICE_MODES[mode];
   const o = state.opts;
-  const papers = mode === 'book' ? PAPER_BOOK : mode === 'product' ? PAPER_CARD : PAPER_FLAT;
-  const weights = paperWeightsFor(mode, o.in_paper_group);
+  const papers = paperCatalogFor(mode, o.product_kind);
+  const weights = paperWeightsFor(mode, o.in_paper_group, o.product_kind);
   const finish = mode === 'book' ? BINDINGS : ['코팅 없음', '무광 코팅', '유광 코팅', '재단'];
   const colors = ['컬러 8도', '컬러 4도', '컬러 2도', '흑백 1도', '별색 지정', '상담 필요'];
 
@@ -1842,9 +1869,12 @@ tabs.addEventListener('click', (e) => {
 
 productKinds.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-kind]');
-  if (!btn || state.mode !== 'product') return;
+  if (!btn || state.mode !== 'product' || state.opts.product_kind === btn.dataset.kind) return;
   state.opts.product_kind = btn.dataset.kind;
+  state.opts.in_paper_group = '';
+  state.opts.in_paper = '';
   productKinds.querySelectorAll('[data-kind]').forEach((b) => b.classList.toggle('is-on', b === btn));
+  renderForm(state.mode);
   paintCaption();
   if (engine) engine.update(derive());
 });
