@@ -52,6 +52,7 @@ function renderApplicationProgram() {
   const program = APPLICATION_PROGRAMS[applicationState.program];
   const mark = document.getElementById('applyMark');
 
+  document.documentElement.style.setProperty('--ink', program.ink);
   document.body.style.setProperty('--ink', program.ink);
   document.getElementById('applyProgramNo').textContent = `PROGRAM ${applicationState.program}`;
   document.getElementById('applyProgramName').textContent = program.name;
