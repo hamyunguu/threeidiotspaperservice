@@ -723,7 +723,7 @@ function renderCommon(mode) {
       `<input type="number" min="1" inputmode="numeric" data-common-key="custom_h" value="${esc(state.customSize.h)}" placeholder="000" aria-label="사용자 지정 세로"></b></p>` +
       `<button type="button" class="ord-format is-custom${state.pickedSize === 'custom' ? ' is-on' : ''}" data-format="custom">` +
         '<span>직접 입력</span></button></div></div>' +
-    '<div class="ord-orientation"><p>판형 방향</p><div class="ord-orientation-options" role="radiogroup" aria-label="판형 방향">' +
+    '<div class="ord-orientation"><div class="ord-orientation-options" role="radiogroup" aria-label="판형 방향">' +
       framedControl(`<button type="button" class="ord-orientation-choice${o.goods_orientation === '세로형' ? ' is-on' : ''}" data-orientation="세로형" aria-pressed="${o.goods_orientation === '세로형'}">세로형</button>`, 'is-orientation') +
       framedControl(`<button type="button" class="ord-orientation-choice${o.goods_orientation === '가로형' ? ' is-on' : ''}" data-orientation="가로형" aria-pressed="${o.goods_orientation === '가로형'}">가로형</button>`, 'is-orientation') +
     '</div></div>' +
