@@ -897,7 +897,7 @@ body.page-sub .hd-nav a.is-current { display: block; }
    overlay. Descendants inherit the current mark so old pointer/grab rules
    cannot bring the arrow back on top. */
 html.has-cursor {
-  cursor: url("assets/cursor-gray.svg?v=92") 15 15, default !important;
+  cursor: url("assets/cursor-gray.svg?v=93") 15 15, default !important;
 }
 html.has-cursor body,
 html.has-cursor * { cursor: inherit !important; }
@@ -908,7 +908,7 @@ html.has-cursor :is(
   .card-archive, .apply-btn, .chat-send, .nav-item[href],
   .gal.hoverable, .tip-circle
 ) {
-  cursor: url("assets/cursor-black.svg?v=92") 15 15, pointer !important;
+  cursor: url("assets/cursor-black.svg?v=93") 15 15, pointer !important;
 }
 
 /* loading page — CMYK registration logo, spins clockwise, ~1.5s on entry */
@@ -2397,16 +2397,16 @@ body.order .h-rule {
 .ord-tab { height: 38px; gap: 12px; font-size: 18px; line-height: 18px; }
 .ord-tab i {
   width: 20px; height: 20px; margin-top: 9px; border: 0; border-radius: 0;
-  background: transparent url('assets/order-point-off.svg?v=92') 0 0 / 20px 20px no-repeat;
+  background: transparent url('assets/order-point-off.svg?v=93') 0 0 / 20px 20px no-repeat;
 }
-.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=92'); background-color: transparent; }
+.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=93'); background-color: transparent; }
 .ord-tab.is-on i::before,
 .ord-tab.is-on i::after {
   left: 0; top: 9px; width: 20px; height: 1px; background-color: transparent;
   background-position: center; background-size: 20px 1px; background-repeat: no-repeat;
 }
-.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=92'); }
-.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=92'); }
+.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=93'); }
+.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=93'); }
 .ord-common-pane button:focus,
 .ord-detail-pane button:focus,
 .ord-preview button:focus { outline: 0; }
@@ -2418,10 +2418,10 @@ body.order .h-rule {
 }
 .ord-product-kinds button::before {
   content: ''; position: absolute; left: 0; top: 3px; width: 12px; height: 12px;
-  background: url('assets/order-point-off.svg?v=92') center / 12px 12px no-repeat;
+  background: url('assets/order-point-off.svg?v=93') center / 12px 12px no-repeat;
 }
 .ord-product-kinds button.is-on { border: 0; }
-.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=92'); }
+.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=93'); }
 .ord-service-note {
   left: 0; top: 350px; bottom: auto; width: 179px;
   font-size: 14px; line-height: 17px; font-weight: 350;
@@ -2473,7 +2473,7 @@ body.order .h-rule {
 }
 .ord-field-mark {
   position: absolute; z-index: 3; width: 13px; height: 13px;
-  background: url('assets/order-field-left.svg?v=92') center / 13px 13px no-repeat;
+  background: url('assets/order-field-left.svg?v=93') center / 13px 13px no-repeat;
   pointer-events: none;
 }
 .ord-field-mark.is-lt { left: 0; top: 0; transform: scaleY(-1); }
@@ -2543,6 +2543,20 @@ body.order .h-rule {
   position: static; flex: none; width: 8px; color: #000;
   font: 400 14px/14px 'IBM Plex Mono', monospace;
 }
+
+.ord-orientation {
+  display: grid; grid-template-columns: 83px 1fr; align-items: center;
+  width: 360px; height: 54px; margin: 19px 0 0 -2px;
+  font-size: 16px; line-height: 16px;
+}
+.ord-orientation-options { display: flex; }
+.ord-field-frame.is-orientation { width: 105px; height: 54px; margin-right: -12px; }
+.ord-field-frame.is-orientation .ord-field-core { width: 93px; height: 30px; }
+.ord-orientation-choice {
+  width: 100%; height: 100%; border: 0; padding: 0; background: transparent;
+  color: #000; font: 350 16px/16px 'Noto Sans KR', sans-serif;
+}
+.ord-orientation-choice.is-on { background: #000; color: #fff; }
 
 .ord-common-step[data-common-step="order"] .ord-common-head { margin-bottom: 0; }
 .ord-common-row {
@@ -2628,6 +2642,34 @@ body.order .h-rule {
   background: transparent; font-size: 16px; line-height: 16px; font-weight: 350;
 }
 .ord-detail-select.is-complete { background: #000; color: #fff; }
+.ord-paper-selects > label {
+  display: block; margin: 0 0 3px; font-size: 13px; line-height: 16px;
+}
+.ord-paper-selects .ord-detail-select-frame { display: block; margin-bottom: 7px; }
+.ord-paper-selects > p {
+  margin: -1px 0 0 -12px; color: #595959; font-size: 12px; line-height: 16px;
+}
+
+.ord-submit-actions {
+  display: grid; grid-template-columns: repeat(3, 1fr); width: 533px; margin-top: 10px;
+}
+.ord-detail-step.is-submit .ord-submit {
+  width: 100%; height: 52px; margin: 0; border: 1px solid #000; border-radius: 0;
+  background: #fff; color: #000; font-size: 14px; font-weight: 400;
+}
+.ord-detail-step.is-submit .ord-submit + .ord-submit { border-left: 0; }
+.ord-detail-step.is-submit .ord-submit.is-order { background: #000; color: #fff; }
+.ord-detail-step.is-submit .ord-submit:hover { background: var(--ord-ink); color: #000; opacity: 1; }
+.ord-detail-step.is-submit .ord-submit.is-done { background: #000; color: #fff; }
+.ord-validation {
+  width: 533px; margin: 10px 0 0; padding: 10px 12px; border: 1px solid #000;
+  background: #fff; color: #000; font-size: 13px; line-height: 1.5; word-break: keep-all;
+}
+.ord-validation[hidden] { display: none; }
+.ord-common-step.is-invalid .ord-common-head,
+.ord-detail-step.is-invalid .ord-common-head { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.ord-common-step.is-invalid .ord-common-head > span,
+.ord-detail-step.is-invalid .ord-common-head > span { background: #fff; color: #ec008c; outline: 1px solid #000; }
 
 .ord-preview { left: 980px; top: calc(78px + var(--shift)); width: 920px; height: calc(982px - var(--shift)); }
 .ord-preview-summary {
