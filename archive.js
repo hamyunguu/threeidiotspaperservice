@@ -1,4 +1,4 @@
-import { ARCHIVE_SPECS } from './archive-data.js?v=102';
+import { ARCHIVE_SPECS } from './archive-data.js?v=103';
 
 /* ---------------------------------------------------------------
    Program archive — Figma 559:606 (꿰기) / 695:886 (묶기) / 695:984 (풀기),
@@ -25,7 +25,7 @@ import { ARCHIVE_SPECS } from './archive-data.js?v=102';
    the window scrolls it.
    --------------------------------------------------------------- */
 
-const V = '?v=102';
+const V = '?v=103';
 
 /* ---------------- the session mark (476:719) ----------------
    Five 76px discs on a 284 box, with the two syllables laid over the
@@ -158,6 +158,22 @@ grid.innerHTML = s.items.map(([n, h, top]) => {
     `<img src="${s.file(n)}${V}" alt="아카이브 ${n}" loading="lazy" />` +
     `<span class="arc-index">${n}</span></button>`;
 }).join('');
+
+/* The CTA exists in the static HTML while the copy and gallery are filled by
+   this module. Reveal their shared wrapper only after the first visible row
+   has settled, so the application button cannot flash in on its own. */
+const firstRowImages = [...grid.querySelectorAll('img')].slice(0, 5);
+const firstRowReady = Promise.all(firstRowImages.map((image) => {
+  if (image.complete) return Promise.resolve();
+  return new Promise((resolve) => {
+    image.addEventListener('load', resolve, { once: true });
+    image.addEventListener('error', resolve, { once: true });
+  });
+}));
+const revealFallback = new Promise((resolve) => setTimeout(resolve, 1200));
+Promise.race([firstRowReady, revealFallback]).then(() => {
+  requestAnimationFrame(() => document.body.classList.add('is-archive-ready'));
+});
 
 /* ---- archive information dialog ---- */
 
