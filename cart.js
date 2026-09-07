@@ -41,6 +41,14 @@ function cartPreview(value) {
   thumbnail.alt = '업로드한 작업 파일 미리보기';
 }
 
+function storedCartPreview() {
+  try {
+    return sessionStorage.getItem('tips-cart-preview') || '';
+  } catch (_) {
+    return '';
+  }
+}
+
 if (hasItem) {
   cartText('hdCartCount', 'Cart(1)');
 }
@@ -59,8 +67,9 @@ if (cartDraft) {
   cartText('ctVatVisual', cartNumber(cartDraft.vat));
   cartText('ctTotal', cartNumber(cartDraft.total));
   cartText('ctPay', `${cartNumber(cartDraft.total)}원 주문하기`);
-  cartPreview(cartDraft.preview);
 }
+
+if (hasItem) cartPreview(cartDraft?.preview || storedCartPreview());
 
 /* No checkout backend yet: keep the order visible and state the boundary. */
 const ctPay = document.getElementById('ctPay');

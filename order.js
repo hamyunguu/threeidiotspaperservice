@@ -324,6 +324,7 @@ const state = {
   opts: {},      // current form values, keyed by the original form names
   images: {},    // slot -> decoded artwork the model textures itself from
   files: {},     // slot -> { label, busy } for the upload row
+  cartPreview: '',
   pickedSize: '',
   customSize: { w: '', h: '' },
   detailActive: false,
@@ -1293,7 +1294,7 @@ function cartPreviewDataUrl() {
   if (!artwork || !sourceWidth || !sourceHeight) return '';
 
   try {
-    const maxEdge = 772;
+    const maxEdge = 512;
     const scale = Math.min(1, maxEdge / Math.max(sourceWidth, sourceHeight));
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(sourceWidth * scale));
@@ -1303,10 +1304,20 @@ function cartPreviewDataUrl() {
     context.fillStyle = '#fff';
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(artwork, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/jpeg', 0.82);
+    return canvas.toDataURL('image/jpeg', 0.76);
   } catch (_) {
     return '';
   }
+}
+
+function rememberCartPreview() {
+  const previewValue = cartPreviewDataUrl();
+  state.cartPreview = previewValue;
+  try {
+    if (previewValue) sessionStorage.setItem('tips-cart-preview', previewValue);
+    else sessionStorage.removeItem('tips-cart-preview');
+  } catch (_) { /* the order text can still be kept without a thumbnail */ }
+  return previewValue;
 }
 
 function orderSnapshot() {
@@ -1326,22 +1337,14 @@ function orderSnapshot() {
     vat: price.vat,
     total: price.total,
     createdAt: new Date().toLocaleString('ko-KR'),
-    preview: cartPreviewDataUrl(),
   };
 }
 
 function saveOrderSnapshot() {
-  const snapshot = orderSnapshot();
+  rememberCartPreview();
   try {
-    sessionStorage.setItem('tips-cart-order', JSON.stringify(snapshot));
-  } catch (_) {
-    /* A very small browser quota should not discard the order text just
-       because its artwork thumbnail did not fit. */
-    try {
-      snapshot.preview = '';
-      sessionStorage.setItem('tips-cart-order', JSON.stringify(snapshot));
-    } catch (_) { /* cart still has its static fallback when storage is unavailable */ }
-  }
+    sessionStorage.setItem('tips-cart-order', JSON.stringify(orderSnapshot()));
+  } catch (_) { /* cart still has its static fallback when storage is unavailable */ }
 }
 
 common.addEventListener('change', (e) => {
@@ -1619,6 +1622,7 @@ function landArtwork(slot, img, label) {
     if (!innerPreview.total) innerPreview.total = Math.max(1, +state.opts.in_page_val || 1);
   }
   markUpload(slot, label);
+  if (slot === MODES[state.mode].uploads[0]?.slot) rememberCartPreview();
   paintCaption();
   if (engine) engine.setTexture(slot, img, derive());
 }
@@ -1704,6 +1708,7 @@ async function showFlatSheet(nextSheet) {
     delete state.images.back;
     delete state.images.coverBack;
   }
+  if (sheet === 0 || !state.cartPreview) rememberCartPreview();
   if (engine) {
     engine.setTextures({ front, back, cover: front, coverBack: back }, derive());
   }
@@ -1919,6 +1924,8 @@ function switchMode(mode) {
   state.mode = mode;
   state.images = {};                 // artwork is per product
   state.files = {};
+  state.cartPreview = '';
+  try { sessionStorage.removeItem('tips-cart-preview'); } catch (_) { /* no-op */ }
   state.pickedSize = '';
   state.customSize = { w: '', h: '' };
   state.detailActive = false;

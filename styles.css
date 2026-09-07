@@ -897,7 +897,7 @@ body.page-sub .hd-nav a.is-current { display: block; }
    overlay. Descendants inherit the current mark so old pointer/grab rules
    cannot bring the arrow back on top. */
 html.has-cursor {
-  cursor: url("assets/cursor-gray.svg?v=100") 15 15, default !important;
+  cursor: url("assets/cursor-gray.svg?v=101") 15 15, default !important;
 }
 html.has-cursor body,
 html.has-cursor * { cursor: inherit !important; }
@@ -908,7 +908,7 @@ html.has-cursor :is(
   .card-archive, .apply-btn, .chat-send, .nav-item[href],
   .gal.hoverable, .tip-circle
 ) {
-  cursor: url("assets/cursor-black.svg?v=100") 15 15, pointer !important;
+  cursor: url("assets/cursor-black.svg?v=101") 15 15, pointer !important;
 }
 
 /* loading page — CMYK registration logo, spins clockwise, ~1.5s on entry */
@@ -2396,16 +2396,16 @@ body.order .h-rule {
 .ord-tab { height: 38px; gap: 12px; font-size: 18px; line-height: 18px; }
 .ord-tab i {
   width: 20px; height: 20px; margin-top: 9px; border: 0; border-radius: 0;
-  background: transparent url('assets/order-point-off.svg?v=100') 0 0 / 20px 20px no-repeat;
+  background: transparent url('assets/order-point-off.svg?v=101') 0 0 / 20px 20px no-repeat;
 }
-.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=100'); background-color: transparent; }
+.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=101'); background-color: transparent; }
 .ord-tab.is-on i::before,
 .ord-tab.is-on i::after {
   left: 0; top: 9px; width: 20px; height: 1px; background-color: transparent;
   background-position: center; background-size: 20px 1px; background-repeat: no-repeat;
 }
-.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=100'); }
-.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=100'); }
+.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=101'); }
+.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=101'); }
 .ord-common-pane button:focus,
 .ord-detail-pane button:focus,
 .ord-preview button:focus { outline: 0; }
@@ -2417,10 +2417,10 @@ body.order .h-rule {
 }
 .ord-product-kinds button::before {
   content: ''; position: absolute; left: 0; top: 3px; width: 12px; height: 12px;
-  background: url('assets/order-point-off.svg?v=100') center / 12px 12px no-repeat;
+  background: url('assets/order-point-off.svg?v=101') center / 12px 12px no-repeat;
 }
 .ord-product-kinds button.is-on { border: 0; }
-.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=100'); }
+.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=101'); }
 .ord-service-note {
   left: 0; top: 350px; bottom: auto; width: 179px;
   font-size: 14px; line-height: 17px; font-weight: 350;
@@ -2473,7 +2473,7 @@ body.order .h-rule {
 }
 .ord-field-mark {
   position: absolute; z-index: 3; width: 13px; height: 13px;
-  background: url('assets/order-field-left.svg?v=100') center / 13px 13px no-repeat;
+  background: url('assets/order-field-left.svg?v=101') center / 13px 13px no-repeat;
   pointer-events: none;
 }
 .ord-field-mark.is-lt { left: 0; top: 0; transform: scaleY(-1); }
