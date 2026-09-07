@@ -1285,6 +1285,30 @@ function showOrderValidation(missing) {
   focusable?.focus({ preventScroll: true });
 }
 
+function cartPreviewDataUrl() {
+  const primarySlot = MODES[state.mode].uploads[0]?.slot;
+  const artwork = primarySlot ? state.images[primarySlot] : null;
+  const sourceWidth = artwork?.naturalWidth || artwork?.width || 0;
+  const sourceHeight = artwork?.naturalHeight || artwork?.height || 0;
+  if (!artwork || !sourceWidth || !sourceHeight) return '';
+
+  try {
+    const maxEdge = 772;
+    const scale = Math.min(1, maxEdge / Math.max(sourceWidth, sourceHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+    canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+    const context = canvas.getContext('2d');
+    if (!context) return '';
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(artwork, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.82);
+  } catch (_) {
+    return '';
+  }
+}
+
 function orderSnapshot() {
   const o = state.opts;
   const meta = SERVICE_MODES[state.mode];
@@ -1302,13 +1326,22 @@ function orderSnapshot() {
     vat: price.vat,
     total: price.total,
     createdAt: new Date().toLocaleString('ko-KR'),
+    preview: cartPreviewDataUrl(),
   };
 }
 
 function saveOrderSnapshot() {
+  const snapshot = orderSnapshot();
   try {
-    sessionStorage.setItem('tips-cart-order', JSON.stringify(orderSnapshot()));
-  } catch (_) { /* cart still has its static fallback when storage is unavailable */ }
+    sessionStorage.setItem('tips-cart-order', JSON.stringify(snapshot));
+  } catch (_) {
+    /* A very small browser quota should not discard the order text just
+       because its artwork thumbnail did not fit. */
+    try {
+      snapshot.preview = '';
+      sessionStorage.setItem('tips-cart-order', JSON.stringify(snapshot));
+    } catch (_) { /* cart still has its static fallback when storage is unavailable */ }
+  }
 }
 
 common.addEventListener('change', (e) => {

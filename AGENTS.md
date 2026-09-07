@@ -199,8 +199,9 @@ x/y/w/h)를 같이 씁니다. **좌표는 metadata 쪽이 정확합니다** — 
   거래처 옵션이 바뀌면 상품별로 다시 확인해야 합니다. Products의 세부 종류를
   바꾸면 종이와 평량도 해당 상품 기준으로 초기화됩니다.
 - **서비스에서 카트로 넘기는 주문은 세션 초안입니다.** `tips-cart-order`라는
-  `sessionStorage` 한 건만 쓰며, 탭을 닫으면 사라집니다. 결제·주문 접수 서버는
-  아직 없고 카트의 주문하기 버튼은 이 사실을 안내합니다.
+  `sessionStorage` 한 건만 쓰며, 탭을 닫으면 사라집니다. 첫 업로드 PDF의 첫 페이지는
+  772px 이하 JPEG 썸네일로 줄여 같은 초안에 넣고 카트의 작업물 칸에 표시합니다.
+  결제·주문 접수 서버는 아직 없고 카트의 주문하기 버튼은 이 사실을 안내합니다.
 - **신청 페이지 색은 `html`까지 칠합니다.** 짧은 브라우저에서 1080 프레임을
   축소할 때 소수점 반올림으로 본문 아래에 루트 배경이 드러날 수 있어,
   `apply-root`와 `apply.js`가 프로그램 색을 문서 루트에도 함께 적용합니다.
@@ -238,8 +239,8 @@ Worker 코드는 `https://tips-chat.hcy070722.workers.dev`에 배포되어 있�
   결정이 필요합니다
 - 로그인의 회원가입 · 아이디 찾기 · 비밀번호 찾기 · 소셜 버튼은 아직 갈 곳이
   없습니다. 카트의 주문하기도 결제·접수 서버 연결 전입니다
-- `assets/prog-thread.jpg`, `prog-book.jpg`, `arrow-chevron.svg`, `logo.svg`는
-  지금 쓰이지 않습니다
+- `assets/prog-thread.jpg`, `prog-book.jpg`, `arrow-chevron.svg`, `logo.svg`,
+  `assets/cart-close.svg`는 지금 쓰이지 않습니다
 
 ---
 

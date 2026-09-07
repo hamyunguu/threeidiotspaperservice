@@ -32,6 +32,15 @@ function cartNumber(value) {
   return Math.round(Number(value) || 0).toLocaleString('ko-KR').replace(/,/g, '.');
 }
 
+function cartPreview(value) {
+  if (!/^data:image\/(?:jpeg|png|webp);base64,/i.test(String(value || ''))) return;
+  const thumbnail = document.getElementById('ctThumb');
+  if (!thumbnail) return;
+  thumbnail.src = value;
+  thumbnail.classList.add('is-artwork');
+  thumbnail.alt = '업로드한 작업 파일 미리보기';
+}
+
 if (hasItem) {
   cartText('hdCartCount', 'Cart(1)');
 }
@@ -50,16 +59,7 @@ if (cartDraft) {
   cartText('ctVatVisual', cartNumber(cartDraft.vat));
   cartText('ctTotal', cartNumber(cartDraft.total));
   cartText('ctPay', `${cartNumber(cartDraft.total)}원 주문하기`);
-}
-
-/* taking the one order out leaves the basket empty, which is the other
-   frame — so the cross just walks back to it */
-const ctClose = document.getElementById('ctClose');
-if (ctClose) {
-  ctClose.addEventListener('click', () => {
-    try { sessionStorage.removeItem('tips-cart-order'); } catch (_) { /* no-op */ }
-    window.location.href = 'cart.html';
-  });
+  cartPreview(cartDraft.preview);
 }
 
 /* No checkout backend yet: keep the order visible and state the boundary. */
