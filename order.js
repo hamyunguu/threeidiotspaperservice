@@ -1068,7 +1068,7 @@ function paintCaption() {
     : hasFlatPages
       ? '화살표로 인쇄물을 넘겨보세요 · 드래그로 돌려 보세요 · 휠로 확대'
     : state.images[primary]
-      ? '드래그로 돌려 보세요 · 휠로 확대'
+      ? '드래그로 회전 · 휠로 확대' + (D.mode === 'poster' ? ' · 종이를 더블클릭해 탄성 확인' : '')
     : '1번에서 파일을 올리거나 여기에 끌어다 놓으면 바로 3D에 반영됩니다';
 }
 
@@ -1990,24 +1990,17 @@ window.addEventListener('resize', () => { if (engine) engine.resize(); });
 async function createEngine(mount, bookCallbacks) {
   const THREE = await import('three');
   const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+  const { RoomEnvironment } = await import('three/addons/environments/RoomEnvironment.js');
+  const { PaperDynamics } = await import('./paper-physics.js?v=106');
 
   const renderer = new THREE.WebGLRenderer({
     antialias: true, alpha: true, powerPreference: 'high-performance',
   });
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  /* The preview is framed like a print inspection table, not a product-shot
-     set. Keep physical lighting on the materials but do not project a drop
-     shadow onto the white Figma canvas. */
-  renderer.shadowMap.enabled = false;
-  /* filmic response: the highlights on coated stock roll off instead of
-     clipping to flat white, which is most of what makes paper look shot
-     rather than drawn */
-  /* Khronos PBR Neutral, not ACES. This is a preview of what someone is
-     about to have printed, so the artwork has to come back the colour it
-     went in — ACES rolls saturated ink off towards grey. Neutral keeps the
-     albedo and only compresses the highlights, which is exactly the trade
-     a product viewer wants. */
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // Neutral tone mapping retains more artwork chroma than a cinematic curve.
   renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.toneMappingExposure = 0.96;
   renderer.domElement.className = 'ord-canvas';
@@ -2022,7 +2015,7 @@ async function createEngine(mount, bookCallbacks) {
   /* A sheet or a book stands up and is read from a low three-quarter on the
      left, which is where its spine and fold are. A card lies down, so it has
      to be looked at from above or it disappears edge-on. */
-  const viewDir = (mode) => (mode === 'print'
+  const viewDir = (mode) => (mode === 'print' || mode === 'poster'
     ? new THREE.Vector3(-0.3, 0.9, 0.85).normalize()
     : new THREE.Vector3(-0.38, 0.32, 1).normalize());
 
@@ -2038,39 +2031,35 @@ async function createEngine(mount, bookCallbacks) {
      gradient stays neutral so an unselected stock begins as true neutral
      white; a named paper can add its own colour later. */
   const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = (() => {
-    /* an equirectangular map has to be 2:1 — at any other aspect the
-       projection folds in on itself and PMREM hands back a black room */
-    const c = document.createElement('canvas');
-    c.width = 512;
-    c.height = 256;
-    const g = c.getContext('2d');
-    const grd = g.createLinearGradient(0, 0, 0, 256);
-    /* a white room, not a dark one: the softbox overhead, white walls at the
-       horizon, a bounce floor below. The spread top to bottom is small — it
-       only has to be enough to tell one face of a sheet from another */
-    grd.addColorStop(0, '#ffffff');      // softbox
-    grd.addColorStop(0.4, '#fafafa');
-    grd.addColorStop(0.52, '#dedede');   // horizon
-    grd.addColorStop(0.82, '#a6a6a6');
-    grd.addColorStop(1, '#7f7f7f');      // bounce floor
-    g.fillStyle = grd;
-    g.fillRect(0, 0, 512, 256);
-    const t = new THREE.CanvasTexture(c);
-    t.mapping = THREE.EquirectangularReflectionMapping;
-    t.colorSpace = THREE.SRGBColorSpace;
-    return pmrem.fromEquirectangular(t).texture;
-  })();
+  const studio = new RoomEnvironment();
+  const studioMap = pmrem.fromScene(studio, 0.025);
+  scene.environment = studioMap.texture;
+  scene.environmentIntensity = 0.65;
+  studio.dispose();
+  pmrem.dispose();
 
+  // A neutral sweep gives cut edges a backdrop and anchors the object.
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200),
+    new THREE.MeshStandardMaterial({ color: 0xa0a0a0, roughness: 0.96 }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.012;
+  ground.receiveShadow = true;
+  scene.add(ground);
   /* the key only sets which way the highlight runs; the environment carries
      the exposure, so it stays gentle */
-  const key = new THREE.DirectionalLight(0xffffff, 1.75);
+  const key = new THREE.DirectionalLight(0xffffff, 2.3);
   key.position.set(-3.5, 9, 6.5);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  Object.assign(key.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 0.1, far: 30 });
+  key.shadow.bias = -0.00002;
+  key.shadow.normalBias = 0.001;
+  key.shadow.camera.updateProjectionMatrix();
   scene.add(key);
 
   /* and the rim draws the bright line down every edge that used to be told
      by the drop shadow */
-  const rim = new THREE.DirectionalLight(0xffffff, 0.9);
+  const rim = new THREE.DirectionalLight(0xffffff, 0.55);
   rim.position.set(2, 3, -6);
   scene.add(rim);
 
@@ -2094,6 +2083,7 @@ async function createEngine(mount, bookCallbacks) {
     progress: 0,
     targetProgress: 0,
     direction: 1,
+    velocity: 0,
     dragging: false,
     settling: false,
     pointerId: null,
@@ -2118,13 +2108,6 @@ async function createEngine(mount, bookCallbacks) {
        what lets the lighting model the sheet instead of clipping it */
     g.fillStyle = '#f2f2f2';
     g.fillRect(0, 0, c.width, c.height);
-    g.strokeStyle = '#b8b8b8';
-    g.lineWidth = 6;
-    g.strokeRect(28, 28, c.width - 56, c.height - 56);
-    g.fillStyle = '#929292';
-    g.font = '52px "IBM Plex Mono", monospace';
-    g.textAlign = 'center';
-    g.fillText(label || '', c.width / 2, c.height / 2 + 12);
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
@@ -2208,16 +2191,16 @@ async function createEngine(mount, bookCallbacks) {
     c.width = n;
     c.height = n;
     const g = c.getContext('2d');
-    g.fillStyle = '#808080';
+    g.fillStyle = '#eeeeee';
     g.fillRect(0, 0, n, n);
     for (let i = 0; i < 90; i++) {
       const r = 20 + Math.random() * 70;
-      const v = Math.round(118 + Math.random() * 26);
+      const v = Math.round(226 + Math.random() * 24);
       const blob = g.createRadialGradient(
         Math.random() * n, Math.random() * n, 0,
         Math.random() * n, Math.random() * n, r);
       blob.addColorStop(0, `rgba(${v},${v},${v},0.5)`);
-      blob.addColorStop(1, 'rgba(128,128,128,0)');
+      blob.addColorStop(1, 'rgba(238,238,238,0)');
       g.fillStyle = blob;
       g.fillRect(0, 0, n, n);
     }
@@ -2255,12 +2238,14 @@ async function createEngine(mount, bookCallbacks) {
      that every sheet carries the fibre tooth and the uneven finish, which is
      what keeps a grazing highlight from looking like a plastic card. */
   function paperMat(coating, paperName, map) {
+    // The viewer is a neutral material study: artwork stays in the order data.
+    map = null;
     const uncoated = /모조|미색|반누보|레자크|색지|크라프트|마쉬멜로우/.test(paperName || '');
     const gloss = coating === '유광';
     const matt = coating === '무광';
     const m = new THREE.MeshPhysicalMaterial({
       map: map || null,
-      color: map ? 0xffffff : 0xf2f2f2,
+      color: 0xf5f5f5,
       roughness: gloss ? 0.13 : matt ? 0.44 : (uncoated ? 0.9 : 0.7),
       roughnessMap: finishMap,
       normalMap: fibreMap,
@@ -2304,8 +2289,21 @@ async function createEngine(mount, bookCallbacks) {
     const t = cloneTex(edgeStripes);
     t.center.set(0.5, 0.5);
     t.rotation = turn ? Math.PI / 2 : 0;
-    t.repeat.set(turn ? 1 : Math.max(1, sheets / 26), turn ? Math.max(1, sheets / 26) : 1);
+    t.repeat.set(turn ? 1 : Math.max(1, sheets / 128), turn ? Math.max(1, sheets / 128) : 1);
     return new THREE.MeshStandardMaterial({ map: t, roughness: 0.93 });
+  }
+
+  function trimmedBlock(w, h, depth, leaves) {
+    const layers = Math.max(2, Math.min(160, Math.round(leaves)));
+    const geometry = new THREE.BoxGeometry(w, h, depth, 1, 1, layers);
+    const position = geometry.attributes.position;
+    for (let i = 0; i < position.count; i++) {
+      const layer = Math.round((position.getZ(i) / depth + 0.5) * layers);
+      const trim = (Math.sin(layer * 12.9898) * 0.5 + 0.5) * Math.min(w * 0.00065, 0.0012);
+      position.setX(i, position.getX(i) - Math.sign(position.getX(i)) * trim);
+    }
+    geometry.computeVertexNormals();
+    return geometry;
   }
 
   /* ---- helpers ---- */
@@ -2394,7 +2392,7 @@ async function createEngine(mount, bookCallbacks) {
     const w = D.w * s;
     const h = D.h * s;
     /* True caliper, with only a small visibility floor for a one-sheet edge. */
-    const t = Math.max(0.0045, D.paperThicknessMm * s * 2.4);
+    const t = D.paperThicknessMm * s;
     const panels = Math.max(1, D.panels);
 
     const front = texFor('front', '앞면');
@@ -2403,9 +2401,17 @@ async function createEngine(mount, bookCallbacks) {
     if (panels === 1) {
       const m = sheet(w, h, t, paperMat(D.coating, D.paper, front),
         paperMat(D.coating, D.paper, back), w * 0.016, D.mode === 'poster');
-      m.position.y = h / 2;
-      m.rotation.x = -0.03;                 // a sheet never stands plumb
+      if (D.mode === 'poster') {
+        m.rotation.x = -Math.PI / 2;
+        m.position.y = t / 2 + 0.002;
+      } else {
+        m.position.y = h / 2;
+        m.rotation.x = -0.03;
+      }
       root.add(m);
+      if (flexibleSheet) flexibleSheet.physics = new PaperDynamics({
+        gsm: D.gsm, thicknessMm: D.paperThicknessMm, lengthMm: D.h,
+      });
       return;
     }
 
@@ -2442,7 +2448,7 @@ async function createEngine(mount, bookCallbacks) {
     const s = unit(D);
     const w = D.w * s;
     const h = D.h * s;
-    const t = Math.max(0.009, D.paperThicknessMm * s * 2.8);
+    const t = D.paperThicknessMm * s;
 
     const face = sheet(w, h, t, paperMat(D.coating, D.paper, texFor('front', '앞면')),
       paperMat(D.coating, D.paper, null), w * 0.006);
@@ -2479,7 +2485,8 @@ async function createEngine(mount, bookCallbacks) {
     const h = D.h * s;
     /* a 0-page book would be a plane; give the block a floor so it reads */
     const d = Math.max(0.02, D.spine * s);
-    const cover = 0.006;
+    const coverGsm = parseInt((D.coverPaper.match(/(\d+)\s*g/i) || [0, 250])[1], 10);
+    const cover = Math.max(0.08, coverGsm * 0.00105) * s;
 
     const g = new THREE.Group();
     const coverMat = (slot, label) =>
@@ -2495,7 +2502,7 @@ async function createEngine(mount, bookCallbacks) {
       stackedEdge(leaves, true),    // -y tail
       pageBlock(), pageBlock(),     // hidden under the covers
     ];
-    const block = new THREE.Mesh(new THREE.BoxGeometry(w * 0.985, h * 0.985, d), blockEdge);
+    const block = new THREE.Mesh(trimmedBlock(w * 0.985, h * 0.985, d, D.pages / 2), blockEdge);
     g.add(block);
 
     /* a bound cover lifts a little off the block towards the fore edge —
@@ -2541,7 +2548,7 @@ async function createEngine(mount, bookCallbacks) {
         g.add(fold);
 
         const steel = new THREE.MeshPhysicalMaterial({
-          color: 0x9aa0a6, metalness: 0.95, roughness: 0.22, envMapIntensity: 1.2,
+          color: 0x9e9e9e, metalness: 0.95, roughness: 0.22, envMapIntensity: 1.2,
         });
         [-h * 0.22, h * 0.22].forEach((y) => {
           const st = new THREE.Mesh(
@@ -2561,7 +2568,7 @@ async function createEngine(mount, bookCallbacks) {
         if (D.bind === '사철제본') {
           /* 사철은 대장을 실로 꿰므로 책등에 땀이 줄지어 남는다 */
           const thread = new THREE.MeshStandardMaterial({
-            color: 0xb2a68d, roughness: 0.8,
+            color: 0xa6a6a6, roughness: 0.8,
           });
           const stitches = Math.max(4, Math.round(D.h / 28));
           for (let i = 0; i < stitches; i++) {
@@ -2715,8 +2722,9 @@ async function createEngine(mount, bookCallbacks) {
     const w = D.w * s;
     const h = D.h * s;
     const d = Math.max(0.035, D.spine * s);
-    const cover = 0.008;
-    const pageT = Math.max(0.0022, d / Math.max(18, D.pages / 2));
+    const coverGsm = parseInt((D.coverPaper.match(/(\d+)\s*g/i) || [0, 250])[1], 10);
+    const cover = Math.max(0.08, coverGsm * 0.00105) * s;
+    const pageT = D.paperThicknessMm * s;
     const firstOpen = !bookMotion.active;
     bookMotion.active = true;
     bookMotion.total = Math.max(1, D.innerPages || D.pages || 1);
@@ -2740,7 +2748,7 @@ async function createEngine(mount, bookCallbacks) {
     ];
 
     const rightBlock = new THREE.Mesh(
-      new THREE.BoxGeometry(w * 0.985, h * 0.985, d), blockEdge);
+      trimmedBlock(w * 0.985, h * 0.985, d, D.pages / 2), blockEdge);
     rightBlock.position.x = w / 2;
     g.add(rightBlock);
 
@@ -2837,8 +2845,8 @@ async function createEngine(mount, bookCallbacks) {
     else buildSheet(D);
     root.traverse((o) => {
       if (!o.isMesh) return;
-      o.castShadow = false;
-      o.receiveShadow = false;
+      o.castShadow = !(o.material?.transparent && o.material.opacity === 0);
+      o.receiveShadow = true;
     });
     /* The stock itself is part of the preview, not merely a carrier for an
        uploaded texture. Keep the physical object visible from the first
@@ -2879,53 +2887,45 @@ async function createEngine(mount, bookCallbacks) {
   let running = false;
   let current = null;
 
-  /* A poster is not a rigid card. OrbitControls turns the camera, but to the
-     person dragging it that is equivalent to turning the sheet in their
-     hand. Camera angular velocity therefore drives a damped spring in the
-     paper surface. The motion persists briefly after release, then settles
-     back onto the original gentle bow. */
+  // The inspection support holds the top edge. Three elastic modes bend
+  // the free sheet; opposite faces share displacement, retaining caliper.
   function animateFlexibleSheet(now) {
-    if (!flexibleSheet) return;
+    if (!flexibleSheet?.physics) return;
     const D = flexDynamics;
-    const view = camera.position.clone().sub(controls.target).normalize();
-    if (!D.lastTime || D.lastView.lengthSq() === 0) {
-      D.lastTime = now;
-      D.lastView.copy(view);
-      return;
-    }
-
-    const dt = Math.min(0.034, Math.max(0.001, (now - D.lastTime) / 1000));
-    const yaw = D.lastView.x * view.z - D.lastView.z * view.x;
-    const pitch = (view.y - D.lastView.y) * 0.55;
-    const angularSpeed = THREE.MathUtils.clamp((yaw + pitch) / dt, -3, 3);
-    const speedAbs = Math.abs(angularSpeed);
-
-    D.velocity += (angularSpeed * 1.15 - D.displacement * 30 - D.velocity * 7.2) * dt;
-    D.displacement = THREE.MathUtils.clamp(
-      D.displacement + D.velocity * dt, -0.085, 0.085);
-    D.motion = Math.max(D.motion * Math.exp(-5.2 * dt), Math.min(0.036, speedAbs * 0.014));
-    D.phase += dt * (6.5 + D.motion * 95);
+    const dt = D.lastTime ? Math.min(0.05, (now - D.lastTime) / 1000) : 0;
     D.lastTime = now;
-    D.lastView.copy(view);
-
+    const [bend, twist, ripple] = flexibleSheet.physics.step(dt);
     const geo = flexibleSheet.mesh.geometry;
     const pos = geo.attributes.position;
     const base = flexibleSheet.base;
-    const halfW = flexibleSheet.width / 2;
-    const h = flexibleSheet.height;
     for (let i = 0; i < pos.count; i++) {
       const n = i * 3;
-      const xn = base[n] / halfW;
-      const yn = base[n + 1] / h + 0.5;
-      const freeEdge = 0.18 + 0.82 * Math.pow(Math.abs(xn), 1.35);
-      const primary = Math.sin(yn * Math.PI * 1.55 + D.phase + xn * 0.8);
-      const ripple = Math.sin(yn * Math.PI * 3.1 - D.phase * 1.4 + xn * 1.7);
-      pos.array[n + 2] = base[n + 2] +
-        D.displacement * freeEdge * primary + D.motion * freeEdge * ripple;
+      const x = base[n] / (flexibleSheet.width / 2);
+      const free = 1 - (base[n + 1] / flexibleSheet.height + 0.5);
+      const shape = free * free;
+      const displacement = shape *
+        (bend + twist * x + ripple * Math.sin(Math.PI * free) * Math.cos(Math.PI * x));
+      // The sheet lies on the inspection table. Clamp the neutral surface,
+      // not each face separately, so contact retains the sheet's thickness.
+      const restBow = flexibleSheet.width * 0.016 * (1 - x * x);
+      pos.array[n + 2] = base[n + 2] + Math.max(-restBow, displacement);
     }
     pos.needsUpdate = true;
-    if ((D.normalFrame++ & 1) === 0) geo.computeVertexNormals();
+    geo.computeVertexNormals();
+    geo.computeBoundingSphere();
   }
+
+  // A double click applies an impulse to the sheet, independently of orbiting.
+  renderer.domElement.addEventListener('dblclick', (event) => {
+    if (!flexibleSheet?.physics) return;
+    const rect = renderer.domElement.getBoundingClientRect();
+    bookPointer.set((event.clientX - rect.left) / rect.width * 2 - 1,
+      -(event.clientY - rect.top) / rect.height * 2 + 1);
+    bookRaycaster.setFromCamera(bookPointer, camera);
+    if (bookRaycaster.intersectObject(flexibleSheet.mesh).length) {
+      flexibleSheet.physics.impulse(0.65);
+    }
+  });
 
   function beginBookTurn(direction, dragging) {
     if (!bookMotion.rig || bookMotion.settling || bookMotion.dragging) return false;
@@ -2934,6 +2934,7 @@ async function createEngine(mount, bookCallbacks) {
         (direction < 0 && bookMotion.leaf <= 0)) return false;
     configureBookRig(direction);
     bookMotion.progress = 0;
+    bookMotion.velocity = 0;
     bookMotion.targetProgress = dragging ? 0 : 1;
     bookMotion.dragging = Boolean(dragging);
     bookMotion.settling = !dragging;
@@ -2970,8 +2971,14 @@ async function createEngine(mount, bookCallbacks) {
     }
 
     if (!bookMotion.dragging && bookMotion.settling) {
-      bookMotion.progress = THREE.MathUtils.damp(
-        bookMotion.progress, bookMotion.targetProgress, 12.5, dt);
+      // Damped torsion spring at the binding, integrated in bounded substeps.
+      const steps = Math.ceil(dt * 240);
+      const step = dt / steps;
+      for (let i = 0; i < steps; i++) {
+        bookMotion.velocity += ((bookMotion.targetProgress - bookMotion.progress) * 150 -
+          bookMotion.velocity * 24) * step;
+        bookMotion.progress = THREE.MathUtils.clamp(bookMotion.progress + bookMotion.velocity * step, 0, 1);
+      }
       poseBookLeaf(bookMotion.progress);
       if (Math.abs(bookMotion.progress - bookMotion.targetProgress) < 0.006) {
         const committed = bookMotion.targetProgress === 1;
@@ -3083,8 +3090,8 @@ async function createEngine(mount, bookCallbacks) {
       else buildSheet(D);
       root.traverse((o) => {
         if (!o.isMesh) return;
-        o.castShadow = false;
-        o.receiveShadow = false;
+        o.castShadow = !(o.material?.transparent && o.material.opacity === 0);
+        o.receiveShadow = true;
       });
       root.visible = true;
       root.updateMatrixWorld(true);
