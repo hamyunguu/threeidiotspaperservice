@@ -21,7 +21,7 @@ export class PaperDynamics {
         const acceleration = force / (this.mass * (i + 1)) - mode.omega ** 2 * mode.q - 0.58 * mode.omega * mode.v;
         mode.v += acceleration * dt;
         mode.q += mode.v * dt;
-        // Bound the reduced model to small deflections; table contact is resolved by the mesh.
+        // Bound the reduced model to small deflections.
         if (Math.abs(mode.q) > 0.12 / (i + 1)) {
           mode.q = Math.sign(mode.q) * 0.12 / (i + 1);
           mode.v *= -0.12;

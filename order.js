@@ -1068,7 +1068,7 @@ function paintCaption() {
     : hasFlatPages
       ? '화살표로 인쇄물을 넘겨보세요 · 드래그로 돌려 보세요 · 휠로 확대'
     : state.images[primary]
-      ? '드래그로 회전 · 휠로 확대' + (D.mode === 'poster' ? ' · 종이를 더블클릭해 탄성 확인' : '')
+      ? '드래그로 회전 · 휠로 확대' + (D.mode === 'poster' ? ' · 종이를 눌러 탄성 확인' : '')
     : '1번에서 파일을 올리거나 여기에 끌어다 놓으면 바로 3D에 반영됩니다';
 }
 
@@ -1991,7 +1991,7 @@ async function createEngine(mount, bookCallbacks) {
   const THREE = await import('three');
   const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
   const { RoomEnvironment } = await import('three/addons/environments/RoomEnvironment.js');
-  const { PaperDynamics } = await import('./paper-physics.js?v=106');
+  const { PaperDynamics } = await import('./paper-physics.js?v=107');
 
   const renderer = new THREE.WebGLRenderer({
     antialias: true, alpha: true, powerPreference: 'high-performance',
@@ -2038,13 +2038,8 @@ async function createEngine(mount, bookCallbacks) {
   studio.dispose();
   pmrem.dispose();
 
-  // A neutral sweep gives cut edges a backdrop and anchors the object.
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200),
-    new THREE.MeshStandardMaterial({ color: 0xa0a0a0, roughness: 0.96 }));
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.012;
-  ground.receiveShadow = true;
-  scene.add(ground);
+  // Lighting remains available to materials; the scene background is transparent.
+  scene.background = null;
   /* the key only sets which way the highlight runs; the environment carries
      the exposure, so it stays gentle */
   const key = new THREE.DirectionalLight(0xffffff, 2.3);
@@ -2905,25 +2900,23 @@ async function createEngine(mount, bookCallbacks) {
       const shape = free * free;
       const displacement = shape *
         (bend + twist * x + ripple * Math.sin(Math.PI * free) * Math.cos(Math.PI * x));
-      // The sheet lies on the inspection table. Clamp the neutral surface,
-      // not each face separately, so contact retains the sheet's thickness.
-      const restBow = flexibleSheet.width * 0.016 * (1 - x * x);
-      pos.array[n + 2] = base[n + 2] + Math.max(-restBow, displacement);
+      // No floor remains: let the sheet bend freely in both directions.
+      pos.array[n + 2] = base[n + 2] + displacement;
     }
     pos.needsUpdate = true;
     geo.computeVertexNormals();
     geo.computeBoundingSphere();
   }
 
-  // A double click applies an impulse to the sheet, independently of orbiting.
-  renderer.domElement.addEventListener('dblclick', (event) => {
+  // Touching the sheet applies an impulse; dragging can still orbit the model.
+  renderer.domElement.addEventListener('pointerdown', (event) => {
     if (!flexibleSheet?.physics) return;
     const rect = renderer.domElement.getBoundingClientRect();
     bookPointer.set((event.clientX - rect.left) / rect.width * 2 - 1,
       -(event.clientY - rect.top) / rect.height * 2 + 1);
     bookRaycaster.setFromCamera(bookPointer, camera);
     if (bookRaycaster.intersectObject(flexibleSheet.mesh).length) {
-      flexibleSheet.physics.impulse(0.65);
+      flexibleSheet.physics.impulse(0.9);
     }
   });
 
