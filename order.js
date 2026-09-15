@@ -1344,6 +1344,7 @@ function saveOrderSnapshot() {
   rememberCartPreview();
   try {
     sessionStorage.setItem('tips-cart-order', JSON.stringify(orderSnapshot()));
+    sessionStorage.removeItem('tips-cart-receipt');
   } catch (_) { /* cart still has its static fallback when storage is unavailable */ }
 }
 

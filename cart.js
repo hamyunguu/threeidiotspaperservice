@@ -71,12 +71,91 @@ if (cartDraft) {
 
 if (hasItem) cartPreview(cartDraft?.preview || storedCartPreview());
 
-/* No checkout backend yet: keep the order visible and state the boundary. */
+function receiptText(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = value === undefined || value === null || value === '' ? '-' : value;
+}
+
+function receiptOrder() {
+  if (cartDraft) return cartDraft;
+  return {
+    product: document.getElementById('ctProductName')?.textContent,
+    title: document.getElementById('ctTitleValue')?.textContent,
+    size: document.getElementById('ctSize')?.textContent?.replace(/^재단 사이즈:\s*/, ''),
+    quantity: document.getElementById('ctQuantity')?.textContent,
+    options: document.getElementById('ctOptions')?.textContent,
+    finish: document.getElementById('ctFinish')?.textContent,
+    supply: document.getElementById('ctSupplyVisual')?.textContent?.replace(/\./g, ''),
+    vat: document.getElementById('ctVatVisual')?.textContent?.replace(/\./g, ''),
+    total: document.getElementById('ctTotal')?.textContent?.replace(/\./g, ''),
+  };
+}
+
+function nextReceiptNumber(now) {
+  const date = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0')].join('');
+  const key = 'tips-receipt-sequence';
+  try {
+    const saved = JSON.parse(localStorage.getItem(key)) || {};
+    const sequence = saved.date === date ? Number(saved.sequence || 0) + 1 : 1;
+    localStorage.setItem(key, JSON.stringify({ date, sequence }));
+    return `${date}-${String(sequence).padStart(3, '0')}`;
+  } catch (_) {
+    return `${date}-${String(now.getTime()).slice(-6)}`;
+  }
+}
+
+function storedReceipt() {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem('tips-cart-receipt'));
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function prepareReceipt() {
+  const existing = storedReceipt();
+  if (existing) return existing;
+  const now = new Date();
+  const receipt = {
+    ...receiptOrder(),
+    receiptNumber: nextReceiptNumber(now),
+    receiptDate: now.toLocaleString('ko-KR'),
+  };
+  try { sessionStorage.setItem('tips-cart-receipt', JSON.stringify(receipt)); } catch (_) { /* printable without storage */ }
+  return receipt;
+}
+
+function paintReceipt(receipt) {
+  receiptText('rcNumber', receipt.receiptNumber);
+  receiptText('rcDate', receipt.receiptDate);
+  receiptText('rcProduct', receipt.product);
+  receiptText('rcTitle', receipt.title);
+  receiptText('rcSize', receipt.size);
+  receiptText('rcQuantity', receipt.quantity);
+  receiptText('rcOptions', receipt.options);
+  receiptText('rcFinish', receipt.finish);
+  receiptText('rcSupply', `${cartNumber(receipt.supply)}원`);
+  receiptText('rcVat', `${cartNumber(receipt.vat)}원`);
+  receiptText('rcTotal', `${cartNumber(receipt.total)}원`);
+}
+
+/* The static site issues a local receipt and hands it to the venue printer.
+   Browser print settings choose the connected 80 mm printer. */
 const ctPay = document.getElementById('ctPay');
 if (ctPay) {
+  const previousReceipt = storedReceipt();
+  if (previousReceipt) {
+    paintReceipt(previousReceipt);
+    ctPay.textContent = '주문 접수증 다시 인쇄';
+    cartText('ctPrintStatus', `접수번호 ${previousReceipt.receiptNumber} · 다시 인쇄할 수 있습니다.`);
+  }
   ctPay.addEventListener('click', () => {
-    const original = ctPay.textContent;
-    ctPay.textContent = '주문 기능 연결 전입니다.';
-    setTimeout(() => { ctPay.textContent = original; }, 3200);
+    const receipt = prepareReceipt();
+    paintReceipt(receipt);
+    ctPay.textContent = '주문 접수증 다시 인쇄';
+    cartText('ctPrintStatus', `접수번호 ${receipt.receiptNumber} · 인쇄 창이 열렸습니다.`);
+    window.print();
   });
 }
