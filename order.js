@@ -2033,6 +2033,62 @@ async function createEngine(mount, bookCallbacks) {
   controls.enablePan = false;
   controls.minPolarAngle = 0.15;
   controls.maxPolarAngle = Math.PI * 0.52;
+  const posterPreview = { curl: 0, flutter: 0.5, playing: false, time: 0, last: 0 };
+  const posterTools = document.getElementById('ordPosterTools');
+  const posterPlay = document.getElementById('ordPosterPlay');
+  function togglePosterPlayback() {
+    posterPreview.playing = !posterPreview.playing;
+    posterPlay.setAttribute('aria-pressed', String(posterPreview.playing));
+    posterPlay.textContent = posterPreview.playing ? '일시정지' : '재생';
+  }
+  posterPlay.addEventListener('click', togglePosterPlayback);
+  for (const [name, property] of [['Curl', 'curl'], ['Flutter', 'flutter']]) {
+    document.getElementById(`ordPoster${name}`).addEventListener('input', (event) => {
+      posterPreview[property] = Number(event.target.value) / 100;
+      document.getElementById(`ordPoster${name}Value`).textContent = `${event.target.value}%`;
+    });
+  }
+  document.getElementById('ordPosterReset').addEventListener('click', () => fitCamera(false));
+  renderer.domElement.tabIndex = 0;
+  renderer.domElement.addEventListener('pointerdown', () => renderer.domElement.focus({ preventScroll: true }));
+  renderer.domElement.addEventListener('keydown', (event) => {
+    if (current?.mode !== 'poster') return;
+    if (event.code === 'Space') { event.preventDefault(); togglePosterPlayback(); return; }
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault();
+    const offset = camera.position.clone().sub(controls.target);
+    const spherical = new THREE.Spherical().setFromVector3(offset);
+    spherical.theta += event.key === 'ArrowLeft' ? 0.08 : event.key === 'ArrowRight' ? -0.08 : 0;
+    spherical.phi += event.key === 'ArrowUp' ? -0.08 : event.key === 'ArrowDown' ? 0.08 : 0;
+    spherical.makeSafe();
+    camera.position.copy(controls.target).add(offset.setFromSpherical(spherical));
+    controls.update();
+  });
+
+  const posterFloor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200),
+    new THREE.ShadowMaterial({ opacity: 0.22 }));
+  posterFloor.rotation.x = -Math.PI / 2;
+  posterFloor.position.y = -0.7;
+  posterFloor.receiveShadow = true;
+  posterFloor.visible = false;
+  scene.add(posterFloor);
+  function configurePreview(D) {
+    const poster = D.mode === 'poster';
+    posterTools.hidden = !poster;
+    mount.parentElement.classList.toggle('is-poster-preview', poster);
+    renderer.setClearColor(poster ? 0x333333 : 0x000000, poster ? 1 : 0);
+    renderer.shadowMap.enabled = poster;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    posterFloor.visible = poster;
+    key.castShadow = poster;
+    controls.enablePan = poster;
+    controls.minPolarAngle = poster ? 0.001 : 0.15;
+    controls.maxPolarAngle = poster ? Math.PI - 0.001 : Math.PI * 0.52;
+    renderer.domElement.setAttribute('aria-label', poster
+      ? '포스터 3D 미리보기. 드래그 또는 방향키로 회전, Shift 드래그로 이동, 휠로 확대, Space로 재생'
+      : '인쇄물 3D 미리보기. 드래그로 회전, 휠로 확대');
+    posterPreview.last = 0;
+  }
 
   /* The environment IS the light, the way a paper product is actually shot:
      a big soft source overhead falling off to a darker floor. The entire
@@ -2068,6 +2124,11 @@ async function createEngine(mount, bookCallbacks) {
   const key = new THREE.DirectionalLight(0xffffff, 1.75);
   key.position.set(-3.5, 9, 6.5);
   scene.add(key);
+  key.shadow.mapSize.set(2048, 2048);
+  Object.assign(key.shadow.camera, { left: -5, right: 5, top: 6, bottom: -5, near: 0.5, far: 25 });
+  key.shadow.bias = -0.0002;
+  key.shadow.normalBias = 0.02;
+  key.shadow.radius = 4;
 
   /* and the rim draws the bright line down every edge that used to be told
      by the drop shadow */
@@ -2371,7 +2432,7 @@ async function createEngine(mount, bookCallbacks) {
 
   function sheet(w, h, t, frontMat, backMat, curve, flexible) {
     const geo = new THREE.BoxGeometry(
-      w, h, t, curve ? 40 : 1, flexible ? 28 : 1, 1);
+      w, h, t, flexible ? 48 : curve ? 40 : 1, flexible ? 64 : 1, 1);
     if (curve) bow(geo, curve);
     const edge = cutEdge();
     const mesh = new THREE.Mesh(geo, [edge, edge, edge, edge, frontMat, backMat]);
@@ -2395,7 +2456,8 @@ async function createEngine(mount, bookCallbacks) {
     const w = D.w * s;
     const h = D.h * s;
     /* True caliper, with only a small visibility floor for a one-sheet edge. */
-    const t = Math.max(0.0045, D.paperThicknessMm * s * 2.4);
+    const t = D.mode === 'poster' ? Math.max(0.0008, D.paperThicknessMm * s)
+      : Math.max(0.0045, D.paperThicknessMm * s * 2.4);
     const panels = Math.max(1, D.panels);
 
     const front = texFor('front', '앞면');
@@ -2833,13 +2895,14 @@ async function createEngine(mount, bookCallbacks) {
 
   function build(D) {
     clear();
+    configurePreview(D);
     if (D.mode === 'book') buildBook(D);
     else if (D.mode === 'print') buildCard(D);
     else buildSheet(D);
     root.traverse((o) => {
       if (!o.isMesh) return;
-      o.castShadow = false;
-      o.receiveShadow = false;
+      o.castShadow = D.mode === 'poster';
+      o.receiveShadow = D.mode === 'poster';
     });
     /* The stock itself is part of the preview, not merely a carrier for an
        uploaded texture. Keep the physical object visible from the first
@@ -2847,6 +2910,7 @@ async function createEngine(mount, bookCallbacks) {
        before artwork exists; an upload only replaces the placeholder face. */
     root.visible = true;
     root.updateMatrixWorld(true);
+    resize();
     fitCamera();
   }
 
@@ -2868,7 +2932,8 @@ async function createEngine(mount, bookCallbacks) {
 
     const dir = keepAngle
       ? camera.position.clone().sub(controls.target).normalize()
-      : viewDir(current ? current.mode : state.mode);
+      : current?.mode === 'poster' ? new THREE.Vector3(-0.65, 0.3, 1).normalize()
+        : viewDir(current ? current.mode : state.mode);
     controls.target.copy(fitCenter);
     camera.position.copy(fitCenter).add(dir.multiplyScalar(fitDist));
     controls.update();
@@ -2919,9 +2984,17 @@ async function createEngine(mount, bookCallbacks) {
       const xn = base[n] / halfW;
       const yn = base[n + 1] / h + 0.5;
       const freeEdge = 0.18 + 0.82 * Math.pow(Math.abs(xn), 1.35);
+      const phase = posterPreview.time * 2.4;
       const primary = Math.sin(yn * Math.PI * 1.55 + D.phase + xn * 0.8);
       const ripple = Math.sin(yn * Math.PI * 3.1 - D.phase * 1.4 + xn * 1.7);
+      // A broad travelling bend reads as paper, without the tiny noisy ripples
+      // of the previous camera-only effect. Pause freezes the wind phase.
+      const wave = Math.sin(yn * Math.PI * 2 - phase + xn * 0.35);
+      const amplitude = h * 0.085 * posterPreview.flutter;
+      const curl = posterPreview.curl * h * 0.26 * Math.pow(Math.abs(xn), 5);
+      pos.array[n + 1] = base[n + 1] - (yn - 0.5) * amplitude * 0.12;
       pos.array[n + 2] = base[n + 2] +
+        wave * amplitude + curl +
         D.displacement * freeEdge * primary + D.motion * freeEdge * ripple;
     }
     pos.needsUpdate = true;
@@ -3043,8 +3116,16 @@ async function createEngine(mount, bookCallbacks) {
 
   function frame(now) {
     if (!running) return;
-    controls.update();
     const stamp = now || performance.now();
+    const dt = posterPreview.last ? Math.min((stamp - posterPreview.last) / 1000, 0.05) : 0;
+    posterPreview.last = stamp;
+    if (current?.mode === 'poster' && posterPreview.playing) {
+      posterPreview.time += dt;
+      const offset = camera.position.clone().sub(controls.target);
+      offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), dt * 0.32);
+      camera.position.copy(controls.target).add(offset);
+    }
+    controls.update();
     animateFlexibleSheet(stamp);
     animateBook(stamp);
     renderer.render(scene, camera);
@@ -3079,16 +3160,18 @@ async function createEngine(mount, bookCallbacks) {
     update(D) {
       current = D;
       clear();
+      configurePreview(D);
       if (D.mode === 'book') buildBook(D);
       else if (D.mode === 'print') buildCard(D);
       else buildSheet(D);
       root.traverse((o) => {
         if (!o.isMesh) return;
-        o.castShadow = false;
-        o.receiveShadow = false;
+        o.castShadow = D.mode === 'poster';
+        o.receiveShadow = D.mode === 'poster';
       });
       root.visible = true;
       root.updateMatrixWorld(true);
+      resize();
       fitCamera(true);              // an option change must not steal the view
     },
     setTexture(slot, img, nextState) {

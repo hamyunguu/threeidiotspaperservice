@@ -27,9 +27,9 @@ if (loader) {
 /* ---------------- left: the poster the numbering pages through ---------------- */
 
 const POSTERS = [
-  'assets/fig-poster.jpg?v=109',
-  'assets/card-hand.jpg?v=109',
-  'assets/gal-wood-a.jpg?v=109',
+  'assets/fig-poster.jpg?v=110',
+  'assets/card-hand.jpg?v=110',
+  'assets/gal-wood-a.jpg?v=110',
 ];
 
 const layers = [...document.querySelectorAll('.poster img')];
