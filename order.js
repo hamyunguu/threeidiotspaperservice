@@ -2033,27 +2033,13 @@ async function createEngine(mount, bookCallbacks) {
   controls.enablePan = false;
   controls.minPolarAngle = 0.15;
   controls.maxPolarAngle = Math.PI * 0.52;
-  const posterPreview = { curl: 0, flutter: 0.5, playing: false, time: 0, last: 0 };
-  const posterTools = document.getElementById('ordPosterTools');
-  const posterPlay = document.getElementById('ordPosterPlay');
-  function togglePosterPlayback() {
-    posterPreview.playing = !posterPreview.playing;
-    posterPlay.setAttribute('aria-pressed', String(posterPreview.playing));
-    posterPlay.textContent = posterPreview.playing ? '일시정지' : '재생';
-  }
-  posterPlay.addEventListener('click', togglePosterPlayback);
-  for (const [name, property] of [['Curl', 'curl'], ['Flutter', 'flutter']]) {
-    document.getElementById(`ordPoster${name}`).addEventListener('input', (event) => {
-      posterPreview[property] = Number(event.target.value) / 100;
-      document.getElementById(`ordPoster${name}Value`).textContent = `${event.target.value}%`;
-    });
-  }
-  document.getElementById('ordPosterReset').addEventListener('click', () => fitCamera(false));
+  /* Match the reference poster's initial shape: no corner curl and a fixed
+     50% broad flutter. It is intentionally not exposed as order UI. */
+  const posterPreview = { curl: 0, flutter: 0.5, time: 0, last: 0 };
   renderer.domElement.tabIndex = 0;
   renderer.domElement.addEventListener('pointerdown', () => renderer.domElement.focus({ preventScroll: true }));
   renderer.domElement.addEventListener('keydown', (event) => {
     if (current?.mode !== 'poster') return;
-    if (event.code === 'Space') { event.preventDefault(); togglePosterPlayback(); return; }
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
     event.preventDefault();
     const offset = camera.position.clone().sub(controls.target);
@@ -2065,27 +2051,17 @@ async function createEngine(mount, bookCallbacks) {
     controls.update();
   });
 
-  const posterFloor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200),
-    new THREE.ShadowMaterial({ opacity: 0.22 }));
-  posterFloor.rotation.x = -Math.PI / 2;
-  posterFloor.position.y = -0.7;
-  posterFloor.receiveShadow = true;
-  posterFloor.visible = false;
-  scene.add(posterFloor);
   function configurePreview(D) {
     const poster = D.mode === 'poster';
-    posterTools.hidden = !poster;
     mount.parentElement.classList.toggle('is-poster-preview', poster);
-    renderer.setClearColor(poster ? 0x333333 : 0x000000, poster ? 1 : 0);
-    renderer.shadowMap.enabled = poster;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    posterFloor.visible = poster;
-    key.castShadow = poster;
+    renderer.setClearColor(0xffffff, poster ? 1 : 0);
+    renderer.shadowMap.enabled = false;
+    key.castShadow = false;
     controls.enablePan = poster;
     controls.minPolarAngle = poster ? 0.001 : 0.15;
     controls.maxPolarAngle = poster ? Math.PI - 0.001 : Math.PI * 0.52;
     renderer.domElement.setAttribute('aria-label', poster
-      ? '포스터 3D 미리보기. 드래그 또는 방향키로 회전, Shift 드래그로 이동, 휠로 확대, Space로 재생'
+      ? '포스터 3D 미리보기. 드래그 또는 방향키로 회전, Shift 드래그로 이동, 휠로 확대'
       : '인쇄물 3D 미리보기. 드래그로 회전, 휠로 확대');
     posterPreview.last = 0;
   }
@@ -2901,8 +2877,8 @@ async function createEngine(mount, bookCallbacks) {
     else buildSheet(D);
     root.traverse((o) => {
       if (!o.isMesh) return;
-      o.castShadow = D.mode === 'poster';
-      o.receiveShadow = D.mode === 'poster';
+      o.castShadow = false;
+      o.receiveShadow = false;
     });
     /* The stock itself is part of the preview, not merely a carrier for an
        uploaded texture. Keep the physical object visible from the first
@@ -3119,12 +3095,7 @@ async function createEngine(mount, bookCallbacks) {
     const stamp = now || performance.now();
     const dt = posterPreview.last ? Math.min((stamp - posterPreview.last) / 1000, 0.05) : 0;
     posterPreview.last = stamp;
-    if (current?.mode === 'poster' && posterPreview.playing) {
-      posterPreview.time += dt;
-      const offset = camera.position.clone().sub(controls.target);
-      offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), dt * 0.32);
-      camera.position.copy(controls.target).add(offset);
-    }
+    if (current?.mode === 'poster') posterPreview.time += dt;
     controls.update();
     animateFlexibleSheet(stamp);
     animateBook(stamp);
@@ -3166,8 +3137,8 @@ async function createEngine(mount, bookCallbacks) {
       else buildSheet(D);
       root.traverse((o) => {
         if (!o.isMesh) return;
-        o.castShadow = D.mode === 'poster';
-        o.receiveShadow = D.mode === 'poster';
+        o.castShadow = false;
+        o.receiveShadow = false;
       });
       root.visible = true;
       root.updateMatrixWorld(true);

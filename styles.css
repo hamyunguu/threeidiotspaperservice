@@ -897,7 +897,7 @@ body.page-sub .hd-nav a.is-current { display: block; }
    overlay. Descendants inherit the current mark so old pointer/grab rules
    cannot bring the arrow back on top. */
 html.has-cursor {
-  cursor: url("assets/cursor-gray.svg?v=110") 15 15, default !important;
+  cursor: url("assets/cursor-gray.svg?v=111") 15 15, default !important;
 }
 html.has-cursor body,
 html.has-cursor * { cursor: inherit !important; }
@@ -908,7 +908,7 @@ html.has-cursor :is(
   .card-archive, .apply-btn, .chat-send, .nav-item[href],
   .gal.hoverable, .tip-circle
 ) {
-  cursor: url("assets/cursor-black.svg?v=110") 15 15, pointer !important;
+  cursor: url("assets/cursor-black.svg?v=111") 15 15, pointer !important;
 }
 
 /* loading page — CMYK registration logo, spins clockwise, ~1.5s on entry */
@@ -2433,16 +2433,16 @@ body.order .h-rule {
 .ord-tab { height: 38px; gap: 12px; font-size: 18px; line-height: 18px; }
 .ord-tab i {
   width: 20px; height: 20px; margin-top: 9px; border: 0; border-radius: 0;
-  background: transparent url('assets/order-point-off.svg?v=110') 0 0 / 20px 20px no-repeat;
+  background: transparent url('assets/order-point-off.svg?v=111') 0 0 / 20px 20px no-repeat;
 }
-.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=110'); background-color: transparent; }
+.ord-tab.is-on i { background-image: url('assets/order-point-on.svg?v=111'); background-color: transparent; }
 .ord-tab.is-on i::before,
 .ord-tab.is-on i::after {
   left: 0; top: 9px; width: 20px; height: 1px; background-color: transparent;
   background-position: center; background-size: 20px 1px; background-repeat: no-repeat;
 }
-.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=110'); }
-.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=110'); }
+.ord-tab.is-on i::before { transform: rotate(45deg); background-image: url('assets/order-point-line-a.svg?v=111'); }
+.ord-tab.is-on i::after { transform: rotate(-45deg); background-image: url('assets/order-point-line-b.svg?v=111'); }
 .ord-common-pane button:focus,
 .ord-detail-pane button:focus,
 .ord-preview button:focus { outline: 0; }
@@ -2454,10 +2454,10 @@ body.order .h-rule {
 }
 .ord-product-kinds button::before {
   content: ''; position: absolute; left: 0; top: 3px; width: 12px; height: 12px;
-  background: url('assets/order-point-off.svg?v=110') center / 12px 12px no-repeat;
+  background: url('assets/order-point-off.svg?v=111') center / 12px 12px no-repeat;
 }
 .ord-product-kinds button.is-on { border: 0; }
-.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=110'); }
+.ord-product-kinds button.is-on::before { background-image: url('assets/order-point-on.svg?v=111'); }
 .ord-service-note {
   left: 0; top: 350px; bottom: auto; width: 179px;
   font-size: 14px; line-height: 17px; font-weight: 350;
@@ -2510,7 +2510,7 @@ body.order .h-rule {
 }
 .ord-field-mark {
   position: absolute; z-index: 3; width: 13px; height: 13px;
-  background: url('assets/order-field-left.svg?v=110') center / 13px 13px no-repeat;
+  background: url('assets/order-field-left.svg?v=111') center / 13px 13px no-repeat;
   pointer-events: none;
 }
 .ord-field-mark.is-lt { left: 0; top: 0; transform: scaleY(-1); }
@@ -2729,26 +2729,13 @@ body.order .h-rule {
 .ord-preview.has-artwork .ord-view-reset { display: block; right: 68px; bottom: 8px; }
 .ord-preview.has-inner-preview .ord-drop-hint { bottom: 52px; }
 .ord-preview.has-inner-preview .ord-book-nav.is-visible { display: flex; }
-
-/* Poster studio controls stay inside the existing 1920px preview frame. */
-.ord-poster-tools[hidden] { display: none; }
-.ord-poster-tools {
-  position: absolute; left: 48px; right: 48px; bottom: 48px;
-  height: 97px; box-sizing: border-box;
-  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px;
-  padding: 16px 20px; background: #333; color: #eee;
-  font-size: 13px; line-height: 1.5;
-}
-.ord-poster-sliders { display: flex; gap: 22px; margin-right: auto; }
-.ord-poster-sliders label { display: flex; align-items: center; gap: 8px; }
-.ord-poster-sliders input { width: 85px; accent-color: #eee; cursor: pointer; }
-.ord-poster-sliders output { width: 35px; font-variant-numeric: tabular-nums; }
-.ord-poster-tools button { padding: 6px 10px; color: inherit; background: transparent; border: 1px solid #777; cursor: pointer; }
-.ord-poster-tools p { width: 100%; margin: 0; color: #bbb; font-size: 12px; }
-.ord-preview .ord-poster-tools button:focus-visible,
-.is-poster-preview .ord-canvas:focus-visible { outline: 2px solid #aaa; outline-offset: -2px; }
-.is-poster-preview .ord-stage { bottom: 145px; }
-.is-poster-preview .ord-view-reset { display: none !important; }
+.ord-preview.is-poster-preview .ord-crop,
+.ord-preview.is-poster-preview .ord-preview-summary,
+.ord-preview.is-poster-preview .ord-drop-hint,
+.ord-preview.is-poster-preview .ord-dim,
+.ord-preview.is-poster-preview .ord-view-reset,
+.ord-preview.is-poster-preview .ord-book-nav { display: none; }
+.ord-preview.is-poster-preview .ord-stage { inset: 0; }
 
 /* Figma uses a fixed 2px-on / 2px-off dashed stroke. Native CSS dashed
    borders choose their own dash length, which is 3px in WebKit at 1px and
