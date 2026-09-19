@@ -1018,7 +1018,10 @@ function derive() {
     embossDepthMm: +(o.in_emboss_depth || 0),
     panels: foldPanels(),
     bind,
-    spine: bind === '제본 없음' ? 0 : senecaMm(o),
+    /* Before page count is entered, show the same substantial 20mm sample
+       volume as the reference instead of a paper-thin 0.5mm placeholder.
+       Once pages exist, the preview returns to the calculated real spine. */
+    spine: bind === '제본 없음' ? 0 : (totalPages(o) ? senecaMm(o) : 20),
     direction: o.goods_jebon_direction || '세로',
     pages: productBook ? Math.max(2, productPages) : totalPages(o),
     innerPages: innerPreview.doc ? innerPreview.total : totalPages(o),
@@ -2023,9 +2026,11 @@ async function createEngine(mount, bookCallbacks) {
   /* A sheet or a book stands up and is read from a low three-quarter on the
      left, which is where its spine and fold are. A card lies down, so it has
      to be looked at from above or it disappears edge-on. */
-  const viewDir = (mode) => (mode === 'print'
-    ? new THREE.Vector3(-0.3, 0.9, 0.85).normalize()
-    : new THREE.Vector3(-0.38, 0.32, 1).normalize());
+  const viewDir = (mode) => {
+    if (mode === 'print') return new THREE.Vector3(-0.3, 0.9, 0.85).normalize();
+    if (mode === 'book') return new THREE.Vector3(-0.7, 0.48, 1).normalize();
+    return new THREE.Vector3(-0.38, 0.32, 1).normalize();
+  };
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -2053,10 +2058,20 @@ async function createEngine(mount, bookCallbacks) {
 
   function configurePreview(D) {
     const poster = D.mode === 'poster';
+    const book = D.mode === 'book';
     mount.parentElement.classList.toggle('is-poster-preview', poster);
     renderer.setClearColor(0xffffff, poster ? 1 : 0);
     renderer.shadowMap.enabled = false;
     key.castShadow = false;
+    /* The reference viewer keeps its key at world-space 5/5/5. The book
+       therefore moves through the light as it rotates, rather than carrying
+       a camera light that makes every angle equally bright. A weak sky fill
+       retains print colour while the fixed key describes cover, spine and
+       page edges. */
+    key.position.set(5, 5, 5);
+    key.intensity = book ? 1.45 : 1.75;
+    rim.intensity = book ? 0 : 0.9;
+    fill.intensity = book ? 0.34 : 0.48;
     controls.enablePan = poster;
     controls.minPolarAngle = poster ? 0.001 : 0.15;
     controls.maxPolarAngle = poster ? Math.PI - 0.001 : Math.PI * 0.52;
@@ -2335,6 +2350,26 @@ async function createEngine(mount, bookCallbacks) {
     color: 0xeeeeee, roughness: 0.95, roughnessMap: finishMap,
   });
 
+  /* The reference book starts with reflection, grain and clearcoat at zero.
+     Preserve the uploaded ink exactly and let the fixed key create the
+     shading; a restrained dielectric response keeps the cover from looking
+     like either plastic or an unlit screenshot. */
+  function bookCoverMat(D, slot, label) {
+    const map = D.cover ? texFor(slot, label) : null;
+    if (map) map.anisotropy = maxAniso;
+    return new THREE.MeshPhysicalMaterial({
+      map,
+      color: map ? 0xffffff : 0xf2f2f2,
+      roughness: 0.78,
+      metalness: 0,
+      ior: 1.46,
+      specularIntensity: 0.18,
+      envMapIntensity: 0.42,
+      clearcoat: 0,
+      sheen: 0,
+    });
+  }
+
   /* the fore edge and the head and tail of a book, ruled into sheets. The
      stripes have to run across the stack, which is a different axis on the
      side faces than on the top, so each gets its own turn of the map. */
@@ -2521,8 +2556,7 @@ async function createEngine(mount, bookCallbacks) {
     const cover = 0.006;
 
     const g = new THREE.Group();
-    const coverMat = (slot, label) =>
-      paperMat(D.coverCoating, D.coverPaper, D.cover ? texFor(slot, label) : null);
+    const coverMat = (slot, label) => bookCoverMat(D, slot, label);
 
     /* The pages, inset a hair so the cover overhangs like a real trim, and
        ruled on every exposed side so the stack reads as sheets. */
@@ -2537,9 +2571,9 @@ async function createEngine(mount, bookCallbacks) {
     const block = new THREE.Mesh(new THREE.BoxGeometry(w * 0.985, h * 0.985, d), blockEdge);
     g.add(block);
 
-    /* a bound cover lifts a little off the block towards the fore edge —
-       that curve is the only thing that puts a gradient across it */
-    const front = sheet(w, h, cover, coverMat('cover', '표지'), pageBlock(), w * 0.014);
+    /* Keep the cover plane true; the fixed key produces its gradient while
+       the hinge groove and separate spine provide the physical detail. */
+    const front = sheet(w, h, cover, coverMat('cover', '표지'), pageBlock());
     front.position.z = d / 2 + cover / 2;
     g.add(front);
 
@@ -2590,12 +2624,30 @@ async function createEngine(mount, bookCallbacks) {
         });
 
       } else {
+        /* Perfect binding has a flat printed back, not a half cylinder. The
+           narrow hinge grooves beside it are what make a thin cover read as
+           something that can flex when the book opens. */
+        const edge = cutEdge();
         const spine = new THREE.Mesh(
-          new THREE.CylinderGeometry(d / 2 + cover, d / 2 + cover, h, 24, 1, true,
-            Math.PI / 2, Math.PI),
-          coverMat('spine', '책등'));
-        spine.position.x = -w / 2;
+          new THREE.BoxGeometry(cover, h, d + cover * 2, 1, 1, 1),
+          [pageBlock(), coverMat('spine', '책등'), edge, edge, edge, edge]);
+        spine.position.x = -(w / 2 + cover / 2);
         g.add(spine);
+
+        const grooveWidth = Math.max(0.0025, 1 * s);
+        const grooveX = -w / 2 + 3 * s + grooveWidth / 2;
+        const grooveMat = new THREE.MeshStandardMaterial({
+          color: 0x777777, roughness: 1, transparent: true, opacity: 0.16,
+          depthWrite: false, side: THREE.DoubleSide,
+        });
+        const frontGroove = new THREE.Mesh(
+          new THREE.PlaneGeometry(grooveWidth, h * 0.985), grooveMat);
+        frontGroove.position.set(grooveX, 0, d / 2 + cover + 0.0006);
+        g.add(frontGroove);
+        const backGroove = frontGroove.clone();
+        backGroove.position.z = -(d / 2 + cover + 0.0006);
+        backGroove.rotation.y = Math.PI;
+        g.add(backGroove);
 
         if (D.bind === '사철제본') {
           /* 사철은 대장을 실로 꿰므로 책등에 땀이 줄지어 남는다 */
@@ -2769,8 +2821,7 @@ async function createEngine(mount, bookCallbacks) {
     bookMotion.targetProgress = 0;
 
     const g = new THREE.Group();
-    const coverMat = (slot, label) =>
-      paperMat(D.coverCoating, D.coverPaper, D.cover ? texFor(slot, label) : null);
+    const coverMat = (slot, label) => bookCoverMat(D, slot, label);
     const leaves = Math.max(2, D.pages / 2);
     const blockEdge = [
       stackedEdge(leaves, false), stackedEdge(leaves, false),
