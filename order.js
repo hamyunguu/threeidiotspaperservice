@@ -2239,29 +2239,6 @@ async function createEngine(mount, bookCallbacks) {
 
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
 
-  /* fibre tooth, as a normal map: high-frequency, very shallow */
-  const fibreMap = (() => {
-    const n = 512;
-    const c = document.createElement('canvas');
-    c.width = n;
-    c.height = n;
-    const g = c.getContext('2d');
-    const img = g.createImageData(n, n);
-    for (let i = 0; i < n * n; i++) {
-      const d = (Math.random() - 0.5) * 34;
-      img.data[i * 4] = 128 + d;                       // x slope
-      img.data[i * 4 + 1] = 128 + (Math.random() - 0.5) * 34;
-      img.data[i * 4 + 2] = 255;
-      img.data[i * 4 + 3] = 255;
-    }
-    g.putImageData(img, 0, 0);
-    const t = new THREE.CanvasTexture(c);
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(9, 9);
-    t.anisotropy = maxAniso;
-    return t;
-  })();
-
   /* a low-frequency wash so the finish is never perfectly even */
   const finishMap = (() => {
     const n = 256;
@@ -2311,10 +2288,12 @@ async function createEngine(mount, bookCallbacks) {
 
   /* ---- materials ---- */
 
-  /* Coating is the whole difference between a matt and a glossy sheet, and
-     uncoated stock (모조·반누보·레자크…) never gets a sheen at all. On top of
-     that every sheet carries the fibre tooth and the uneven finish, which is
-     what keeps a grazing highlight from looking like a plastic card. */
+  /* Print inspection takes priority over a product-shot gloss effect.
+     The reference poster uses roughness 1 / specular .1 / no clearcoat for
+     matte. Gloss stays distinct, but uses a broader, weaker reflection so
+     dark artwork remains legible as the sheet flutters under fixed lights.
+     Do not multiply roughness by finishMap: its ~.5 values halve roughness
+     and produce the clustered white highlights this preview must avoid. */
   function paperMat(coating, paperName, map) {
     const uncoated = /모조|미색|반누보|레자크|색지|크라프트|마쉬멜로우/.test(paperName || '');
     const gloss = coating === '유광';
@@ -2322,28 +2301,14 @@ async function createEngine(mount, bookCallbacks) {
     const m = new THREE.MeshPhysicalMaterial({
       map: map || null,
       color: map ? 0xffffff : 0xf2f2f2,
-      roughness: gloss ? 0.13 : matt ? 0.44 : (uncoated ? 0.9 : 0.7),
-      roughnessMap: finishMap,
-      normalMap: fibreMap,
-      normalScale: new THREE.Vector2(
-        uncoated && !gloss ? 0.16 : 0.07,
-        uncoated && !gloss ? 0.16 : 0.07),
+      roughness: gloss ? 0.42 : 1,
       metalness: 0,
-      ior: 1.47,
-      anisotropy: uncoated && !gloss ? 0.22 : 0.06,
-      anisotropyRotation: Math.PI / 2,
-      clearcoat: gloss ? 1 : matt ? 0.28 : 0,
-      clearcoatRoughness: gloss ? 0.08 : 0.4,
-      /* uncoated stock scatters at the surface — that soft off-angle glow is
-         sheen, not specular */
-      sheen: uncoated && !gloss ? 0.5 : 0.15,
-      sheenRoughness: 0.85,
-      sheenColor: new THREE.Color(0xf7f7f7),
-      envMapIntensity: gloss ? 1.15 : 0.95,
-      specularIntensity: gloss ? 1 : (uncoated ? 0.32 : 0.55),
-      specularColor: new THREE.Color(uncoated ? 0xf2f2f2 : 0xffffff),
-      clearcoatNormalMap: gloss || matt ? fibreMap : null,
-      clearcoatNormalScale: new THREE.Vector2(0.025, 0.025),
+      ior: 1.4,
+      clearcoat: gloss ? 0.06 : 0,
+      clearcoatRoughness: 0.5,
+      sheen: 0,
+      envMapIntensity: 0.45,
+      specularIntensity: gloss ? 0.25 : matt ? 0.1 : (uncoated ? 0.04 : 0.06),
     });
     if (map) map.anisotropy = maxAniso;
     return m;
