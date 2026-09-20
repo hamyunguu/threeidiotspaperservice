@@ -848,8 +848,9 @@ function seedDefaults(mode) {
     if (s.t === 'size') {
       o[s.key] = s.value;
       const d = parseDim(s.value);
-      o.goods_size_w = d.w; o.goods_size_h = d.h;
-      o.size_w_plus = d.w; o.size_h_plus = d.h;
+      o.goods_size_w = mode === 'poster' ? Math.min(d.w, d.h) : d.w;
+      o.goods_size_h = mode === 'poster' ? Math.max(d.w, d.h) : d.h;
+      o.size_w_plus = o.goods_size_w; o.size_h_plus = o.goods_size_h;
 
     } else if (s.t === 'basic') {
       (s.qty || []).forEach((q) => { o[q.key] = q.value; });
@@ -2020,6 +2021,12 @@ async function createEngine(mount, bookCallbacks) {
   const scene = new THREE.Scene();
 
   const camera = new THREE.PerspectiveCamera(29, 1, 0.1, 100);
+  /* OrbitControls drives an input camera. The rendering camera keeps its
+     viewing direction while the model turns under world-fixed lighting. */
+  const renderCamera = camera.clone();
+  const modelPivot = new THREE.Group();
+  scene.add(modelPivot);
+  const modelRotation = new THREE.Quaternion();
   const fitCenter = new THREE.Vector3();
   let fitDist = 6;
 
@@ -2114,7 +2121,7 @@ async function createEngine(mount, bookCallbacks) {
   /* the key only sets which way the highlight runs; the environment carries
      the exposure, so it stays gentle */
   const key = new THREE.DirectionalLight(0xffffff, 1.75);
-  key.position.set(-3.5, 9, 6.5);
+  key.position.set(5, 5, 5);
   scene.add(key);
   key.shadow.mapSize.set(2048, 2048);
   Object.assign(key.shadow.camera, { left: -5, right: 5, top: 6, bottom: -5, near: 0.5, far: 25 });
@@ -2132,7 +2139,7 @@ async function createEngine(mount, bookCallbacks) {
   scene.add(fill);
 
   let root = new THREE.Group();
-  scene.add(root);
+  modelPivot.add(root);
   let flexibleSheet = null;
   const flexDynamics = {
     displacement: 0, velocity: 0, motion: 0, phase: 0,
@@ -2403,9 +2410,9 @@ async function createEngine(mount, bookCallbacks) {
       if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
     });
     perBuild.splice(0).forEach((t) => t.dispose());
-    scene.remove(root);
+    modelPivot.remove(root);
     root = new THREE.Group();
-    scene.add(root);
+    modelPivot.add(root);
   }
 
   /* mm -> world, longest edge of the product spanning 3 units */
@@ -2946,6 +2953,11 @@ async function createEngine(mount, bookCallbacks) {
      is orbited, so what has to fit is the same from every angle. keepAngle
      holds whatever the user has turned to across an option change. */
   function fitCamera(keepAngle) {
+    /* Measure the unrotated model, so repeated resize/option changes cannot
+       grow its framing bounds as the preview rotates. */
+    modelPivot.quaternion.identity();
+    modelPivot.position.set(0, 0, 0);
+    modelPivot.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(root);
     if (box.isEmpty()) return;
     const sphere = box.getBoundingSphere(new THREE.Sphere());
@@ -2967,15 +2979,31 @@ async function createEngine(mount, bookCallbacks) {
     controls.update();
   }
 
+  function syncModelView() {
+    const mode = current ? current.mode : state.mode;
+    const direction = mode === 'poster'
+      ? new THREE.Vector3(-0.65, 0.3, 1).normalize() : viewDir(mode);
+    renderCamera.copy(camera);
+    renderCamera.position.copy(controls.target).addScaledVector(
+      direction, camera.position.distanceTo(controls.target));
+    renderCamera.lookAt(controls.target);
+    renderCamera.updateMatrixWorld(true);
+    modelRotation.copy(camera.quaternion).invert().premultiply(renderCamera.quaternion);
+    modelPivot.quaternion.copy(modelRotation);
+    modelPivot.position.copy(controls.target).sub(
+      controls.target.clone().applyQuaternion(modelRotation));
+    modelPivot.updateMatrixWorld(true);
+  }
+
   /* ---- loop ---- */
 
   let raf = null;
   let running = false;
   let current = null;
 
-  /* A poster is not a rigid card. OrbitControls turns the camera, but to the
-     person dragging it that is equivalent to turning the sheet in their
-     hand. Camera angular velocity therefore drives a damped spring in the
+  /* A poster is not a rigid card. OrbitControls turns the input camera and
+     syncModelView transfers that rotation to the sheet. Input angular
+     velocity therefore drives a damped spring in the
      paper surface. The motion persists briefly after release, then settles
      back onto the original gentle bow. */
   function animateFlexibleSheet(now) {
@@ -3097,7 +3125,8 @@ async function createEngine(mount, bookCallbacks) {
     const rect = renderer.domElement.getBoundingClientRect();
     bookPointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     bookPointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    bookRaycaster.setFromCamera(bookPointer, camera);
+    syncModelView();
+    bookRaycaster.setFromCamera(bookPointer, renderCamera);
     const hits = bookRaycaster.intersectObjects(
       [rig.flipPage, rig.leftPage, rig.rightPage].filter((mesh) => mesh.visible), false);
     return hits[0]?.object.userData.bookSide || null;
@@ -3151,7 +3180,8 @@ async function createEngine(mount, bookCallbacks) {
     controls.update();
     animateFlexibleSheet(stamp);
     animateBook(stamp);
-    renderer.render(scene, camera);
+    syncModelView();
+    renderer.render(scene, renderCamera);
     raf = requestAnimationFrame(frame);
   }
 
