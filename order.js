@@ -2059,6 +2059,7 @@ async function createEngine(mount, bookCallbacks) {
   function configurePreview(D) {
     const poster = D.mode === 'poster';
     const book = D.mode === 'book';
+    const freeOrbit = poster || book;
     mount.parentElement.classList.toggle('is-poster-preview', poster);
     renderer.setClearColor(0xffffff, poster ? 1 : 0);
     renderer.shadowMap.enabled = false;
@@ -2073,8 +2074,8 @@ async function createEngine(mount, bookCallbacks) {
     rim.intensity = book ? 0 : 0.9;
     fill.intensity = book ? 0.34 : 0.48;
     controls.enablePan = poster;
-    controls.minPolarAngle = poster ? 0.001 : 0.15;
-    controls.maxPolarAngle = poster ? Math.PI - 0.001 : Math.PI * 0.52;
+    controls.minPolarAngle = freeOrbit ? 0.001 : 0.15;
+    controls.maxPolarAngle = freeOrbit ? Math.PI - 0.001 : Math.PI * 0.52;
     renderer.domElement.setAttribute('aria-label', poster
       ? '포스터 3D 미리보기. 드래그 또는 방향키로 회전, Shift 드래그로 이동, 휠로 확대'
       : '인쇄물 3D 미리보기. 드래그로 회전, 휠로 확대');
@@ -2993,11 +2994,11 @@ async function createEngine(mount, bookCallbacks) {
     const angularSpeed = THREE.MathUtils.clamp((yaw + pitch) / dt, -3, 3);
     const speedAbs = Math.abs(angularSpeed);
 
-    D.velocity += (angularSpeed * 1.15 - D.displacement * 30 - D.velocity * 7.2) * dt;
+    D.velocity += (angularSpeed * 0.55 - D.displacement * 24 - D.velocity * 9) * dt;
     D.displacement = THREE.MathUtils.clamp(
-      D.displacement + D.velocity * dt, -0.085, 0.085);
-    D.motion = Math.max(D.motion * Math.exp(-5.2 * dt), Math.min(0.036, speedAbs * 0.014));
-    D.phase += dt * (6.5 + D.motion * 95);
+      D.displacement + D.velocity * dt, -0.035, 0.035);
+    D.motion = Math.max(D.motion * Math.exp(-6.5 * dt), Math.min(0.012, speedAbs * 0.0045));
+    D.phase += dt * (2.1 + D.motion * 35);
     D.lastTime = now;
     D.lastView.copy(view);
 
@@ -3011,13 +3012,13 @@ async function createEngine(mount, bookCallbacks) {
       const xn = base[n] / halfW;
       const yn = base[n + 1] / h + 0.5;
       const freeEdge = 0.18 + 0.82 * Math.pow(Math.abs(xn), 1.35);
-      const phase = posterPreview.time * 2.4;
+      const phase = posterPreview.time * 0.65;
       const primary = Math.sin(yn * Math.PI * 1.55 + D.phase + xn * 0.8);
       const ripple = Math.sin(yn * Math.PI * 3.1 - D.phase * 1.4 + xn * 1.7);
       // A broad travelling bend reads as paper, without the tiny noisy ripples
       // of the previous camera-only effect. Pause freezes the wind phase.
       const wave = Math.sin(yn * Math.PI * 2 - phase + xn * 0.35);
-      const amplitude = h * 0.085 * posterPreview.flutter;
+      const amplitude = h * 0.028 * posterPreview.flutter;
       const curl = posterPreview.curl * h * 0.26 * Math.pow(Math.abs(xn), 5);
       pos.array[n + 1] = base[n + 1] - (yn - 0.5) * amplitude * 0.12;
       pos.array[n + 2] = base[n + 2] +
