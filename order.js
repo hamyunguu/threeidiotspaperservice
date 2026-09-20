@@ -2070,9 +2070,9 @@ async function createEngine(mount, bookCallbacks) {
        retains print colour while the fixed key describes cover, spine and
        page edges. */
     key.position.set(5, 5, 5);
-    key.intensity = book ? 1.45 : 1.75;
+    key.intensity = book ? 1.35 : 1.75;
     rim.intensity = book ? 0 : 0.9;
-    fill.intensity = book ? 0.34 : 0.48;
+    fill.intensity = book ? 0.42 : 0.48;
     controls.enablePan = poster;
     controls.minPolarAngle = freeOrbit ? 0.001 : 0.15;
     controls.maxPolarAngle = freeOrbit ? Math.PI - 0.001 : Math.PI * 0.52;
@@ -2361,11 +2361,11 @@ async function createEngine(mount, bookCallbacks) {
     return new THREE.MeshPhysicalMaterial({
       map,
       color: map ? 0xffffff : 0xf2f2f2,
-      roughness: 0.78,
+      roughness: 0.82,
       metalness: 0,
       ior: 1.46,
-      specularIntensity: 0.18,
-      envMapIntensity: 0.42,
+      specularIntensity: 0.12,
+      envMapIntensity: 0.3,
       clearcoat: 0,
       sheen: 0,
     });
@@ -3012,13 +3012,13 @@ async function createEngine(mount, bookCallbacks) {
       const xn = base[n] / halfW;
       const yn = base[n + 1] / h + 0.5;
       const freeEdge = 0.18 + 0.82 * Math.pow(Math.abs(xn), 1.35);
-      const phase = posterPreview.time * 0.65;
+      const phase = posterPreview.time * 0.78;
       const primary = Math.sin(yn * Math.PI * 1.55 + D.phase + xn * 0.8);
       const ripple = Math.sin(yn * Math.PI * 3.1 - D.phase * 1.4 + xn * 1.7);
       // A broad travelling bend reads as paper, without the tiny noisy ripples
       // of the previous camera-only effect. Pause freezes the wind phase.
       const wave = Math.sin(yn * Math.PI * 2 - phase + xn * 0.35);
-      const amplitude = h * 0.028 * posterPreview.flutter;
+      const amplitude = h * 0.034 * posterPreview.flutter;
       const curl = posterPreview.curl * h * 0.26 * Math.pow(Math.abs(xn), 5);
       pos.array[n + 1] = base[n + 1] - (yn - 0.5) * amplitude * 0.12;
       pos.array[n + 2] = base[n + 2] +

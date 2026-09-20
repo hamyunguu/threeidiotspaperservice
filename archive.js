@@ -1,4 +1,4 @@
-import { ARCHIVE_SPECS } from './archive-data.js?v=113';
+import { ARCHIVE_SPECS } from './archive-data.js?v=114';
 
 /* ---------------------------------------------------------------
    Program archive — Figma 559:606 (꿰기) / 695:886 (묶기) / 695:984 (풀기),
@@ -25,7 +25,7 @@ import { ARCHIVE_SPECS } from './archive-data.js?v=113';
    the window scrolls it.
    --------------------------------------------------------------- */
 
-const V = '?v=113';
+const V = '?v=114';
 
 /* ---------------- the session mark (476:719) ----------------
    Five 76px discs on a 284 box, with the two syllables laid over the
