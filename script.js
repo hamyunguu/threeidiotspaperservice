@@ -127,8 +127,14 @@ function step(b, dt, yBounds) {
   // bounce off the frame edges
   if (b.x < BALL_R)           { b.x = BALL_R;           b.heading = Math.PI - b.heading; }
   if (b.x > STAGE_W - BALL_R) { b.x = STAGE_W - BALL_R; b.heading = Math.PI - b.heading; }
-  if (b.y < yBounds.min)      { b.y = yBounds.min;      b.heading = -b.heading; }
-  if (b.y > yBounds.max)      { b.y = yBounds.max;      b.heading = -b.heading; }
+  if (b.y < yBounds.min) {
+    b.y = yBounds.min;
+    if (Math.sin(b.heading) < 0) b.heading = -b.heading;
+  }
+  if (b.y > yBounds.max) {
+    b.y = yBounds.max;
+    if (Math.sin(b.heading) > 0) b.heading = -b.heading;
+  }
 
   b.rot += b.spin * dt;
 }
@@ -319,11 +325,24 @@ window.addEventListener('blur', () => balls.forEach(release));
 
 let running = false;
 let last = 0;
+let previousYBounds = ballYBounds();
 
 function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.05);   // clamp after tab switches
   last = now;
   const yBounds = ballYBounds();
+
+  /* Scrolling moves the archive's visible slice through the long stage. Move
+     the spheres by the same amount so their screen-space motion stays smooth;
+     otherwise the advancing top edge repeatedly catches and flips them. */
+  const viewportShift = yBounds.min - previousYBounds.min;
+  if (viewportShift) {
+    balls.forEach((b) => {
+      b.y += viewportShift;
+      b.drag?.samples.forEach((sample) => { sample.y += viewportShift; });
+    });
+  }
+  previousYBounds = yBounds;
 
   balls.forEach((b) => { if (!b.drag && !b.frozen) step(b, dt, yBounds); });
   resolveCollisions(yBounds);
@@ -467,7 +486,7 @@ document.querySelectorAll('.ball[data-letter]').forEach((el) => {
   el.style.setProperty('--gh', `${m.gh}px`);
   el.classList.toggle('is-dark', m.dark);
   const img = document.createElement('img');
-  img.src = `assets/${m.file}?v=117`;
+  img.src = `assets/${m.file}?v=118`;
   img.alt = '';
   el.appendChild(img);
 });
@@ -503,7 +522,7 @@ function openTip(b) {
   overlay.className = 'tip-overlay';
   overlay.innerHTML =
     `<div class="tip-circle${meta.dark ? ' is-dark' : ''}" style="--tip:${meta.color}; --gh:${meta.gh}px">
-       <img class="tip-letter" src="assets/${meta.file}?v=117" alt="">
+       <img class="tip-letter" src="assets/${meta.file}?v=118" alt="">
        <div class="tip-copy">
          <div class="tip-title"></div>
          <div class="tip-body"></div>
