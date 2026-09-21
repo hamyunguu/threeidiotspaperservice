@@ -54,9 +54,31 @@ document.querySelectorAll('[data-href]:not(.ball)').forEach((el) => {
 const rand = (min, max) => min + Math.random() * (max - min);
 const clamp = (v, min, max) => (v < min ? min : v > max ? max : v);
 
-/* spheres roam the visible frame, which grows when a program card opens */
+/* Most pages let the spheres roam the whole frame. The archive is taller than
+   the window, so its vertical bounds follow the currently visible slice. */
 const stageH = () =>
   parseFloat(getComputedStyle(document.body).getPropertyValue('--stage-h'));
+
+function ballYBounds() {
+  const height = stageH();
+  if (!document.body.classList.contains('archive')) {
+    return { min: BALL_R, max: height - BALL_R };
+  }
+
+  const rect = stage.getBoundingClientRect();
+  const scale = rect.width / STAGE_W || 1;
+  const visibleTop = clamp(-rect.top / scale, 0, height);
+  const visibleBottom = clamp(
+    (window.innerHeight - rect.top) / scale,
+    visibleTop,
+    height,
+  );
+
+  return {
+    min: visibleTop + BALL_R,
+    max: visibleBottom - BALL_R,
+  };
+}
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -85,7 +107,7 @@ function draw(b) {
     (b.drag ? ' scale(1.08)' : '');
 }
 
-function step(b, dt, maxY) {
+function step(b, dt, yBounds) {
   // a hard throw flies straight; the wander fades back in as it slows down
   const wander = clamp(b.cruise / Math.max(b.speed, 1), 0, 1);
   b.omega += (Math.random() - 0.5) * 1.4 * dt * wander;
@@ -105,8 +127,8 @@ function step(b, dt, maxY) {
   // bounce off the frame edges
   if (b.x < BALL_R)           { b.x = BALL_R;           b.heading = Math.PI - b.heading; }
   if (b.x > STAGE_W - BALL_R) { b.x = STAGE_W - BALL_R; b.heading = Math.PI - b.heading; }
-  if (b.y < BALL_R)           { b.y = BALL_R;           b.heading = -b.heading; }
-  if (b.y > maxY - BALL_R)    { b.y = maxY - BALL_R;    b.heading = -b.heading; }
+  if (b.y < yBounds.min)      { b.y = yBounds.min;      b.heading = -b.heading; }
+  if (b.y > yBounds.max)      { b.y = yBounds.max;      b.heading = -b.heading; }
 
   b.rot += b.spin * dt;
 }
@@ -170,7 +192,7 @@ function collide(a, b) {
   }
 }
 
-function resolveCollisions(maxY) {
+function resolveCollisions(yBounds) {
   for (let i = 0; i < balls.length; i++) {
     for (let j = i + 1; j < balls.length; j++) collide(balls[i], balls[j]);
   }
@@ -178,7 +200,7 @@ function resolveCollisions(maxY) {
   balls.forEach((b) => {
     if (b.drag || b.frozen) return;
     b.x = clamp(b.x, BALL_R, STAGE_W - BALL_R);
-    b.y = clamp(b.y, BALL_R, maxY - BALL_R);
+    b.y = clamp(b.y, yBounds.min, yBounds.max);
   });
 }
 
@@ -238,9 +260,9 @@ window.addEventListener('pointermove', (e) => {
   const b = heldBy(e.pointerId);
   if (!b) return;
   const p = toDesign(e.clientX, e.clientY);
-  const maxY = stageH();
+  const yBounds = ballYBounds();
   b.x = clamp(p.x - b.drag.offX, BALL_R, STAGE_W - BALL_R);
-  b.y = clamp(p.y - b.drag.offY, BALL_R, maxY - BALL_R);
+  b.y = clamp(p.y - b.drag.offY, yBounds.min, yBounds.max);
 
   b.drag.travel += Math.hypot(e.clientX - b.drag.lastX, e.clientY - b.drag.lastY);
   b.drag.lastX = e.clientX;
@@ -301,10 +323,10 @@ let last = 0;
 function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.05);   // clamp after tab switches
   last = now;
-  const maxY = stageH();
+  const yBounds = ballYBounds();
 
-  balls.forEach((b) => { if (!b.drag && !b.frozen) step(b, dt, maxY); });
-  resolveCollisions(maxY);
+  balls.forEach((b) => { if (!b.drag && !b.frozen) step(b, dt, yBounds); });
+  resolveCollisions(yBounds);
   balls.forEach(draw);
 
   // with reduced motion the spheres settle to a stop, so let the loop idle out
@@ -324,6 +346,9 @@ function ensureLoop() {
 
 balls.forEach(draw);
 if (balls.length) ensureLoop();
+/* Reduced-motion mode normally lets the loop sleep. Wake it when the archive
+   viewport moves so stationary spheres are still pulled into the visible area. */
+window.addEventListener('scroll', ensureLoop, { passive: true });
 
 /* ---------------- print-tip overlay ----------------
    Tapping a sphere grows it into a big centred circle carrying a print tip,
@@ -442,7 +467,7 @@ document.querySelectorAll('.ball[data-letter]').forEach((el) => {
   el.style.setProperty('--gh', `${m.gh}px`);
   el.classList.toggle('is-dark', m.dark);
   const img = document.createElement('img');
-  img.src = `assets/${m.file}?v=116`;
+  img.src = `assets/${m.file}?v=117`;
   img.alt = '';
   el.appendChild(img);
 });
@@ -478,7 +503,7 @@ function openTip(b) {
   overlay.className = 'tip-overlay';
   overlay.innerHTML =
     `<div class="tip-circle${meta.dark ? ' is-dark' : ''}" style="--tip:${meta.color}; --gh:${meta.gh}px">
-       <img class="tip-letter" src="assets/${meta.file}?v=116" alt="">
+       <img class="tip-letter" src="assets/${meta.file}?v=117" alt="">
        <div class="tip-copy">
          <div class="tip-title"></div>
          <div class="tip-body"></div>
