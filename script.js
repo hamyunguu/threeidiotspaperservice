@@ -327,9 +327,7 @@ let running = false;
 let last = 0;
 let previousYBounds = ballYBounds();
 
-function frame(now) {
-  const dt = Math.min((now - last) / 1000, 0.05);   // clamp after tab switches
-  last = now;
+function syncBallsToViewport() {
   const yBounds = ballYBounds();
 
   /* Scrolling moves the archive's visible slice through the long stage. Move
@@ -343,6 +341,13 @@ function frame(now) {
     });
   }
   previousYBounds = yBounds;
+  return yBounds;
+}
+
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 0.05);   // clamp after tab switches
+  last = now;
+  const yBounds = syncBallsToViewport();
 
   balls.forEach((b) => { if (!b.drag && !b.frozen) step(b, dt, yBounds); });
   resolveCollisions(yBounds);
@@ -365,9 +370,14 @@ function ensureLoop() {
 
 balls.forEach(draw);
 if (balls.length) ensureLoop();
-/* Reduced-motion mode normally lets the loop sleep. Wake it when the archive
-   viewport moves so stationary spheres are still pulled into the visible area. */
-window.addEventListener('scroll', ensureLoop, { passive: true });
+/* Apply the scroll offset before the browser's next paint instead of waiting
+   for the animation loop. That prevents a one-frame jump at the top edge and
+   also wakes stationary spheres when reduced motion is enabled. */
+window.addEventListener('scroll', () => {
+  syncBallsToViewport();
+  balls.forEach(draw);
+  ensureLoop();
+}, { passive: true });
 
 /* ---------------- print-tip overlay ----------------
    Tapping a sphere grows it into a big centred circle carrying a print tip,
@@ -486,7 +496,7 @@ document.querySelectorAll('.ball[data-letter]').forEach((el) => {
   el.style.setProperty('--gh', `${m.gh}px`);
   el.classList.toggle('is-dark', m.dark);
   const img = document.createElement('img');
-  img.src = `assets/${m.file}?v=118`;
+  img.src = `assets/${m.file}?v=119`;
   img.alt = '';
   el.appendChild(img);
 });
@@ -522,7 +532,7 @@ function openTip(b) {
   overlay.className = 'tip-overlay';
   overlay.innerHTML =
     `<div class="tip-circle${meta.dark ? ' is-dark' : ''}" style="--tip:${meta.color}; --gh:${meta.gh}px">
-       <img class="tip-letter" src="assets/${meta.file}?v=118" alt="">
+       <img class="tip-letter" src="assets/${meta.file}?v=119" alt="">
        <div class="tip-copy">
          <div class="tip-title"></div>
          <div class="tip-body"></div>
