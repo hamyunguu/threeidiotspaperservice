@@ -869,6 +869,9 @@ function renderForm(mode) {
     mode === 'poster' ? posterPaperSelect() : detailPaper(isBook ? '내지' : '인쇄 용지', 'in', mode, kind));
 
   if (isBook) {
+    add('finish', '제본 방식', Boolean(o.goods_jebon),
+      detailSelect('제본', 'goods_jebon', BINDINGS, '제본 선택') +
+      '<p class="ord-spec-note">책등은 페이지 수와 내지 평량으로 추정해 미리보기에 반영합니다.</p>');
     add('cover', '표지 사양', Boolean(o.cover_paper_group && o.cover_paper && o.cover_printer),
       detailSelect('표지 인쇄 도수', 'cover_printer', colors, '표지 색상 선택') +
       detailPaper('표지 용지', 'cover', mode, kind) +
@@ -876,9 +879,6 @@ function renderForm(mode) {
         ['기본 표지', '1 mm 합지', '1.5 mm 합지', '2 mm 합지'], '표지 두께 선택') +
       detailSelect('표지 코팅', 'cover_lastJob4', ['코팅 없음', '단면무광코팅', '단면유광코팅'], '코팅 선택') +
       detailSelect('표지 날개', 'cover_nalgae', ['날개없음', '날개있음'], '날개 선택'));
-    add('finish', '제본 방식', Boolean(o.goods_jebon),
-      detailSelect('제본', 'goods_jebon', BINDINGS, '제본 선택') +
-      '<p class="ord-spec-note">책등은 페이지 수와 내지 평량으로 추정해 미리보기에 반영합니다.</p>');
     add('book-extra', '책 세부 사양', true,
       detailSelect('책배·재단면 색', 'book_edge_color', ['기본 흰색', '검정', '색상 지정 상담'], '재단면 선택') +
       detailPreviewColor('book_edge_hex', '재단면 미리보기 색', 'book_edge_color') +
@@ -2858,6 +2858,61 @@ async function createEngine(mount, bookCallbacks) {
     return new THREE.Mesh(geometry, material);
   }
 
+  function roundedSpineTurnIn(x, outer, thickness, y, material) {
+    const positions = [];
+    const indices = [];
+    const inner = Math.max(0.002, outer - thickness);
+    const segments = 40;
+    for (let i = 0; i <= segments; i++) {
+      const theta = -Math.PI / 2 + i * Math.PI / segments;
+      positions.push(x - outer * Math.cos(theta), y, outer * Math.sin(theta),
+        x - inner * Math.cos(theta), y, inner * Math.sin(theta));
+      if (i < segments) {
+        const a = i * 2;
+        indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+      }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    material.side = THREE.DoubleSide;
+    return new THREE.Mesh(geometry, material);
+  }
+
+  /* A rounded case encloses a rounded text block. A rectangular block leaves
+     a conspicuous empty half tube at the head and tail; these curved sheets
+     fill that volume while retaining visible paper layers on the cut edge. */
+  function roundedPageSpine(baseX, bow, h, d, material) {
+    const positions = [];
+    const uvs = [];
+    const indices = [];
+    const segments = 32;
+    const halfDepth = d / 2;
+    const arcRadius = (bow * bow + halfDepth * halfDepth) / (2 * Math.max(bow, 0.0001));
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const z = (t - 0.5) * d;
+      const x = baseX + arcRadius - bow - Math.sqrt(Math.max(0, arcRadius * arcRadius - z * z));
+      positions.push(x, -h / 2, z, x, h / 2, z,
+        baseX, h / 2, z, baseX, -h / 2, z);
+      uvs.push(t, 0, t, 1, t, 1, t, 0);
+      if (i < segments) {
+        const a = i * 4;
+        indices.push(a, a + 1, a + 4, a + 1, a + 5, a + 4,
+          a + 1, a + 2, a + 5, a + 2, a + 6, a + 5,
+          a, a + 4, a + 3, a + 3, a + 4, a + 7);
+      }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    material.side = THREE.DoubleSide;
+    return new THREE.Mesh(geometry, material);
+  }
+
   /* A book, closed, seen from the spine side. */
   function buildClosedBook(D) {
     const s = unit(D);
@@ -2893,6 +2948,12 @@ async function createEngine(mount, bookCallbacks) {
       new THREE.BoxGeometry(w - pageInset * 2, h * 0.985, d), blockEdge);
     block.position.x = saddle ? pageInset : 0;
     g.add(block);
+    if (D.bind === '환양장') {
+      const innerClearance = cover + 0.45 * s;
+      g.add(roundedPageSpine(-w / 2 + pageInset,
+        Math.max(0, radius + pageInset - innerClearance),
+        h * 0.985, d, stackedEdge(leaves, false, D.edgeColor)));
+    }
 
     /* Flat printed faces meet either a wrapped spine or a continuous fold;
        the fixed key supplies their tonal gradient. */
@@ -2959,13 +3020,20 @@ async function createEngine(mount, bookCallbacks) {
             [pageBlock(), coverMat('spine', '책등'), edge, edge, edge, edge]);
         if (D.bind !== '환양장') spine.position.x = -(w / 2 + cover / 2);
         g.add(spine);
+        if (D.bind === '환양장') {
+          const turnInMat = new THREE.MeshStandardMaterial({
+            color: 0xf4f3f0, roughness: 0.94, side: THREE.DoubleSide,
+          });
+          g.add(roundedSpineTurnIn(-w / 2, radius, cover, -coverH / 2, turnInMat));
+          g.add(roundedSpineTurnIn(-w / 2, radius, cover, coverH / 2, turnInMat));
+        }
 
         if (hardcover) {
           [1, -1].forEach((side) => {
             const bridge = sheet(hinge + 0.3 * s, coverH, cover * 0.35,
               coverMat(side > 0 ? 'cover' : 'coverBack', side > 0 ? '표지' : '뒷표지'),
               pageBlock());
-            bridge.position.set(-w / 2 + hinge / 2, 0, side * (radius - cover * 0.28));
+            bridge.position.set(-w / 2 + hinge / 2, 0, side * (radius - cover * 0.12));
             g.add(bridge);
           });
         }
@@ -3159,6 +3227,16 @@ async function createEngine(mount, bookCallbacks) {
       new THREE.BoxGeometry(w * 0.985, h * 0.985, d), blockEdge);
     rightBlock.position.x = w / 2;
     g.add(rightBlock);
+    if (D.bind === '환양장') {
+      const radius = d / 2 + cover / 2;
+      g.add(roundedPageSpine(0, Math.max(0, radius - cover - 0.45 * s),
+        h * 0.985, d, stackedEdge(leaves, false, D.edgeColor)));
+      const turnInMat = new THREE.MeshStandardMaterial({
+        color: 0xf4f3f0, roughness: 0.94, side: THREE.DoubleSide,
+      });
+      g.add(roundedSpineTurnIn(0, radius, cover, -coverH / 2, turnInMat));
+      g.add(roundedSpineTurnIn(0, radius, cover, coverH / 2, turnInMat));
+    }
 
     const backCover = sheet(coverW, coverH, cover, pageBlock(), coverMat('coverBack', '뒷표지'));
     backCover.position.set(boardCenter, 0, -(d / 2 + cover / 2));
@@ -3177,7 +3255,7 @@ async function createEngine(mount, bookCallbacks) {
     if (hardcover) {
       const backBridge = sheet(hinge + 0.3 * s, coverH, cover * 0.35,
         pageBlock(), coverMat('coverBack', '뒷표지'));
-      backBridge.position.set(hinge / 2, 0, -(d / 2 + cover * 0.22));
+      backBridge.position.set(hinge / 2, 0, -(d / 2 + cover * 0.38));
       g.add(backBridge);
     }
 
@@ -3192,7 +3270,7 @@ async function createEngine(mount, bookCallbacks) {
     if (hardcover) {
       const frontBridge = sheet(hinge + 0.3 * s, coverH, cover * 0.35,
         coverMat('cover', '앞표지'), pageBlock());
-      frontBridge.position.set(hinge / 2, 0, -cover * 0.28);
+      frontBridge.position.set(hinge / 2, 0, -cover * 0.12);
       frontPivot.add(frontBridge);
     }
     g.add(frontPivot);
