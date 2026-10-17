@@ -18,12 +18,18 @@ const stage = document.getElementById('stage');
    so the expand transition and the resize share one source of truth. */
 let resizeTimer;
 
-/* Fill the browser width at the Figma frame's 16:9 ratio. Desktop browser
-   chrome often makes the content viewport wider than 16:9; fitting to its
-   shorter height used to leave large empty margins at both sides on iMac.
-   The frame keeps its proportions and scrolls vertically when necessary. */
+/* Fit the *content* viewport, not the physical display or Chrome's toolbar.
+   At 16:9 the complete Figma frame fits. Chrome's tabs/address bar can make
+   the content area wider than 16:9: in that case keep the frame's proportions,
+   fill the available width and let its bottom scroll. clientWidth excludes the
+   vertical scrollbar, so the right registration marks retain their margin. */
 function fit() {
-  const scale = window.innerWidth / STAGE_W;
+  const contentWidth = document.documentElement.clientWidth;
+  const widthScale = contentWidth / STAGE_W;
+  const heightScale = window.innerHeight / 1080;
+  const contentRatio = contentWidth / window.innerHeight;
+  const scale = Math.abs(contentRatio - STAGE_W / 1080) < 0.005
+    ? Math.min(widthScale, heightScale) : widthScale;
   document.documentElement.style.setProperty('--scale', scale);
 }
 
@@ -37,6 +43,8 @@ function onResize() {
 
 fit();
 window.addEventListener('resize', onResize);
+/* Long pages and opened cards can add a scrollbar without a window resize. */
+new ResizeObserver(fit).observe(document.documentElement);
 
 /* ---------------- data-href links ---------------- */
 
@@ -494,7 +502,7 @@ document.querySelectorAll('.ball[data-letter]').forEach((el) => {
   el.style.setProperty('--gh', `${m.gh}px`);
   el.classList.toggle('is-dark', m.dark);
   const img = document.createElement('img');
-  img.src = `assets/${m.file}?v=134`;
+  img.src = `assets/${m.file}?v=136`;
   img.alt = '';
   el.appendChild(img);
 });
@@ -530,7 +538,7 @@ function openTip(b) {
   overlay.className = 'tip-overlay';
   overlay.innerHTML =
     `<div class="tip-circle${meta.dark ? ' is-dark' : ''}" style="--tip:${meta.color}; --gh:${meta.gh}px">
-       <img class="tip-letter" src="assets/${meta.file}?v=134" alt="">
+       <img class="tip-letter" src="assets/${meta.file}?v=136" alt="">
        <div class="tip-copy">
          <div class="tip-title"></div>
          <div class="tip-body"></div>

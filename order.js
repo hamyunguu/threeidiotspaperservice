@@ -80,7 +80,7 @@ const PAPER_WEIGHTS = {
 };
 
 function paperProductFor(mode, productKind) {
-  if (mode === 'book' || productKind === '소책자') return 'book';
+  if (mode === 'book') return 'book';
   if (productKind === '리플렛') return 'leaflet';
   if (mode === 'product') return 'product';
   return 'poster';
@@ -262,9 +262,8 @@ const MODES = {
   },
 };
 
-/* The redesigned service has three top-level products. Products keeps the
-   existing name-card calculation as its base and exposes booklet/leaflet/
-   card as a nested choice, exactly like the Figma Products state. */
+/* The redesigned service has three top-level categories. Products keeps the
+   name-card calculation as its base and offers leaflet and card choices. */
 MODES.product = {
   ...MODES.print,
   label: 'Products',
@@ -690,7 +689,7 @@ function commonDone() {
     state.files[u.slot] && !state.files[u.slot].busy && !state.files[u.slot].error);
   const customSizeDone = state.pickedSize !== 'custom' ||
     ((parseInt(state.customSize.w, 10) || 0) > 0 && (parseInt(state.customSize.h, 10) || 0) > 0);
-  const needsPages = state.mode === 'book' || (state.mode === 'product' && state.opts.product_kind === '소책자');
+  const needsPages = state.mode === 'book';
   const order = Boolean(String(state.opts.customer_name || '').trim()) &&
     (parseInt(String(state.opts.goods_ea || '').replace(/[^\d]/g, ''), 10) || 0) > 0 &&
     (!needsPages || (parseInt(state.opts.in_page_val, 10) || 0) > 0) &&
@@ -759,8 +758,8 @@ function renderCommon(mode) {
   out.push(`<section class="ord-common-step" data-common-step="order">${commonHead(3, '주문 정보', done.order)}` +
     `<div class="ord-common-row"><label>주문 제목</label>${titleField}</div>` +
     `<div class="ord-common-row"><label>주문 수량</label><div class="ord-quantity-set">${qtyField}` +
-      `<span class="ord-unit-label">${mode === 'book' || (mode === 'product' && o.product_kind === '소책자') ? '부' : '매'}</span>` +
-      (mode === 'book' || (mode === 'product' && o.product_kind === '소책자') ? `${pageField}<span class="ord-unit-label">페이지</span>` : '') +
+      `<span class="ord-unit-label">${mode === 'book' ? '부' : '매'}</span>` +
+      (mode === 'book' ? `${pageField}<span class="ord-unit-label">페이지</span>` : '') +
     `</div></div>` +
     `<div class="ord-common-row"><label>주문 일정</label><div class="ord-common-seg">${rush}${normal}</div></div>` +
     `${next}</section>`);
@@ -852,7 +851,6 @@ function renderForm(mode) {
   const colors = ['컬러 8도', '컬러 4도', '컬러 2도', '흑백 1도', '별색 지정', '상담 필요'];
   const isBook = mode === 'book';
   const kind = mode === 'product' ? o.product_kind : '';
-  const isBooklet = kind === '소책자';
   const isLeaflet = kind === '리플렛';
   let no = 0;
   const steps = [];
@@ -893,10 +891,6 @@ function renderForm(mode) {
   } else if (mode === 'poster') {
     add('finish', '후가공', Boolean(o.in_lastJob4),
       detailSingleSelect('in_lastJob4', ['코팅 없음', '무광 코팅', '유광 코팅', '재단'], '후가공 선택'));
-  } else if (isBooklet) {
-    add('finish', '제본 및 후가공', Boolean(o.goods_jebon),
-      detailSelect('제본 방식', 'goods_jebon', ['중철제본_세로형', '무선제본', '사철제본', 'PUR 제본', '제본 없음'], '제본 선택') +
-      detailSelect('표지 코팅', 'in_lastJob4', ['코팅 없음', '단면무광코팅', '단면유광코팅'], '코팅 선택'));
   } else if (isLeaflet) {
     add('finish', '접지 및 후가공', Boolean(o.in_lastJob4),
       detailSelect('코팅', 'in_lastJob4', ['코팅 없음', '단면무광코팅', '단면유광코팅', '양면무광코팅', '양면유광코팅'], '코팅 선택') +
@@ -1028,9 +1022,7 @@ function activeParts() {
 /* how many sheets a part eats per copy */
 function partSheets(p) {
   const o = state.opts;
-  if (p === 'in') return (state.mode === 'book' ||
-    (state.mode === 'product' && o.product_kind === '소책자'))
-    ? Math.max(1, (+o.in_page_val || 0) / 2) : 1;
+  if (p === 'in') return state.mode === 'book' ? Math.max(1, (+o.in_page_val || 0) / 2) : 1;
   if (p === 'in2') return Math.max(1, (+o.in2_page_val || 0) / 2);
   if (p === 'mun') return o.mun_page_values === '앞뒤2장씩' ? 4 : 2;
   if (p === 'ganji') return Math.max(1, +o.ganji_page_values || 1);
@@ -1077,8 +1069,7 @@ function estimate() {
   });
 
   let bind = 0;
-  if ((state.mode === 'book' || (state.mode === 'product' && o.product_kind === '소책자')) &&
-      o.goods_jebon && o.goods_jebon !== '제본 없음') {
+  if (state.mode === 'book' && o.goods_jebon && o.goods_jebon !== '제본 없음') {
     bind = (BIND_RATE[o.goods_jebon] || 0) * qty;
     if (o.goods_opt_pp) bind += 300 * qty;                  // 투명PP
     if (o.cover_nalgae === '날개있음') bind += 250 * qty;
@@ -1122,10 +1113,8 @@ function derive() {
   const paperLabel = `${o.in_paper_group || ''} ${o.in_paper || ''}`;
   const gsm = parseInt((paperLabel.match(/(\d+)\s*g/i) || [0, 160])[1], 10) || 160;
   const previewMode = state.mode === 'product'
-    ? (o.product_kind === '소책자' ? 'book' : o.product_kind === '리플렛' ? 'leaflet' : 'print')
+    ? (o.product_kind === '리플렛' ? 'leaflet' : 'print')
     : state.mode;
-  const productBook = state.mode === 'product' && previewMode === 'book';
-  const productPages = productBook ? (+o.in_page_val || (flatPreview.doc ? flatPreview.total : 0)) : 0;
   return {
     mode: previewMode,
     sourceMode: state.mode,
@@ -1133,9 +1122,9 @@ function derive() {
     h: Math.max(1, +o.goods_size_h || 297),
     sides: o.in_mun_values === '양면출력' ? '양면' : '단면',
     coverSides: o.cover_mun_values === '양면출력' ? '양면' : '단면',
-    coating: productBook ? '없음' : coatOf(o.in_lastJob4),
+    coating: coatOf(o.in_lastJob4),
     backCoating: /양면/.test(o.in_lastJob4 || '') ? coatOf(o.in_lastJob4) : '없음',
-    coverCoating: productBook ? coatOf(o.in_lastJob4) : coatOf(o.cover_lastJob4),
+    coverCoating: coatOf(o.cover_lastJob4),
     coverThicknessMm: parseFloat(o.book_cover_thickness) || 0,
     edgeColor: o.book_edge_color === '검정' ? '#262626' :
       o.book_edge_color === '색상 지정 상담' ? o.book_edge_hex : '#f1f0eb',
@@ -1167,12 +1156,11 @@ function derive() {
        Once pages exist, the preview returns to the calculated real spine. */
     spine: bind === '제본 없음' ? 0 : (totalPages(o) ? senecaMm(o) : 20),
     direction: o.goods_jebon_direction || '세로',
-    pages: productBook ? Math.max(2, productPages) : totalPages(o),
-    innerPages: productBook && flatPreview.doc ? Math.max(1, flatPreview.total - 2)
-      : innerPreview.doc ? innerPreview.total : totalPages(o),
-    hasInner: Boolean(state.images.inner) || (productBook && Boolean(flatPreview.doc)),
+    pages: totalPages(o),
+    innerPages: innerPreview.doc ? innerPreview.total : totalPages(o),
+    hasInner: Boolean(state.images.inner),
     wings: o.cover_nalgae === '날개있음',
-    cover: productBook || Boolean(o.use_cover),
+    cover: Boolean(o.use_cover),
     ringColor: o.goods_opt_ring === '흰색' ? 0xf2f2f2 : 0x2b2b2b,
   };
 }
@@ -1373,8 +1361,7 @@ function paintDetailCompletion() {
     colors: Boolean(o.in_printer),
     paper: Boolean(o.in_paper_group && o.in_paper),
     cover: Boolean(o.cover_printer && o.cover_paper_group && o.cover_paper),
-    finish: Boolean(state.mode === 'book' || (state.mode === 'product' && o.product_kind === '소책자')
-      ? o.goods_jebon : o.in_lastJob4),
+    finish: Boolean(state.mode === 'book' ? o.goods_jebon : o.in_lastJob4),
     'book-extra': Boolean(o.book_edge_color || o.book_headband || o.book_ribbon),
   };
   form.querySelectorAll('.ord-detail-step[data-detail-step]').forEach((step, index) => {
@@ -1417,8 +1404,7 @@ function missingOrderRequirements() {
   if (!o.goods_orientation) add('판형 방향', 'common', '[data-common-step="size"]');
   if (!String(o.customer_name || '').trim()) add('주문 제목', 'common', '[data-common-step="order"]');
   if (quantity <= 0) add('주문 수량', 'common', '[data-common-step="order"]');
-  if ((state.mode === 'book' || (state.mode === 'product' && o.product_kind === '소책자')) &&
-      (parseInt(o.in_page_val, 10) || 0) <= 0) {
+  if (state.mode === 'book' && (parseInt(o.in_page_val, 10) || 0) <= 0) {
     add('페이지 수', 'common', '[data-common-step="order"]');
   }
   if (!o.quick_no) add('주문 일정', 'common', '[data-common-step="order"]');
@@ -1431,8 +1417,7 @@ function missingOrderRequirements() {
     if (!o.cover_paper_group) add('표지 종이 종류', 'detail', '[data-detail-step="cover"]');
     if (!o.cover_paper) add('표지 평량', 'detail', '[data-detail-step="cover"]');
   }
-  if (!(state.mode === 'book' || (state.mode === 'product' && o.product_kind === '소책자')
-    ? o.goods_jebon : o.in_lastJob4)) {
+  if (!(state.mode === 'book' ? o.goods_jebon : o.in_lastJob4)) {
     add(state.mode === 'book' ? '제본 방식' : '후가공', 'detail', '[data-detail-step="finish"]');
   }
   return missing;
@@ -1504,8 +1489,8 @@ function orderSnapshot() {
     product,
     title: String(o.customer_name || '').trim(),
     size: `${o.goods_size_w} × ${o.goods_size_h}mm · ${o.goods_orientation}`,
-    quantity: `${o.goods_ea}${state.mode === 'book' || o.product_kind === '소책자' ? '부' : '매'}` +
-      (state.mode === 'book' || o.product_kind === '소책자' ? ` · ${o.in_page_val}페이지` : ''),
+    quantity: `${o.goods_ea}${state.mode === 'book' ? '부' : '매'}` +
+      (state.mode === 'book' ? ` · ${o.in_page_val}페이지` : ''),
     options: `${o.in_paper_group} ${o.in_paper} · ${o.in_mun_values.replace('출력', '')} · ${o.in_printer}` +
       (state.mode === 'book' ? ` · 표지 ${o.cover_paper_group} ${o.cover_paper} · ${o.cover_printer}` : ''),
     finish: state.mode === 'book'
@@ -1868,28 +1853,6 @@ function flatPageImage(page) {
 }
 
 async function showFlatSheet(nextSheet) {
-  if (state.mode === 'product' && state.opts.product_kind === '소책자' && flatPreview.doc) {
-    const request = ++flatPreview.request;
-    const token = flatPreview.token;
-    try {
-      const [front, inside, back] = await Promise.all([
-        flatPageImage(1), flatPageImage(flatPreview.total > 2 ? 2 : 1),
-        flatPageImage(flatPreview.total),
-      ]);
-      if (token !== flatPreview.token || request !== flatPreview.request || !front) return;
-      state.images.front = front;
-      state.images.cover = front;
-      state.images.inner = inside || front;
-      state.images.coverBack = back || front;
-      if (!state.cartPreview) rememberCartPreview();
-      if (engine) engine.setTextures({ front, cover: front,
-        inner: inside || front, coverBack: back || front }, derive());
-      paintCaption();
-    } catch (err) {
-      console.error('[order] booklet PDF preview failed:', err);
-    }
-    return;
-  }
   const count = flatSheetCount();
   if (!count) return;
   const sheet = Math.max(0, Math.min(count - 1, nextSheet));
@@ -1995,11 +1958,6 @@ async function takePdf(file, slot) {
       if (flatToken !== flatPreview.token) return;
       flatPreview.doc = doc;
       flatPreview.total = doc.numPages;
-      if (state.mode === 'product' && state.opts.product_kind === '소책자') {
-        state.opts.in_page_val = doc.numPages;
-        const commonPages = common.querySelector('[data-common-key="in_page_val"]');
-        if (commonPages) commonPages.value = doc.numPages;
-      }
       await showFlatSheet(0);
       if (flatToken !== flatPreview.token) return;
       markUpload(slot, `${file.name} · ${doc.numPages}p`);
@@ -2024,16 +1982,6 @@ async function takePdf(file, slot) {
 }
 
 function requestInnerPages(numbers) {
-  if (state.mode === 'product' && state.opts.product_kind === '소책자' && flatPreview.doc) {
-    [...new Set(numbers.map((page) => Math.round(page)))].forEach((page) => {
-      if (page < 1 || page > Math.max(1, flatPreview.total - 2)) return;
-      const pdfPage = flatPreview.total > 2 ? page + 1 : 1;
-      flatPageImage(pdfPage).then((img) => {
-        if (img && engine) engine.setBookPageTexture(page, img);
-      }).catch((err) => console.error(`[order] booklet PDF page ${page} failed:`, err));
-    });
-    return;
-  }
   const doc = innerPreview.doc;
   const token = innerPreview.token;
   const requested = [...new Set(numbers.map((page) => Math.round(page)))];
@@ -2101,7 +2049,7 @@ document.getElementById('ordViewReset').addEventListener('click', () => {
 bookNav?.addEventListener('click', (e) => {
   const button = e.target.closest('[data-book-turn]');
   if (!button) return;
-  if (state.mode === 'book' || (state.mode === 'product' && state.opts.product_kind === '소책자')) {
+  if (state.mode === 'book') {
     if (engine) engine.turnBookPage(+button.dataset.bookTurn);
   } else {
     turnFlatSheet(+button.dataset.bookTurn);
@@ -2146,15 +2094,11 @@ productKinds.addEventListener('click', (e) => {
   state.customSize = { w: '', h: '' };
   state.opts.goods_orientation = '';
   const defaultSize = btn.dataset.kind === '명함' ? { name: '명함', w: 90, h: 50 }
-    : btn.dataset.kind === '리플렛' ? { name: 'A4', w: 210, h: 297 }
-      : { name: 'A5', w: 148, h: 210 };
+    : { name: 'A4', w: 210, h: 297 };
   state.opts.goods_size = defaultSize.name;
   state.opts.goods_size_w = state.opts.size_w_plus = defaultSize.w;
   state.opts.goods_size_h = state.opts.size_h_plus = defaultSize.h;
-  if (flatPreview.doc) {
-    if (btn.dataset.kind === '소책자') state.opts.in_page_val = flatPreview.total;
-    else delete state.images.inner;
-  }
+  if (flatPreview.doc) delete state.images.inner;
   productKinds.querySelectorAll('[data-kind]').forEach((b) => b.classList.toggle('is-on', b === btn));
   renderCommon(state.mode);
   renderForm(state.mode);
