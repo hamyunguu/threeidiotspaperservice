@@ -2516,10 +2516,10 @@ async function createEngine(mount, bookCallbacks) {
     g.fillStyle = '#f8f7f4';
     g.fillRect(0, 0, w, h);
     for (let x = 0; x < w; x++) {
-      const broad = 9 * Math.sin(x * 0.033) + 6 * Math.sin(x * 0.11);
-      const seam = x % 4 === 0 ? 33 : x % 4 === 1 ? 13 : 0;
-      const grain = 4 * Math.sin(x * 0.79);
-      const value = Math.max(178, Math.min(250, Math.round(238 + broad + grain - seam)));
+      const broad = 6 * Math.sin(x * 0.12) + 5 * Math.sin(x * 0.31);
+      const seam = x % 4 === 0 ? 29 : x % 4 === 1 ? 11 : 0;
+      const grain = 3 * Math.sin(x * 0.79);
+      const value = Math.max(190, Math.min(250, Math.round(240 + broad + grain - seam)));
       g.fillStyle = `rgb(${value},${value},${Math.max(0, value - 2)})`;
       g.fillRect(x, 0, 1, h);
     }
