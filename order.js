@@ -2618,13 +2618,14 @@ async function createEngine(mount, bookCallbacks) {
       const thread = new THREE.MeshStandardMaterial({ color: bandColor.clone().multiplyScalar(0.76), roughness: 0.95 });
       const bandRadius = Math.max(0.0015, 0.36 * s);
       const spineX = opened ? 0 : -w / 2;
-      const radius = d / 2 + cover / 2;
+      const spineCurve = Math.min(w * 0.018, d * 0.12, 2 * s);
+      const pageHalfDepth = Math.max(0.001, d / 2 - cover);
       [-1, 1].forEach((side) => {
         const points = [];
         for (let i = 0; i <= 32; i++) {
-          const z = -d * 0.46 + i * d * 0.92 / 32;
+          const z = -pageHalfDepth * 0.94 + i * pageHalfDepth * 1.88 / 32;
           const x = D.bind === '환양장'
-            ? spineX - Math.sqrt(Math.max(0, radius * radius - z * z)) + cover + 0.9 * s
+            ? spineX + spineCurve + cover - spineCurve * Math.sqrt(Math.max(0, 1 - (z / pageHalfDepth) ** 2)) + 0.35 * s
             : spineX + 1.25 * s;
           points.push(new THREE.Vector3(x, side * (h * 0.492 + 0.35 * s), z));
         }
@@ -2882,26 +2883,50 @@ async function createEngine(mount, bookCallbacks) {
     return new THREE.Mesh(geometry, material);
   }
 
-  function roundedSpineTurnIn(x, outer, thickness, y, material) {
+  /* A round case is a shallow elliptical bow across the book thickness.
+     The depth is at most 2 mm, independent of the stack's half thickness. */
+  function hardcoverSpine(x, depth, curve, thickness, height, outside, inside) {
     const positions = [];
+    const uvs = [];
     const indices = [];
-    const inner = Math.max(0.002, outer - thickness);
-    const segments = 40;
-    for (let i = 0; i <= segments; i++) {
-      const theta = -Math.PI / 2 + i * Math.PI / segments;
-      positions.push(x - outer * Math.cos(theta), y, outer * Math.sin(theta),
-        x - inner * Math.cos(theta), y, inner * Math.sin(theta));
-      if (i < segments) {
-        const a = i * 2;
-        indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+    const groups = [];
+    const segments = 48;
+    const half = depth / 2;
+    const innerHalf = Math.max(0.001, half - thickness);
+    const addStrip = (at, bt, material, reverse = false) => {
+      const first = positions.length / 3;
+      const start = indices.length;
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        positions.push(...at(t), ...bt(t));
+        uvs.push(t, 0, t, 1);
+        if (i < segments) {
+          const v = first + i * 2;
+          indices.push(...(reverse ? [v, v + 2, v + 1, v + 1, v + 2, v + 3]
+            : [v, v + 1, v + 2, v + 1, v + 3, v + 2]));
+        }
       }
-    }
+      groups.push([start, indices.length - start, material]);
+    };
+    const point = (t, inner, y) => {
+      const a = -Math.PI / 2 + t * Math.PI;
+      return [x + (inner ? thickness : 0) - curve * Math.cos(a), y,
+        (inner ? innerHalf : half) * Math.sin(a)];
+    };
+    addStrip((t) => point(t, false, -height / 2), (t) => point(t, false, height / 2), 0);
+    addStrip((t) => point(t, true, -height / 2), (t) => point(t, true, height / 2), 1, true);
+    addStrip((t) => point(t, false, height / 2), (t) => point(t, true, height / 2), 1);
+    addStrip((t) => point(t, false, -height / 2), (t) => point(t, true, -height / 2), 1, true);
+    // End faces are supplied by the cover boards; no filled semicircular cap.
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indices);
+    groups.forEach(([start, count, material]) => geometry.addGroup(start, count, material));
     geometry.computeVertexNormals();
-    material.side = THREE.DoubleSide;
-    return new THREE.Mesh(geometry, material);
+    outside.side = THREE.DoubleSide;
+    inside.side = THREE.DoubleSide;
+    return new THREE.Mesh(geometry, [outside, inside]);
   }
 
   /* One continuous text block, including its curved head and tail. A separate
@@ -2915,12 +2940,8 @@ async function createEngine(mount, bookCallbacks) {
     const geometry = new THREE.BufferGeometry();
     const segments = 48;
     const halfDepth = d / 2;
-    const curvedX = (edge, bow, z) => {
-      if (bow <= 0) return edge;
-      if (bow >= halfDepth) return edge - bow * (1 - (z / halfDepth) ** 2);
-      const radius = (bow * bow + halfDepth * halfDepth) / (2 * bow);
-      return edge + radius - bow - Math.sqrt(Math.max(0, radius * radius - z * z));
-    };
+    const curvedX = (edge, bow, z) => bow <= 0 ? edge
+      : edge - bow * Math.sqrt(Math.max(0, 1 - (z / halfDepth) ** 2));
     const leftAt = (z) => curvedX(left, spineBow, z);
     const rightAt = (z) => curvedX(right, foreBow, z);
     const strip = (atA, atB, uvA, uvB, material, flip = false) => {
@@ -2928,11 +2949,12 @@ async function createEngine(mount, bookCallbacks) {
       const firstIndex = indices.length;
       for (let i = 0; i <= segments; i++) {
         const t = i / segments;
-        const z = -halfDepth + t * d;
+        const z = -halfDepth * Math.cos(Math.PI * t);
+        const depthProgress = (z + halfDepth) / d;
         const a = atA(z);
         const b = atB(z);
         positions.push(...a, ...b);
-        uvs.push(...uvA(t), ...uvB(t));
+        uvs.push(...uvA(depthProgress), ...uvB(depthProgress));
         if (i < segments) {
           const v = first + i * 2;
           if (flip) indices.push(v, v + 2, v + 1, v + 1, v + 2, v + 3);
@@ -2977,13 +2999,18 @@ async function createEngine(mount, bookCallbacks) {
     const d = Math.max(0.02, D.spine * s);
     const hardcover = D.bind === '각양장' || D.bind === '환양장';
     const saddle = D.bind === '중철제본_세로형';
-    const cover = Math.max(0.0018, (D.coverThicknessMm || (hardcover ? 1 : 0.25)) * s);
-    const overhang = hardcover ? 2 * s : 0;
+    const requestedCover = (D.coverThicknessMm || (hardcover ? 1 : 0.25)) * s;
+    const cover = hardcover ? Math.min(requestedCover, d * 0.16) : Math.max(0.0018, requestedCover);
+    const overhang = hardcover ? Math.min(w * 0.02, h * 0.012, 1.5 * s) : 0;
     const hinge = hardcover ? 3 * s : 0;
-    const coverW = w + overhang - hinge;
+    const spineCurve = D.bind === '환양장' ? Math.min(w * 0.018, d * 0.12, 2 * s) : 0;
+    const spineX = -w / 2 + spineCurve;
+    const boardLeft = hardcover ? spineX : -w / 2 + hinge;
+    const boardRight = w / 2 + overhang;
+    const coverW = boardRight - boardLeft;
     const coverH = h + overhang * 2;
-    const boardX = (overhang + hinge) / 2;
-    const radius = d / 2 + cover / 2;
+    const boardX = (boardLeft + boardRight) / 2;
+    const radius = hardcover ? d / 2 - cover / 2 : d / 2 + cover / 2;
 
     const g = new THREE.Group();
     const coverMat = (slot, label) => bookCoverMat(D, slot, label);
@@ -2999,13 +3026,14 @@ async function createEngine(mount, bookCallbacks) {
       pageBlock(), pageBlock(),     // hidden under the covers
     ];
     const pageInset = saddle ? radius / 2 : w * 0.0075;
+    const pageDepth = hardcover ? Math.max(0.002, d - cover * 2) : d;
     const block = new THREE.Mesh(hardcover || saddle
-      ? boundBookBlockGeometry(saddle ? -w / 2 + radius : -w / 2 + pageInset,
+      ? boundBookBlockGeometry(saddle ? -w / 2 + radius : hardcover ? spineX + cover : -w / 2 + pageInset,
         saddle ? w / 2 : w / 2 - pageInset,
-        h * 0.985, d,
+        h * 0.985, pageDepth,
         saddle ? Math.max(0, radius - cover - 0.45 * s)
-          : D.bind === '환양장' ? Math.max(0, radius + pageInset - cover - 0.45 * s) : 0,
-        hardcover ? Math.min(2 * s, d * 0.045) : 0)
+          : spineCurve,
+        D.bind === '환양장' ? spineCurve : 0)
       : new THREE.BoxGeometry(w - pageInset * 2, h * 0.985, d), blockEdge);
     g.add(block);
 
@@ -3068,32 +3096,25 @@ async function createEngine(mount, bookCallbacks) {
            narrow cloth hinge; the paper block stays behind the boards. */
         const edge = cutEdge();
         const spine = D.bind === '환양장'
-          ? curvedBookSpine(-w / 2, radius, coverH, coverMat('spine', '책등'), 40)
+          ? hardcoverSpine(spineX, d, spineCurve, cover, coverH,
+            coverMat('spine', '책등'), pageBlock())
           : new THREE.Mesh(
-            new THREE.BoxGeometry(cover, coverH, d + cover * 2, 1, 1, 1),
+            new THREE.BoxGeometry(cover, coverH, hardcover ? d : d + cover * 2, 1, 1, 1),
             [pageBlock(), coverMat('spine', '책등'), edge, edge, edge, edge]);
-        if (D.bind !== '환양장') spine.position.x = -(w / 2 + cover / 2);
+        if (D.bind !== '환양장') spine.position.x = -w / 2 + (hardcover ? cover / 2 : -cover / 2);
         g.add(spine);
-        if (D.bind === '환양장') {
-          const turnInMat = new THREE.MeshStandardMaterial({
-            color: 0xf4f3f0, roughness: 0.94, side: THREE.DoubleSide,
-          });
-          g.add(roundedSpineTurnIn(-w / 2, radius, cover, -coverH / 2, turnInMat));
-          g.add(roundedSpineTurnIn(-w / 2, radius, cover, coverH / 2, turnInMat));
-        }
-
         if (hardcover) {
           [1, -1].forEach((side) => {
             const bridge = sheet(hinge + 0.3 * s, coverH, cover * 0.35,
               coverMat(side > 0 ? 'cover' : 'coverBack', side > 0 ? '표지' : '뒷표지'),
               pageBlock());
-            bridge.position.set(-w / 2 + hinge / 2, 0, side * (radius - cover * 0.12));
+            bridge.position.set(spineX + hinge / 2, 0, side * (radius - cover * 0.12));
             g.add(bridge);
           });
         }
 
         const grooveWidth = Math.max(0.001, 0.5 * s);
-        const grooveX = -w / 2 + (hardcover ? hinge : 2 * s);
+        const grooveX = (hardcover ? spineX : -w / 2) + (hardcover ? hinge : 2 * s);
         const grooveMat = new THREE.MeshStandardMaterial({
           color: 0x777777, roughness: 1, transparent: true, opacity: hardcover ? 0.16 : 0.08,
           depthWrite: false, side: THREE.DoubleSide,
@@ -3249,12 +3270,14 @@ async function createEngine(mount, bookCallbacks) {
     const h = D.h * s;
     const d = Math.max(0.035, D.spine * s);
     const hardcover = D.bind === '각양장' || D.bind === '환양장';
-    const cover = Math.max(0.0018, (D.coverThicknessMm || (hardcover ? 1 : 0.25)) * s);
-    const overhang = hardcover ? 2 * s : 0;
+    const requestedCover = (D.coverThicknessMm || (hardcover ? 1 : 0.25)) * s;
+    const cover = hardcover ? Math.min(requestedCover, d * 0.16) : Math.max(0.0018, requestedCover);
+    const overhang = hardcover ? Math.min(w * 0.02, h * 0.012, 1.5 * s) : 0;
     const hinge = hardcover ? 3 * s : 0;
-    const coverW = w + overhang - hinge;
+    const spineCurve = D.bind === '환양장' ? Math.min(w * 0.018, d * 0.12, 2 * s) : 0;
+    const coverW = w + overhang - spineCurve;
     const coverH = h + overhang * 2;
-    const boardCenter = (w + overhang + hinge) / 2;
+    const boardCenter = (w + overhang + spineCurve) / 2;
     const pageT = Math.max(0.0022, d / Math.max(18, D.pages / 2));
     const firstOpen = !bookMotion.active;
     bookMotion.active = true;
@@ -3279,46 +3302,38 @@ async function createEngine(mount, bookCallbacks) {
 
     const saddle = D.bind === '중철제본_세로형';
     const rightBlock = new THREE.Mesh(hardcover || saddle
-      ? boundBookBlockGeometry(w * 0.0075, w * 0.9925, h * 0.985, d,
-        D.bind === '환양장' || saddle
-          ? Math.max(0, d / 2 + cover / 2 + w * 0.0075 - cover - 0.45 * s) : 0,
-        hardcover ? Math.min(2 * s, d * 0.045) : 0)
+      ? boundBookBlockGeometry(hardcover ? spineCurve + cover : w * 0.0075,
+        w * 0.9925, h * 0.985, hardcover ? Math.max(0.002, d - cover * 2) : d,
+        D.bind === '환양장' ? spineCurve : saddle ? Math.max(0, d / 2 - cover) : 0,
+        D.bind === '환양장' ? spineCurve : 0)
       : new THREE.BoxGeometry(w * 0.985, h * 0.985, d), blockEdge);
     if (!hardcover && !saddle) rightBlock.position.x = w / 2;
     g.add(rightBlock);
-    if (D.bind === '환양장') {
-      const radius = d / 2 + cover / 2;
-      const turnInMat = new THREE.MeshStandardMaterial({
-        color: 0xf4f3f0, roughness: 0.94, side: THREE.DoubleSide,
-      });
-      g.add(roundedSpineTurnIn(0, radius, cover, -coverH / 2, turnInMat));
-      g.add(roundedSpineTurnIn(0, radius, cover, coverH / 2, turnInMat));
-    }
-
     const backCover = sheet(coverW, coverH, cover, pageBlock(), coverMat('coverBack', '뒷표지'));
-    backCover.position.set(boardCenter, 0, -(d / 2 + cover / 2));
+    backCover.position.set(boardCenter, 0, -(hardcover ? d / 2 - cover / 2 : d / 2 + cover / 2));
     g.add(backCover);
 
     const curvedBinding = D.bind === '환양장' || D.bind === '중철제본_세로형';
-    const spine = curvedBinding
-      ? curvedBookSpine(0, d / 2 + cover / 2, coverH,
-        coverMat(D.bind === '중철제본_세로형' ? 'cover' : 'spine',
-          D.bind === '중철제본_세로형' ? '표지' : '책등'))
-      : new THREE.Mesh(new THREE.BoxGeometry(cover, coverH, d + cover * 2),
+    const spine = D.bind === '환양장'
+      ? hardcoverSpine(spineCurve, d, spineCurve, cover, coverH,
+        coverMat('spine', '책등'), pageBlock())
+      : curvedBinding
+        ? curvedBookSpine(0, d / 2 + cover / 2, coverH, coverMat('cover', '표지'))
+      : new THREE.Mesh(new THREE.BoxGeometry(cover, coverH, hardcover ? d : d + cover * 2),
         [pageBlock(), coverMat('spine', '책등'), cutEdge(), cutEdge(), cutEdge(), cutEdge()]);
-    if (!curvedBinding) spine.position.x = -cover / 2;
+    if (!curvedBinding) spine.position.x = hardcover ? cover / 2 : -cover / 2;
     g.add(spine);
 
     if (hardcover) {
       const backBridge = sheet(hinge + 0.3 * s, coverH, cover * 0.35,
         pageBlock(), coverMat('coverBack', '뒷표지'));
-      backBridge.position.set(hinge / 2, 0, -(d / 2 + cover * 0.38));
+      backBridge.position.set(spineCurve + hinge / 2, 0, -(d / 2 - cover * 0.62));
       g.add(backBridge);
     }
 
     const frontPivot = new THREE.Group();
-    const closedCoverZ = d / 2 + cover / 2;
-    const openCoverZ = d / 2 + cover / 2;
+    const closedCoverZ = hardcover ? d / 2 - cover / 2 : d / 2 + cover / 2;
+    const openCoverZ = closedCoverZ;
     frontPivot.position.z = closedCoverZ;
     const frontCover = sheet(coverW, coverH, cover,
       coverMat('cover', '앞표지'), pageBlock());
@@ -3327,13 +3342,13 @@ async function createEngine(mount, bookCallbacks) {
     if (hardcover) {
       const frontBridge = sheet(hinge + 0.3 * s, coverH, cover * 0.35,
         coverMat('cover', '앞표지'), pageBlock());
-      frontBridge.position.set(hinge / 2, 0, -cover * 0.12);
+      frontBridge.position.set(spineCurve + hinge / 2, 0, -cover * 0.12);
       frontPivot.add(frontBridge);
     }
     g.add(frontPivot);
 
     const pageLayer = new THREE.Group();
-    pageLayer.position.z = d / 2 + cover + pageT / 2;
+    pageLayer.position.z = (hardcover ? d / 2 - cover : d / 2 + cover) + pageT / 2;
     const leftPage = new THREE.Mesh(
       new THREE.BoxGeometry(w, h, pageT, 1, 4, 1), bookPageMaterials(D, 0, 0));
     leftPage.position.x = -w / 2;
