@@ -783,6 +783,13 @@ function detailSelect(label, key, options, placeholder) {
       '</select>', 'ord-detail-select-frame') + '</div>';
 }
 
+function detailPreviewColor(key, label, optionKey) {
+  if (state.opts[optionKey] !== '색상 지정 상담') return '';
+  return `<div class="ord-spec-row ord-preview-color"><label for="detail-${key}">${esc(label)}</label>` +
+    `<input id="detail-${key}" type="color" data-key="${key}" value="${esc(state.opts[key] || '#b85078')}">` +
+    '<span>미리보기 색상 · 실제 제작 색상은 상담 후 확정</span></div>';
+}
+
 function detailPaper(label, part, mode, kind) {
   const o = state.opts;
   const papers = paperCatalogFor(mode, kind);
@@ -852,9 +859,12 @@ function renderForm(mode) {
       '<p class="ord-spec-note">책등은 페이지 수와 내지 평량으로 추정해 미리보기에 반영합니다.</p>');
     add('book-extra', '책 세부 사양', true,
       detailSelect('책배·재단면 색', 'book_edge_color', ['기본 흰색', '검정', '색상 지정 상담'], '재단면 선택') +
+      detailPreviewColor('book_edge_hex', '재단면 미리보기 색', 'book_edge_color') +
       detailSelect('헤드밴드', 'book_headband', ['없음', '흰색', '검정', '색상 지정 상담'], '헤드밴드 선택') +
+      detailPreviewColor('book_headband_hex', '헤드밴드 미리보기 색', 'book_headband') +
       detailSelect('가름끈', 'book_ribbon', ['없음', '흰색', '검정', '색상 지정 상담'], '가름끈 선택') +
-      '<p class="ord-spec-note">책배·헤드밴드·가름끈은 주문서에 기록되며 3D 미리보기에는 표시되지 않습니다. 제작 가능 여부와 금액은 견적에서 확인합니다.</p>');
+      detailPreviewColor('book_ribbon_hex', '가름끈 미리보기 색', 'book_ribbon') +
+      '<p class="ord-spec-note">색상과 장식의 3D 표현은 제작 전 확인용입니다. 제작 가능 여부와 금액은 견적에서 확정됩니다.</p>');
   } else if (mode === 'poster') {
     add('finish', '후가공', Boolean(o.in_lastJob4),
       detailSelect('후가공', 'in_lastJob4', ['코팅 없음', '무광 코팅', '유광 코팅', '재단'], '후가공 선택'));
@@ -961,9 +971,12 @@ function seedDefaults(mode) {
     o.cover_lastJob4 = '';
     o.cover_nalgae = '';
     o.book_edge_color = '';
+    o.book_edge_hex = '#b85078';
     o.book_cover_thickness = '';
     o.book_headband = '';
+    o.book_headband_hex = '#b85078';
     o.book_ribbon = '';
+    o.book_ribbon_hex = '#b85078';
   }
   if (mode === 'product') {
     o.product_kind = '명함';
@@ -1094,9 +1107,18 @@ function derive() {
     h: Math.max(1, +o.goods_size_h || 297),
     sides: o.in_mun_values === '양면출력' ? '양면' : '단면',
     coverSides: o.cover_mun_values === '양면출력' ? '양면' : '단면',
-    coating: coatOf(o.in_lastJob4),
-    coverCoating: coatOf(o.cover_lastJob4),
+    coating: productBook ? '없음' : coatOf(o.in_lastJob4),
+    backCoating: /양면/.test(o.in_lastJob4 || '') ? coatOf(o.in_lastJob4) : '없음',
+    coverCoating: productBook ? coatOf(o.in_lastJob4) : coatOf(o.cover_lastJob4),
     coverThicknessMm: parseFloat(o.book_cover_thickness) || 0,
+    edgeColor: o.book_edge_color === '검정' ? '#262626' :
+      o.book_edge_color === '색상 지정 상담' ? o.book_edge_hex : '#f1f0eb',
+    headbandColor: o.book_headband === '검정' ? '#272727' :
+      o.book_headband === '색상 지정 상담' ? o.book_headband_hex : '#f1f0eb',
+    ribbonColor: o.book_ribbon === '검정' ? '#272727' :
+      o.book_ribbon === '색상 지정 상담' ? o.book_ribbon_hex : '#f1f0eb',
+    headband: Boolean(o.book_headband && o.book_headband !== '없음'),
+    ribbon: Boolean(o.book_ribbon && o.book_ribbon !== '없음'),
     paper: paperLabel,
     coverPaper: `${o.cover_paper_group || ''} ${o.cover_paper || ''}`,
     gsm,
@@ -1110,6 +1132,9 @@ function derive() {
     foil: o.in_foil || '',
     embossDepthMm: +(o.in_emboss_depth || 0),
     panels: foldPanels(),
+    fold: o.in_lastJob27 || o.in_lastJob54 || '',
+    score: o.in_lastJob47 || '',
+    trim: o.in_lastJob7 || '',
     bind,
     /* Before page count is entered, show the same substantial 20mm sample
        volume as the reference instead of a paper-thin 0.5mm placeholder.
@@ -1117,8 +1142,9 @@ function derive() {
     spine: bind === '제본 없음' ? 0 : (totalPages(o) ? senecaMm(o) : 20),
     direction: o.goods_jebon_direction || '세로',
     pages: productBook ? Math.max(2, productPages) : totalPages(o),
-    innerPages: innerPreview.doc ? innerPreview.total : totalPages(o),
-    hasInner: Boolean(state.images.inner),
+    innerPages: productBook && flatPreview.doc ? Math.max(1, flatPreview.total - 2)
+      : innerPreview.doc ? innerPreview.total : totalPages(o),
+    hasInner: Boolean(state.images.inner) || (productBook && Boolean(flatPreview.doc)),
     wings: o.cover_nalgae === '날개있음',
     cover: productBook || Boolean(o.use_cover),
     ringColor: o.goods_opt_ring === '흰색' ? 0xf2f2f2 : 0x2b2b2b,
@@ -1130,7 +1156,7 @@ function paintCaption() {
   const o = state.opts;
   const D = derive();
   let extra = '';
-  if (state.mode === 'book') {
+  if (D.mode === 'book') {
     extra = ` · ${D.pages}p · ${D.bind}` + (D.spine ? ` · 세네카 ${D.spine}㎜` : '');
   } else if (D.panels > 1) {
     extra = ` · ${o.in_lastJob54 || o.in_lastJob27}`;
@@ -1151,9 +1177,9 @@ function paintCaption() {
   }
 
   const primary = MODES[state.mode].uploads[0].slot;
-  const hasInner = state.mode === 'book' && Boolean(state.images.inner);
+  const hasInner = D.mode === 'book' && D.hasInner;
   const hasFlatPages = (state.mode === 'poster' || state.mode === 'product') &&
-    Boolean(flatPreview.doc) && flatSheetCount() > 1;
+    D.mode !== 'book' && Boolean(flatPreview.doc) && flatSheetCount() > 1;
   const hasArtwork = MODES[state.mode].uploads.some((upload) => Boolean(state.images[upload.slot]));
   preview.classList.toggle('has-artwork', hasArtwork);
   preview.classList.toggle('has-inner-preview', hasInner || hasFlatPages);
@@ -1242,6 +1268,12 @@ function setOpt(key, value) {
   /* 평량 only opens once a paper is chosen */
   if (/_paper_group$/.test(key)) {
     state.opts[key.replace('_paper_group', '') + '_paper'] = '';
+    renderForm(state.mode);
+    onOptionChange();
+    return;
+  }
+
+  if (['book_edge_color', 'book_headband', 'book_ribbon'].includes(key)) {
     renderForm(state.mode);
     onOptionChange();
     return;
@@ -1668,7 +1700,7 @@ form.addEventListener('change', (e) => {
 form.addEventListener('input', (e) => {
   clearOrderValidation();
   const el = e.target;
-  if (el.matches('input[type=number][data-key], input[type=text][data-key], textarea[data-key]')) {
+  if (el.matches('input[type=number][data-key], input[type=text][data-key], input[type=color][data-key], textarea[data-key]')) {
     setOpt(el.getAttribute('data-key'), el.value);
   }
 });
@@ -1792,6 +1824,28 @@ function flatPageImage(page) {
 }
 
 async function showFlatSheet(nextSheet) {
+  if (state.mode === 'product' && state.opts.product_kind === '소책자' && flatPreview.doc) {
+    const request = ++flatPreview.request;
+    const token = flatPreview.token;
+    try {
+      const [front, inside, back] = await Promise.all([
+        flatPageImage(1), flatPageImage(flatPreview.total > 2 ? 2 : 1),
+        flatPageImage(flatPreview.total),
+      ]);
+      if (token !== flatPreview.token || request !== flatPreview.request || !front) return;
+      state.images.front = front;
+      state.images.cover = front;
+      state.images.inner = inside || front;
+      state.images.coverBack = back || front;
+      if (!state.cartPreview) rememberCartPreview();
+      if (engine) engine.setTextures({ front, cover: front,
+        inner: inside || front, coverBack: back || front }, derive());
+      paintCaption();
+    } catch (err) {
+      console.error('[order] booklet PDF preview failed:', err);
+    }
+    return;
+  }
   const count = flatSheetCount();
   if (!count) return;
   const sheet = Math.max(0, Math.min(count - 1, nextSheet));
@@ -1897,6 +1951,11 @@ async function takePdf(file, slot) {
       if (flatToken !== flatPreview.token) return;
       flatPreview.doc = doc;
       flatPreview.total = doc.numPages;
+      if (state.mode === 'product' && state.opts.product_kind === '소책자') {
+        state.opts.in_page_val = doc.numPages;
+        const commonPages = common.querySelector('[data-common-key="in_page_val"]');
+        if (commonPages) commonPages.value = doc.numPages;
+      }
       await showFlatSheet(0);
       if (flatToken !== flatPreview.token) return;
       markUpload(slot, `${file.name} · ${doc.numPages}p`);
@@ -1921,6 +1980,16 @@ async function takePdf(file, slot) {
 }
 
 function requestInnerPages(numbers) {
+  if (state.mode === 'product' && state.opts.product_kind === '소책자' && flatPreview.doc) {
+    [...new Set(numbers.map((page) => Math.round(page)))].forEach((page) => {
+      if (page < 1 || page > Math.max(1, flatPreview.total - 2)) return;
+      const pdfPage = flatPreview.total > 2 ? page + 1 : 1;
+      flatPageImage(pdfPage).then((img) => {
+        if (img && engine) engine.setBookPageTexture(page, img);
+      }).catch((err) => console.error(`[order] booklet PDF page ${page} failed:`, err));
+    });
+    return;
+  }
   const doc = innerPreview.doc;
   const token = innerPreview.token;
   const requested = [...new Set(numbers.map((page) => Math.round(page)))];
@@ -1988,7 +2057,7 @@ document.getElementById('ordViewReset').addEventListener('click', () => {
 bookNav?.addEventListener('click', (e) => {
   const button = e.target.closest('[data-book-turn]');
   if (!button) return;
-  if (state.mode === 'book') {
+  if (state.mode === 'book' || (state.mode === 'product' && state.opts.product_kind === '소책자')) {
     if (engine) engine.turnBookPage(+button.dataset.bookTurn);
   } else {
     turnFlatSheet(+button.dataset.bookTurn);
@@ -2038,10 +2107,15 @@ productKinds.addEventListener('click', (e) => {
   state.opts.goods_size = defaultSize.name;
   state.opts.goods_size_w = state.opts.size_w_plus = defaultSize.w;
   state.opts.goods_size_h = state.opts.size_h_plus = defaultSize.h;
+  if (flatPreview.doc) {
+    if (btn.dataset.kind === '소책자') state.opts.in_page_val = flatPreview.total;
+    else delete state.images.inner;
+  }
   productKinds.querySelectorAll('[data-kind]').forEach((b) => b.classList.toggle('is-on', b === btn));
   renderCommon(state.mode);
   renderForm(state.mode);
   onOptionChange();
+  if (flatPreview.doc) showFlatSheet(0);
 });
 
 function switchMode(mode) {
@@ -2416,13 +2490,22 @@ async function createEngine(mount, bookCallbacks) {
      dark artwork remains legible as the sheet flutters under fixed lights.
      Do not multiply roughness by finishMap: its ~.5 values halve roughness
      and produce the clustered white highlights this preview must avoid. */
+  function paperTint(name, hasArtwork) {
+    if (/분홍/.test(name || '')) return 0xf3dce3;
+    if (/연두/.test(name || '')) return 0xe2ead3;
+    if (/청색/.test(name || '')) return 0xdce7f1;
+    if (/황색/.test(name || '')) return 0xf5edcd;
+    if (/미색/.test(name || '')) return 0xf8f4e8;
+    return hasArtwork ? 0xffffff : 0xf2f2f2;
+  }
+
   function paperMat(coating, paperName, map) {
     const uncoated = /모조|미색|반누보|레자크|색지|크라프트|마쉬멜로우/.test(paperName || '');
     const gloss = coating === '유광';
     const matt = coating === '무광';
     const m = new THREE.MeshPhysicalMaterial({
       map: map || null,
-      color: map ? 0xffffff : 0xf2f2f2,
+      color: paperTint(paperName, Boolean(map)),
       roughness: gloss ? 0.42 : 1,
       metalness: 0,
       ior: 1.4,
@@ -2437,8 +2520,9 @@ async function createEngine(mount, bookCallbacks) {
   }
 
   /* the cut edge is what makes a sheet look like paper and not a plane */
-  const cutEdge = () => new THREE.MeshStandardMaterial({
-    color: 0xe3e3e3, roughness: 0.94, roughnessMap: finishMap,
+  const cutEdge = (trim) => new THREE.MeshStandardMaterial({
+    color: trim === '재단 없음' ? 0xd7d4cd : 0xe3e3e3,
+    roughness: 0.94,
   });
 
   const pageBlock = () => new THREE.MeshStandardMaterial({
@@ -2452,15 +2536,18 @@ async function createEngine(mount, bookCallbacks) {
   function bookCoverMat(D, slot, label) {
     const map = D.cover ? texFor(slot, label) : null;
     if (map) map.anisotropy = maxAniso;
+    const gloss = D.coverCoating === '유광';
+    const matte = D.coverCoating === '무광';
     return new THREE.MeshPhysicalMaterial({
       map,
-      color: map ? 0xffffff : 0xf2f2f2,
-      roughness: 0.82,
+      color: paperTint(D.coverPaper, Boolean(map)),
+      roughness: gloss ? 0.42 : matte ? 1 : 0.82,
       metalness: 0,
       ior: 1.46,
-      specularIntensity: 0.12,
+      specularIntensity: gloss ? 0.25 : matte ? 0.1 : 0.12,
       envMapIntensity: 0.3,
-      clearcoat: 0,
+      clearcoat: gloss ? 0.06 : 0,
+      clearcoatRoughness: 0.5,
       sheen: 0,
     });
   }
@@ -2468,12 +2555,55 @@ async function createEngine(mount, bookCallbacks) {
   /* the fore edge and the head and tail of a book, ruled into sheets. The
      stripes have to run across the stack, which is a different axis on the
      side faces than on the top, so each gets its own turn of the map. */
-  function stackedEdge(sheets, turn) {
+  function stackedEdge(sheets, turn, color) {
     const t = cloneTex(edgeStripes);
     t.center.set(0.5, 0.5);
     t.rotation = turn ? Math.PI / 2 : 0;
     t.repeat.set(turn ? 1 : Math.max(1, sheets / 26), turn ? Math.max(1, sheets / 26) : 1);
-    return new THREE.MeshStandardMaterial({ map: t, roughness: 0.93 });
+    return new THREE.MeshStandardMaterial({ map: t, color: color || 0xffffff, roughness: 0.93 });
+  }
+
+  function addBookDetails(group, D, w, h, d, cover, s, opened) {
+    if (D.headband) {
+      const bandColor = new THREE.Color(D.headbandColor);
+      const band = new THREE.MeshStandardMaterial({ color: bandColor, roughness: 0.84, side: THREE.DoubleSide });
+      const thread = new THREE.MeshStandardMaterial({
+        color: bandColor.clone().multiplyScalar(0.76), roughness: 0.92,
+      });
+      const bandW = Math.max(0.014, 1.5 * s);
+      [-1, 1].forEach((side) => {
+        const base = new THREE.Mesh(new THREE.BoxGeometry(bandW, bandW, d * 0.88), band);
+        base.position.set(-w / 2 + bandW * 1.6, side * (h / 2 - bandW * 0.2), 0);
+        group.add(base);
+        for (let i = 0; i < 10; i++) {
+          const stitch = new THREE.Mesh(new THREE.BoxGeometry(bandW * 1.04, bandW * 0.3, d * 0.035), thread);
+          stitch.position.set(base.position.x, base.position.y + side * bandW * 0.42,
+            -d * 0.4 + (i + 0.5) * d * 0.08);
+          group.add(stitch);
+        }
+      });
+    }
+
+    if (D.ribbon) {
+      const width = Math.max(0.03, 4 * s);
+      const length = h * 0.58;
+      const geometry = new THREE.PlaneGeometry(width, length, 8, 28);
+      const p = geometry.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        const y = p.getY(i) / length;
+        p.setZ(i, Math.sin((y + 0.5) * Math.PI * 2) * width * 0.07);
+      }
+      geometry.computeVertexNormals();
+      const material = new THREE.MeshPhysicalMaterial({
+        color: D.ribbonColor, roughness: 0.64, metalness: 0, side: THREE.DoubleSide,
+        sheen: 0.18, sheenRoughness: 0.8,
+      });
+      const ribbon = new THREE.Mesh(geometry, material);
+      ribbon.position.set(opened ? w * 0.18 : -w * 0.36,
+        h * 0.19, d / 2 + cover + width * 0.15);
+      ribbon.rotation.z = opened ? -0.07 : 0.08;
+      group.add(ribbon);
+    }
   }
 
   /* ---- helpers ---- */
@@ -2536,11 +2666,11 @@ async function createEngine(mount, bookCallbacks) {
     return geo;
   }
 
-  function sheet(w, h, t, frontMat, backMat, curve, flexible) {
+  function sheet(w, h, t, frontMat, backMat, curve, flexible, trim) {
     const geo = new THREE.BoxGeometry(
       w, h, t, flexible ? 48 : curve ? 40 : 1, flexible ? 64 : 1, 1);
     if (curve) bow(geo, curve);
-    const edge = cutEdge();
+    const edge = cutEdge(trim);
     const mesh = new THREE.Mesh(geo, [edge, edge, edge, edge, frontMat, backMat]);
     if (flexible) {
       flexibleSheet = {
@@ -2551,6 +2681,21 @@ async function createEngine(mount, bookCallbacks) {
       };
     }
     return mesh;
+  }
+
+  function scoreLine(height, opacity) {
+    return new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0025, 0.0025, height * 0.985, 8),
+      new THREE.MeshStandardMaterial({
+        color: 0x777777, transparent: true, opacity, depthWrite: false,
+      }));
+  }
+
+  function foldAngles(D) {
+    if (/대문/.test(D.fold)) return [0, 0.72, -0.72, 0];
+    if (/N|병풍/.test(D.fold)) return Array.from({ length: D.panels }, (_, i) => i % 2 ? 0.68 : 0);
+    if (D.panels === 2) return [0, 0.72];
+    return Array.from({ length: D.panels }, (_, i) => i * 0.48);
   }
 
   /* ---- the four products ---- */
@@ -2571,29 +2716,38 @@ async function createEngine(mount, bookCallbacks) {
 
     if (panels === 1) {
       const m = sheet(w, h, t, paperMat(D.coating, D.paper, front),
-        paperMat(D.coating, D.paper, back), w * 0.016, D.mode === 'poster');
+        paperMat(D.backCoating, D.paper, back), w * 0.016, D.mode === 'poster', D.trim);
       m.position.y = h / 2;
       m.rotation.x = -0.03;                 // a sheet never stands plumb
       root.add(m);
+      const scoreCount = Number((D.score.match(/(\d+)줄/) || [0, 0])[1]);
+      for (let i = 0; i < scoreCount; i++) {
+        const line = scoreLine(h, 0.26);
+        line.position.set(-w / 2 + w * (i + 1) / (scoreCount + 1), h / 2,
+          t / 2 + w * 0.016 + 0.003);
+        line.rotation.x = -0.03;
+        root.add(line);
+      }
       return;
     }
 
-    /* an accordion: each panel turns ±angle about the fold before the next */
+    /* A fold's direction changes with its production pattern: roll, Z fold,
+       gate fold and simple half fold have visibly different silhouettes. */
     const pw = w / panels;
-    const angle = 0.5;
+    const angles = foldAngles(D);
     const g = new THREE.Group();
     let x = 0;
     let z = 0;
     for (let i = 0; i < panels; i++) {
-      const rot = (i % 2 === 0 ? 1 : -1) * angle;
+      const rot = angles[i];
       const geo = new THREE.BoxGeometry(pw, h, t, 20, 1, 1);
       /* each panel keeps a little of its own bow, so the fold is not a hinge
          between two perfectly flat cards */
       bow(geo, pw * 0.012);
-      const edge = cutEdge();
+      const edge = cutEdge(D.trim);
       const panel = new THREE.Mesh(geo, [edge, edge, edge, edge,
         paperMat(D.coating, D.paper, slice(front, i, panels)),
-        paperMat(D.coating, D.paper, slice(back, i, panels))]);
+        paperMat(D.backCoating, D.paper, slice(back, i, panels))]);
       const dx = Math.cos(rot) * pw;
       const dz = -Math.sin(rot) * pw;
       panel.position.set(x + dx / 2, h / 2, z + dz / 2);
@@ -2601,6 +2755,11 @@ async function createEngine(mount, bookCallbacks) {
       g.add(panel);
       x += dx;
       z += dz;
+      if (i < panels - 1) {
+        const crease = scoreLine(h, 0.22);
+        crease.position.set(x, h / 2, z + t / 2 + 0.003);
+        g.add(crease);
+      }
     }
     centre(g);
     root.add(g);
@@ -2614,7 +2773,7 @@ async function createEngine(mount, bookCallbacks) {
     const t = Math.max(0.009, D.paperThicknessMm * s * 2.8);
 
     const face = sheet(w, h, t, paperMat(D.coating, D.paper, texFor('front', '앞면')),
-      paperMat(D.coating, D.paper, null), w * 0.006);
+      paperMat(D.backCoating, D.paper, null), w * 0.006, false, D.trim);
     face.rotation.x = -Math.PI / 2;
     face.position.set(0, t / 2, 0);
 
@@ -2629,8 +2788,8 @@ async function createEngine(mount, bookCallbacks) {
     face.rotation.z = 0.04;
     g.add(face);
 
-    const flip = sheet(w, h, t, paperMat(D.coating, D.paper, texFor('back', '뒷면')),
-      paperMat(D.coating, D.paper, null), w * 0.006);
+    const flip = sheet(w, h, t, paperMat(D.backCoating, D.paper, texFor('back', '뒷면')),
+      paperMat(D.backCoating, D.paper, null), w * 0.006, false, D.trim);
     flip.rotation.x = -Math.PI / 2;
     flip.rotation.z = -0.05;                 // cards never land square to each other
     flip.position.set(w * 0.56, t / 2, 0);
@@ -2648,7 +2807,11 @@ async function createEngine(mount, bookCallbacks) {
     const h = D.h * s;
     /* a 0-page book would be a plane; give the block a floor so it reads */
     const d = Math.max(0.02, D.spine * s);
-    const cover = D.coverThicknessMm ? Math.max(0.006, D.coverThicknessMm * s) : 0.006;
+    const hardcover = D.bind === '각양장' || D.bind === '환양장';
+    const cover = D.coverThicknessMm ? Math.max(0.006, D.coverThicknessMm * s)
+      : hardcover ? Math.max(0.012, 1.4 * s) : 0.006;
+    const coverW = w * (hardcover ? 1.035 : 1);
+    const coverH = h * (hardcover ? 1.025 : 1);
 
     const g = new THREE.Group();
     const coverMat = (slot, label) => bookCoverMat(D, slot, label);
@@ -2657,10 +2820,10 @@ async function createEngine(mount, bookCallbacks) {
        ruled on every exposed side so the stack reads as sheets. */
     const leaves = Math.max(2, D.pages / 2);
     const blockEdge = [
-      stackedEdge(leaves, false),   // +x fore edge
-      stackedEdge(leaves, false),   // -x spine side
-      stackedEdge(leaves, true),    // +y head
-      stackedEdge(leaves, true),    // -y tail
+      stackedEdge(leaves, false, D.edgeColor),   // +x fore edge
+      stackedEdge(leaves, false, D.edgeColor),   // -x spine side
+      stackedEdge(leaves, true, D.edgeColor),    // +y head
+      stackedEdge(leaves, true, D.edgeColor),    // -y tail
       pageBlock(), pageBlock(),     // hidden under the covers
     ];
     const block = new THREE.Mesh(new THREE.BoxGeometry(w * 0.985, h * 0.985, d), blockEdge);
@@ -2668,11 +2831,11 @@ async function createEngine(mount, bookCallbacks) {
 
     /* Keep the cover plane true; the fixed key produces its gradient while
        the hinge groove and separate spine provide the physical detail. */
-    const front = sheet(w, h, cover, coverMat('cover', '표지'), pageBlock());
+    const front = sheet(coverW, coverH, cover, coverMat('cover', '표지'), pageBlock());
     front.position.z = d / 2 + cover / 2;
     g.add(front);
 
-    const back = sheet(w, h, cover, pageBlock(), coverMat('coverBack', '뒷표지'));
+    const back = sheet(coverW, coverH, cover, pageBlock(), coverMat('coverBack', '뒷표지'));
     back.position.z = -(d / 2 + cover / 2);
     g.add(back);
 
@@ -2723,10 +2886,14 @@ async function createEngine(mount, bookCallbacks) {
            narrow hinge grooves beside it are what make a thin cover read as
            something that can flex when the book opens. */
         const edge = cutEdge();
-        const spine = new THREE.Mesh(
-          new THREE.BoxGeometry(cover, h, d + cover * 2, 1, 1, 1),
-          [pageBlock(), coverMat('spine', '책등'), edge, edge, edge, edge]);
-        spine.position.x = -(w / 2 + cover / 2);
+        const spine = D.bind === '환양장'
+          ? new THREE.Mesh(
+            new THREE.CylinderGeometry(d / 2 + cover, d / 2 + cover, coverH, 40, 1, true,
+              Math.PI / 2, Math.PI), coverMat('spine', '책등'))
+          : new THREE.Mesh(
+            new THREE.BoxGeometry(cover, coverH, d + cover * 2, 1, 1, 1),
+            [pageBlock(), coverMat('spine', '책등'), edge, edge, edge, edge]);
+        spine.position.x = -(w / 2 + (D.bind === '환양장' ? 0 : cover / 2));
         g.add(spine);
 
         const grooveWidth = Math.max(0.0025, 1 * s);
@@ -2776,6 +2943,8 @@ async function createEngine(mount, bookCallbacks) {
         g.add(pivot);
       });
     }
+
+    addBookDetails(g, D, w, h, d, cover, s, false);
 
     /* 가로 제본 is bound on the long edge, so the whole thing turns */
     if (D.direction === '가로') g.rotation.z = -Math.PI / 2;
@@ -2901,7 +3070,11 @@ async function createEngine(mount, bookCallbacks) {
     const w = D.w * s;
     const h = D.h * s;
     const d = Math.max(0.035, D.spine * s);
-    const cover = D.coverThicknessMm ? Math.max(0.008, D.coverThicknessMm * s) : 0.008;
+    const hardcover = D.bind === '각양장' || D.bind === '환양장';
+    const cover = D.coverThicknessMm ? Math.max(0.008, D.coverThicknessMm * s)
+      : hardcover ? Math.max(0.012, 1.4 * s) : 0.008;
+    const coverW = w * (hardcover ? 1.035 : 1);
+    const coverH = h * (hardcover ? 1.025 : 1);
     const pageT = Math.max(0.0022, d / Math.max(18, D.pages / 2));
     const firstOpen = !bookMotion.active;
     bookMotion.active = true;
@@ -2919,8 +3092,8 @@ async function createEngine(mount, bookCallbacks) {
     const coverMat = (slot, label) => bookCoverMat(D, slot, label);
     const leaves = Math.max(2, D.pages / 2);
     const blockEdge = [
-      stackedEdge(leaves, false), stackedEdge(leaves, false),
-      stackedEdge(leaves, true), stackedEdge(leaves, true),
+      stackedEdge(leaves, false, D.edgeColor), stackedEdge(leaves, false, D.edgeColor),
+      stackedEdge(leaves, true, D.edgeColor), stackedEdge(leaves, true, D.edgeColor),
       pageBlock(), pageBlock(),
     ];
 
@@ -2929,13 +3102,15 @@ async function createEngine(mount, bookCallbacks) {
     rightBlock.position.x = w / 2;
     g.add(rightBlock);
 
-    const backCover = sheet(w, h, cover, pageBlock(), coverMat('coverBack', '뒷표지'));
+    const backCover = sheet(coverW, coverH, cover, pageBlock(), coverMat('coverBack', '뒷표지'));
     backCover.position.set(w / 2, 0, -(d / 2 + cover / 2));
     g.add(backCover);
 
-    const spine = new THREE.Mesh(
-      new THREE.CylinderGeometry(d / 2 + cover, d / 2 + cover, h, 28, 1, true),
-      coverMat('spine', '책등'));
+    const spine = D.bind === '각양장'
+      ? new THREE.Mesh(new THREE.BoxGeometry(cover, coverH, d + cover * 2),
+        coverMat('spine', '책등'))
+      : new THREE.Mesh(new THREE.CylinderGeometry(d / 2 + cover, d / 2 + cover,
+        coverH, 28, 1, true), coverMat('spine', '책등'));
     spine.position.z = -cover / 2;
     g.add(spine);
 
@@ -2943,7 +3118,7 @@ async function createEngine(mount, bookCallbacks) {
     const closedCoverZ = d / 2 + cover * 4;
     const openCoverZ = d / 2 + cover * 0.25;
     frontPivot.position.z = closedCoverZ;
-    const frontCover = sheet(w, h, cover,
+    const frontCover = sheet(coverW, coverH, cover,
       coverMat('cover', '앞표지'), pageBlock(), w * 0.012);
     frontCover.position.x = w / 2;
     frontPivot.add(frontCover);
@@ -2968,6 +3143,7 @@ async function createEngine(mount, bookCallbacks) {
     flipPivot.add(flipPage);
     pageLayer.add(flipPivot);
     g.add(pageLayer);
+    addBookDetails(g, D, w, h, d, cover, s, true);
 
     /* Transparent geometry keeps the camera fitted to the final two-page
        spread throughout the automatic opening motion. */
