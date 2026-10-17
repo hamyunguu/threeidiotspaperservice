@@ -783,6 +783,29 @@ function detailSelect(label, key, options, placeholder) {
       '</select>', 'ord-detail-select-frame') + '</div>';
 }
 
+function detailSingleSelect(key, options, placeholder) {
+  const value = state.opts[key] || '';
+  return `<div class="ord-spec-row is-single">` +
+    framedControl(`<select id="detail-${key}" class="ord-detail-select${value ? ' is-complete' : ''}" ` +
+      `data-key="${key}" aria-label="${esc(placeholder)}"><option value="">${esc(placeholder)}</option>` +
+      options.map((option) => `<option${option === value ? ' selected' : ''}>${esc(option)}</option>`).join('') +
+      '</select>', 'ord-detail-select-frame') + '</div>';
+}
+
+function posterPaperSelect() {
+  const selected = state.opts.in_paper_group && state.opts.in_paper
+    ? `${state.opts.in_paper_group}|||${state.opts.in_paper}` : '';
+  const groups = paperCatalogFor('poster');
+  return `<div class="ord-spec-row is-single">` +
+    framedControl(`<select id="detail-poster-paper" class="ord-detail-select${selected ? ' is-complete' : ''}" ` +
+      `data-poster-paper aria-label="종이 선택"><option value="">종이 선택</option>` +
+      groups.map((paper) => `<optgroup label="${esc(paper)}">` +
+        paperWeightsFor('poster', paper).map((weight) => {
+          const value = `${paper}|||${weight}`;
+          return `<option value="${esc(value)}"${value === selected ? ' selected' : ''}>${esc(paper)} · ${esc(weight)}</option>`;
+        }).join('') + '</optgroup>').join('') + '</select>', 'ord-detail-select-frame') + '</div>';
+}
+
 function detailPreviewColor(key, label, optionKey) {
   if (state.opts[optionKey] !== '색상 지정 상담') return '';
   return `<div class="ord-spec-row ord-preview-color"><label for="detail-${key}">${esc(label)}</label>` +
@@ -835,7 +858,7 @@ function renderForm(mode) {
   const steps = [];
   const add = (key, title, done, body) => steps.push(detailStep(++no, key, title, done, body));
   const choices = (key, values, cls) => `<div class="ord-detail-options ${cls || 'is-colors'}">` +
-    values.map((value) => detailChoice(key, value, value)).join('') + '</div>';
+    values.map((value) => detailChoice(key, value, value.replace('출력', ''))).join('') + '</div>';
 
   detailTitle.innerHTML = `<strong>${meta.ko}</strong><span>${kind ? esc(kind) + ' · ' : ''}작업 상세 정보</span>`;
   add('sides', isBook ? '내지 인쇄면' : '양면 인쇄 여부', Boolean(o.in_mun_values),
@@ -843,8 +866,7 @@ function renderForm(mode) {
   add('colors', isBook ? '내지 색상 도수' : '색상 도수', Boolean(o.in_printer),
     choices('in_printer', colors));
   add('paper', isBook ? '내지 종이' : '종이 선택', Boolean(o.in_paper_group && o.in_paper),
-    detailPaper(isBook ? '내지' : '인쇄 용지', 'in', mode, kind) +
-    '<p class="ord-spec-note">태산인디고 상품별 용지·평량 선택지를 바탕으로 정리한 초안입니다.</p>');
+    mode === 'poster' ? posterPaperSelect() : detailPaper(isBook ? '내지' : '인쇄 용지', 'in', mode, kind));
 
   if (isBook) {
     add('cover', '표지 사양', Boolean(o.cover_paper_group && o.cover_paper && o.cover_printer),
@@ -867,7 +889,7 @@ function renderForm(mode) {
       '<p class="ord-spec-note">색상과 장식의 3D 표현은 제작 전 확인용입니다. 제작 가능 여부와 금액은 견적에서 확정됩니다.</p>');
   } else if (mode === 'poster') {
     add('finish', '후가공', Boolean(o.in_lastJob4),
-      detailSelect('후가공', 'in_lastJob4', ['코팅 없음', '무광 코팅', '유광 코팅', '재단'], '후가공 선택'));
+      detailSingleSelect('in_lastJob4', ['코팅 없음', '무광 코팅', '유광 코팅', '재단'], '후가공 선택'));
   } else if (isBooklet) {
     add('finish', '제본 및 후가공', Boolean(o.goods_jebon),
       detailSelect('제본 방식', 'goods_jebon', ['중철제본_세로형', '무선제본', '사철제본', 'PUR 제본', '제본 없음'], '제본 선택') +
@@ -1693,6 +1715,14 @@ form.addEventListener('change', (e) => {
     if (file) takeFile(file, el.getAttribute('data-upload'));
     return;
   }
+  if (el.matches('[data-poster-paper]')) {
+    const [group = '', weight = ''] = el.value.split('|||');
+    state.opts.in_paper_group = group;
+    state.opts.in_paper = weight;
+    paintDetailCompletion();
+    onOptionChange();
+    return;
+  }
   if (el.matches('[data-key]')) setOpt(el.getAttribute('data-key'), el.value);
   paintDetailCompletion();
 });
@@ -2132,6 +2162,7 @@ function switchMode(mode) {
   state.detailActive = false;
   state.opts = seedDefaults(mode);
   const meta = SERVICE_MODES[mode];
+  document.body.dataset.serviceMode = mode;
   commonPane.dataset.mode = mode;
   document.body.style.setProperty('--ord-ink', meta.ink);
   commonPane.style.setProperty('--ord-ink', meta.ink);
