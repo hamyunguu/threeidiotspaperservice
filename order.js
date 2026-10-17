@@ -1128,6 +1128,7 @@ function derive() {
   const productPages = productBook ? (+o.in_page_val || (flatPreview.doc ? flatPreview.total : 0)) : 0;
   return {
     mode: previewMode,
+    sourceMode: state.mode,
     w: Math.max(1, +o.goods_size_w || 210),
     h: Math.max(1, +o.goods_size_h || 297),
     sides: o.in_mun_values === '양면출력' ? '양면' : '단면',
@@ -2270,14 +2271,16 @@ async function createEngine(mount, bookCallbacks) {
   const fitCenter = new THREE.Vector3();
   let fitDist = 6;
 
-  /* A sheet or a book stands up and is read from a low three-quarter on the
-     left, which is where its spine and fold are. A card lies down, so it has
-     to be looked at from above or it disappears edge-on. */
+  /* All product categories enter at the poster's standing three-quarter view.
+     Books retain a slightly higher angle so the binding and head are visible. */
+  const posterViewDir = () => new THREE.Vector3(-0.65, 0.3, 1).normalize();
   const viewDir = (mode) => {
     if (mode === 'print') return new THREE.Vector3(-0.3, 0.9, 0.85).normalize();
     if (mode === 'book') return new THREE.Vector3(-0.7, 0.48, 1).normalize();
     return new THREE.Vector3(-0.38, 0.32, 1).normalize();
   };
+  const firstViewDir = () => current?.mode === 'poster' || current?.sourceMode === 'product'
+    ? posterViewDir() : viewDir(current ? current.mode : state.mode);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -2823,7 +2826,8 @@ async function createEngine(mount, bookCallbacks) {
     root.add(g);
   }
 
-  /* A card is looked at lying down. 양면 shows both, one turned over. */
+  /* Product previews start in the same standing composition as a poster.
+     Two printed sides remain separately visible instead of stacking. */
   function buildCard(D) {
     const s = unit(D);
     const w = D.w * s;
@@ -2832,28 +2836,28 @@ async function createEngine(mount, bookCallbacks) {
 
     const face = sheet(w, h, t, paperMat(D.coating, D.paper, texFor('front', '앞면')),
       paperMat(D.backCoating, D.paper, null), w * 0.006, false, D.trim);
-    face.rotation.x = -Math.PI / 2;
-    face.position.set(0, t / 2, 0);
+    face.rotation.x = -0.035;
+    face.position.set(0, h / 2, 0);
 
     if (D.sides !== '양면') {
-      face.rotation.z = 0.12;
+      face.rotation.z = 0.035;
       root.add(face);
       return;
     }
 
     const g = new THREE.Group();
-    face.position.x = -w * 0.56;
-    face.rotation.z = 0.04;
+    face.position.x = -w * 0.54;
+    face.rotation.z = 0.025;
     g.add(face);
 
     const flip = sheet(w, h, t, paperMat(D.backCoating, D.paper, texFor('back', '뒷면')),
       paperMat(D.backCoating, D.paper, null), w * 0.006, false, D.trim);
-    flip.rotation.x = -Math.PI / 2;
-    flip.rotation.z = -0.05;                 // cards never land square to each other
-    flip.position.set(w * 0.56, t / 2, 0);
+    flip.rotation.x = -0.035;
+    flip.rotation.z = -0.025;
+    flip.position.set(w * 0.54, h / 2, -0.04);
     g.add(flip);
 
-    g.rotation.y = 0.1;
+    g.rotation.y = 0.06;
     root.add(g);
   }
 
@@ -2991,9 +2995,8 @@ async function createEngine(mount, bookCallbacks) {
     return geometry;
   }
 
-  /* A sewn text block is assembled from folded 16-page signatures. The
-     stitches are inside the wrapper, but the gatherings remain legible at
-     the trimmed head, tail and fore edge. */
+  /* Exposed section sewing: every folded 16-page gathering has its own round
+     outer fold. There is deliberately no wraparound cover over this edge. */
   function sewnBookBlock(left, right, h, depth, pages, edgeColor, scale) {
     const group = new THREE.Group();
     const count = Math.max(1, Math.min(96, Math.ceil((pages || 128) / 16)));
@@ -3010,11 +3013,14 @@ async function createEngine(mount, bookCallbacks) {
       stackedEdge(8, true, edgeColor, true), stackedEdge(8, true, edgeColor, true),
       pageBlock(), pageBlock(),
     ];
+    const foldMaterial = new THREE.MeshStandardMaterial({
+      color: edgeColor || 0xf2f0eb, roughness: 1, side: THREE.DoubleSide,
+    });
     let offset = -depth / 2;
     for (let i = 0; i < count; i++) {
       const sectionPages = Math.min(16, totalPages - i * 16);
       const sectionDepth = depth * sectionPages / totalPages;
-      const seam = Math.min(0.08 * scale, sectionDepth * 0.04);
+      const seam = Math.min(0.18 * scale, sectionDepth * 0.08);
       const materials = sectionPages < 16 ? [
         stackedEdge(sectionPages / 2, false, edgeColor, true),
         stackedEdge(sectionPages / 2, false, edgeColor, true),
@@ -3028,7 +3034,36 @@ async function createEngine(mount, bookCallbacks) {
       );
       section.position.set((left + right) / 2, 0, offset + sectionDepth / 2);
       group.add(section);
+      const foldedSpine = curvedBookSpine(left, sectionDepth / 2, h, foldMaterial, 20);
+      foldedSpine.position.z = offset + sectionDepth / 2;
+      group.add(foldedSpine);
       offset += sectionDepth;
+    }
+    const thread = new THREE.MeshStandardMaterial({ color: 0x55514d, roughness: 1 });
+    const stitches = Math.max(5, Math.round(h / (26 * scale)));
+    for (let row = 0; row < stitches; row++) {
+      const y = -h * 0.43 + row * h * 0.86 / Math.max(1, stitches - 1);
+      const points = [];
+      for (let j = 0; j <= count * 12; j++) {
+        const z = -depth / 2 + depth * j / (count * 12);
+        const local = ((z + depth / 2) / depth * count) % 1;
+        const sectionRadius = depth / count / 2;
+        points.push(new THREE.Vector3(
+          left - sectionRadius * Math.sin(Math.PI * local) - 0.12 * scale,
+          y, z
+        ));
+      }
+      group.add(new THREE.Mesh(new THREE.TubeGeometry(
+        new THREE.CatmullRomCurve3(points), points.length * 2, 0.16 * scale, 5, false), thread));
+    }
+    for (const fraction of [0.25, 0.5, 0.75]) {
+      const section = Math.min(count - 1, Math.floor(count * fraction));
+      const z = -depth / 2 + (section + 0.5) * depth / count;
+      const x = left - depth / count / 2 - 0.2 * scale;
+      const line = new THREE.Mesh(new THREE.CylinderGeometry(
+        0.16 * scale, 0.16 * scale, h * 0.88, 6), thread);
+      line.position.set(x, 0, z);
+      group.add(line);
     }
     return group;
   }
@@ -3065,6 +3100,7 @@ async function createEngine(mount, bookCallbacks) {
     const d = Math.max(0.02, D.spine * s);
     const hardcover = D.bind === '각양장' || D.bind === '환양장';
     const saddle = D.bind === '중철제본_세로형';
+    const exposedSewn = D.bind === '사철제본';
     const requestedCover = (D.coverThicknessMm || (hardcover ? 1 : 0.25)) * s;
     const cover = hardcover ? Math.min(requestedCover, d * 0.16) : Math.max(0.0018, requestedCover);
     const overhang = hardcover ? Math.min(w * 0.02, h * 0.012, 1.5 * s) : 0;
@@ -3108,13 +3144,14 @@ async function createEngine(mount, bookCallbacks) {
 
     /* Flat printed faces meet either a wrapped spine or a continuous fold;
        the fixed key supplies their tonal gradient. */
-    const flatCoverW = saddle ? w - radius : coverW;
+    const sewnReveal = exposedSewn ? Math.min(8 * s, w * 0.08) : 0;
+    const flatCoverW = saddle ? w - radius : coverW - sewnReveal;
     const front = sheet(flatCoverW, coverH, cover, coverMat('cover', '표지'), pageBlock());
-    front.position.set(saddle ? radius / 2 : boardX, 0, radius);
+    front.position.set(saddle ? radius / 2 : boardX + sewnReveal / 2, 0, radius);
     g.add(front);
 
     const back = sheet(flatCoverW, coverH, cover, pageBlock(), coverMat('coverBack', '뒷표지'));
-    back.position.set(saddle ? radius / 2 : boardX, 0, -radius);
+    back.position.set(saddle ? radius / 2 : boardX + sewnReveal / 2, 0, -radius);
     g.add(back);
 
     if (D.bind === '링(스프링)제본') {
@@ -3137,7 +3174,7 @@ async function createEngine(mount, bookCallbacks) {
       g.add(new THREE.Mesh(new THREE.TubeGeometry(
         new THREE.CatmullRomCurve3(points), segments, Math.max(0.001, 0.4 * s), 6, false), ringMat));
 
-    } else if (D.bind !== '제본 없음') {
+    } else if (D.bind !== '제본 없음' && !exposedSewn) {
       /* The saddle cover bends continuously around the pages. The two small
          wires lie on that fold rather than appearing as plates on its edge. */
       if (saddle) {
@@ -3340,14 +3377,16 @@ async function createEngine(mount, bookCallbacks) {
     const h = D.h * s;
     const d = Math.max(0.035, D.spine * s);
     const hardcover = D.bind === '각양장' || D.bind === '환양장';
+    const exposedSewn = D.bind === '사철제본';
     const requestedCover = (D.coverThicknessMm || (hardcover ? 1 : 0.25)) * s;
     const cover = hardcover ? Math.min(requestedCover, d * 0.16) : Math.max(0.0018, requestedCover);
     const overhang = hardcover ? Math.min(w * 0.02, h * 0.012, 1.5 * s) : 0;
     const hinge = hardcover ? 3 * s : 0;
     const spineCurve = D.bind === '환양장' ? Math.min(w * 0.018, d * 0.12, 2 * s) : 0;
-    const coverW = w + overhang - spineCurve;
+    const sewnReveal = exposedSewn ? Math.min(8 * s, w * 0.08) : 0;
+    const coverW = w + overhang - spineCurve - sewnReveal;
     const coverH = h + overhang * 2;
-    const boardCenter = (w + overhang + spineCurve) / 2;
+    const boardCenter = (w + overhang + spineCurve + sewnReveal) / 2;
     const pageT = Math.max(0.0022, d / Math.max(18, D.pages / 2));
     const firstOpen = !bookMotion.active;
     bookMotion.active = true;
@@ -3380,22 +3419,24 @@ async function createEngine(mount, bookCallbacks) {
         D.bind === '환양장' ? spineCurve : saddle ? Math.max(0, d / 2 - cover) : 0,
         D.bind === '환양장' ? spineCurve : 0)
       : new THREE.BoxGeometry(w * 0.985, h * 0.985, d), blockEdge);
-    if (!hardcover && !saddle) rightBlock.position.x = w / 2;
+    if (!hardcover && !saddle && !exposedSewn) rightBlock.position.x = w / 2;
     g.add(rightBlock);
     const backCover = sheet(coverW, coverH, cover, pageBlock(), coverMat('coverBack', '뒷표지'));
     backCover.position.set(boardCenter, 0, -(hardcover ? d / 2 - cover / 2 : d / 2 + cover / 2));
     g.add(backCover);
 
     const curvedBinding = D.bind === '환양장' || D.bind === '중철제본_세로형';
-    const spine = D.bind === '환양장'
+    const spine = exposedSewn ? null : D.bind === '환양장'
       ? hardcoverSpine(spineCurve, d, spineCurve, cover, coverH,
         coverMat('spine', '책등'), pageBlock())
       : curvedBinding
         ? curvedBookSpine(0, d / 2 + cover / 2, coverH, coverMat('cover', '표지'))
       : new THREE.Mesh(new THREE.BoxGeometry(cover, coverH, hardcover ? d : d + cover * 2),
         [pageBlock(), coverMat('spine', '책등'), cutEdge(), cutEdge(), cutEdge(), cutEdge()]);
-    if (!curvedBinding) spine.position.x = hardcover ? cover / 2 : -cover / 2;
-    g.add(spine);
+    if (spine) {
+      if (!curvedBinding) spine.position.x = hardcover ? cover / 2 : -cover / 2;
+      g.add(spine);
+    }
 
     if (hardcover) {
       const backBridge = sheet(hinge + 0.3 * s, coverH, cover * 0.35,
@@ -3536,17 +3577,14 @@ async function createEngine(mount, bookCallbacks) {
 
     const dir = keepAngle
       ? camera.position.clone().sub(controls.target).normalize()
-      : current?.mode === 'poster' ? new THREE.Vector3(-0.65, 0.3, 1).normalize()
-        : viewDir(current ? current.mode : state.mode);
+      : firstViewDir();
     controls.target.copy(fitCenter);
     camera.position.copy(fitCenter).add(dir.multiplyScalar(fitDist));
     controls.update();
   }
 
   function syncModelView() {
-    const mode = current ? current.mode : state.mode;
-    const direction = mode === 'poster'
-      ? new THREE.Vector3(-0.65, 0.3, 1).normalize() : viewDir(mode);
+    const direction = firstViewDir();
     renderCamera.copy(camera);
     renderCamera.position.copy(controls.target).addScaledVector(
       direction, camera.position.distanceTo(controls.target));
