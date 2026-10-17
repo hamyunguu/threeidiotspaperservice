@@ -2603,11 +2603,12 @@ async function createEngine(mount, bookCallbacks) {
   /* the fore edge and the head and tail of a book, ruled into sheets. The
      stripes have to run across the stack, which is a different axis on the
      side faces than on the top, so each gets its own turn of the map. */
-  function stackedEdge(sheets, turn, color) {
+  function stackedEdge(sheets, turn, color, signature = false) {
     const t = cloneTex(edgeStripes);
     t.center.set(0.5, 0.5);
     t.rotation = turn ? Math.PI / 2 : 0;
-    t.repeat.set(turn ? 1 : Math.max(1, sheets / 26), turn ? Math.max(1, sheets / 26) : 1);
+    const repeat = signature ? Math.max(0.016, sheets / 128) : Math.max(1, sheets / 26);
+    t.repeat.set(turn ? 1 : repeat, turn ? repeat : 1);
     return new THREE.MeshStandardMaterial({ map: t, color: color || 0xffffff, roughness: 0.93 });
   }
 
@@ -2990,6 +2991,71 @@ async function createEngine(mount, bookCallbacks) {
     return geometry;
   }
 
+  /* A sewn text block is assembled from folded 16-page signatures. The
+     stitches are inside the wrapper, but the gatherings remain legible at
+     the trimmed head, tail and fore edge. */
+  function sewnBookBlock(left, right, h, depth, pages, edgeColor, scale) {
+    const group = new THREE.Group();
+    const count = Math.max(1, Math.min(96, Math.ceil((pages || 128) / 16)));
+    const totalPages = pages || count * 16;
+    const width = right - left;
+    const backing = new THREE.Mesh(
+      new THREE.BoxGeometry(width - 0.08 * scale, h - 0.08 * scale, depth - 0.04 * scale),
+      new THREE.MeshStandardMaterial({ color: 0xdad8d3, roughness: 1 })
+    );
+    backing.position.x = (left + right) / 2;
+    group.add(backing);
+    const sectionMaterials = [
+      stackedEdge(8, false, edgeColor, true), stackedEdge(8, false, edgeColor, true),
+      stackedEdge(8, true, edgeColor, true), stackedEdge(8, true, edgeColor, true),
+      pageBlock(), pageBlock(),
+    ];
+    let offset = -depth / 2;
+    for (let i = 0; i < count; i++) {
+      const sectionPages = Math.min(16, totalPages - i * 16);
+      const sectionDepth = depth * sectionPages / totalPages;
+      const seam = Math.min(0.08 * scale, sectionDepth * 0.04);
+      const materials = sectionPages < 16 ? [
+        stackedEdge(sectionPages / 2, false, edgeColor, true),
+        stackedEdge(sectionPages / 2, false, edgeColor, true),
+        stackedEdge(sectionPages / 2, true, edgeColor, true),
+        stackedEdge(sectionPages / 2, true, edgeColor, true),
+        sectionMaterials[4], sectionMaterials[5],
+      ] : sectionMaterials;
+      const section = new THREE.Mesh(
+        new THREE.BoxGeometry(width, h, sectionDepth - seam),
+        materials
+      );
+      section.position.set((left + right) / 2, 0, offset + sectionDepth / 2);
+      group.add(section);
+      offset += sectionDepth;
+    }
+    return group;
+  }
+
+  function sewnGutterThread(height, scale) {
+    const group = new THREE.Group();
+    const material = new THREE.MeshStandardMaterial({ color: 0x99968f, roughness: 1 });
+    for (const fraction of [-0.36, -0.12, 0.12, 0.36]) {
+      const y = fraction * height;
+      const points = [
+        new THREE.Vector3(-0.25 * scale, y - 2.2 * scale, 0),
+        new THREE.Vector3(0, y, 0.12 * scale),
+        new THREE.Vector3(0.25 * scale, y + 2.2 * scale, 0),
+      ];
+      group.add(new THREE.Mesh(new THREE.TubeGeometry(
+        new THREE.CatmullRomCurve3(points), 10, 0.13 * scale, 5, false), material));
+    }
+    return group;
+  }
+
+  function isSewnSignatureCenter(leaf, totalPages) {
+    const spreadStart = leaf * 2;
+    const signatureStart = Math.floor(spreadStart / 16) * 16;
+    const signaturePages = Math.min(16, totalPages - signatureStart);
+    return leaf > 0 && spreadStart === signatureStart + Math.ceil(signaturePages / 4) * 2;
+  }
+
   /* A book, closed, seen from the spine side. */
   function buildClosedBook(D) {
     const s = unit(D);
@@ -3027,7 +3093,10 @@ async function createEngine(mount, bookCallbacks) {
     ];
     const pageInset = saddle ? radius / 2 : w * 0.0075;
     const pageDepth = hardcover ? Math.max(0.002, d - cover * 2) : d;
-    const block = new THREE.Mesh(hardcover || saddle
+    const block = D.bind === '사철제본'
+      ? sewnBookBlock(-w / 2 + pageInset, w / 2 - pageInset,
+        h * 0.985, d, D.pages, D.edgeColor, s)
+      : new THREE.Mesh(hardcover || saddle
       ? boundBookBlockGeometry(saddle ? -w / 2 + radius : hardcover ? spineX + cover : -w / 2 + pageInset,
         saddle ? w / 2 : w / 2 - pageInset,
         h * 0.985, pageDepth,
@@ -3229,6 +3298,7 @@ async function createEngine(mount, bookCallbacks) {
       rig.rightPage.userData.bookSide = 'right';
       rig.flipPage.userData.bookSide = 'left';
     }
+    if (rig.sewing) rig.sewing.visible = isSewnSignatureCenter(bookMotion.leaf, bookMotion.total);
   }
 
   function poseBookLeaf(progress) {
@@ -3301,7 +3371,10 @@ async function createEngine(mount, bookCallbacks) {
     ];
 
     const saddle = D.bind === '중철제본_세로형';
-    const rightBlock = new THREE.Mesh(hardcover || saddle
+    const rightBlock = D.bind === '사철제본'
+      ? sewnBookBlock(w * 0.0075, w * 0.9925,
+        h * 0.985, d, D.pages, D.edgeColor, s)
+      : new THREE.Mesh(hardcover || saddle
       ? boundBookBlockGeometry(hardcover ? spineCurve + cover : w * 0.0075,
         w * 0.9925, h * 0.985, hardcover ? Math.max(0.002, d - cover * 2) : d,
         D.bind === '환양장' ? spineCurve : saddle ? Math.max(0, d / 2 - cover) : 0,
@@ -3365,6 +3438,11 @@ async function createEngine(mount, bookCallbacks) {
     flipPage.position.x = w / 2;
     flipPivot.add(flipPage);
     pageLayer.add(flipPivot);
+    const sewing = D.bind === '사철제본' ? sewnGutterThread(h, s) : null;
+    if (sewing) {
+      sewing.position.z = pageT * 2.5 + 0.2 * s;
+      pageLayer.add(sewing);
+    }
     g.add(pageLayer);
     addBookDetails(g, D, w, h, d, cover, s, true);
 
@@ -3376,7 +3454,7 @@ async function createEngine(mount, bookCallbacks) {
     g.add(fitProxy);
 
     bookMotion.rig = {
-      D, group: g, frontPivot, pageLayer, leftPage, rightPage, flipPivot, flipPage,
+      D, group: g, frontPivot, pageLayer, leftPage, rightPage, flipPivot, flipPage, sewing,
       flipBase: Float32Array.from(flipGeometry.attributes.position.array), w, h,
       closedCoverZ, openCoverZ,
     };
