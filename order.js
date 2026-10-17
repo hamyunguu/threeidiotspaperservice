@@ -2604,7 +2604,8 @@ async function createEngine(mount, bookCallbacks) {
       const bandW = Math.max(0.014, 1.5 * s);
       [-1, 1].forEach((side) => {
         const base = new THREE.Mesh(new THREE.BoxGeometry(bandW, bandW, d * 0.88), band);
-        base.position.set(-w / 2 + bandW * 1.6, side * (h / 2 - bandW * 0.2), 0);
+        base.position.set((opened ? 0 : -w / 2) + bandW * 1.6,
+          side * (h / 2 - bandW * 0.2), 0);
         group.add(base);
         for (let i = 0; i < 10; i++) {
           const stitch = new THREE.Mesh(new THREE.BoxGeometry(bandW * 1.04, bandW * 0.3, d * 0.035), thread);
@@ -2830,8 +2831,34 @@ async function createEngine(mount, bookCallbacks) {
     root.add(g);
   }
 
-  /* A book, closed, seen from the spine side: cover, page block, spine —
-     with rings, staples or a glued back depending on 제본 방식. */
+  /* A half-round fold/spine running from the back face to the front face.
+     Its ends meet the cover boards exactly; a separate cylinder leaves the
+     conspicuous air gap seen in the old saddle-stitch preview. */
+  function curvedBookSpine(x, radius, h, material, segments = 32) {
+    const positions = [];
+    const uvs = [];
+    const indices = [];
+    for (let i = 0; i <= segments; i++) {
+      const theta = -Math.PI / 2 + (Math.PI * i) / segments;
+      const px = x - radius * Math.cos(theta);
+      const pz = radius * Math.sin(theta);
+      positions.push(px, -h / 2, pz, px, h / 2, pz);
+      uvs.push(i / segments, 0, i / segments, 1);
+      if (i < segments) {
+        const a = i * 2;
+        indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+      }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    material.side = THREE.DoubleSide;
+    return new THREE.Mesh(geometry, material);
+  }
+
+  /* A book, closed, seen from the spine side. */
   function buildClosedBook(D) {
     const s = unit(D);
     const w = D.w * s;
@@ -2839,10 +2866,14 @@ async function createEngine(mount, bookCallbacks) {
     /* a 0-page book would be a plane; give the block a floor so it reads */
     const d = Math.max(0.02, D.spine * s);
     const hardcover = D.bind === '각양장' || D.bind === '환양장';
-    const cover = D.coverThicknessMm ? Math.max(0.006, D.coverThicknessMm * s)
-      : hardcover ? Math.max(0.012, 1.4 * s) : 0.006;
-    const coverW = w * (hardcover ? 1.035 : 1);
-    const coverH = h * (hardcover ? 1.025 : 1);
+    const saddle = D.bind === '중철제본_세로형';
+    const cover = Math.max(0.0018, (D.coverThicknessMm || (hardcover ? 1 : 0.25)) * s);
+    const overhang = hardcover ? 2 * s : 0;
+    const hinge = hardcover ? 3 * s : 0;
+    const coverW = w + overhang - hinge;
+    const coverH = h + overhang * 2;
+    const boardX = (overhang + hinge) / 2;
+    const radius = d / 2 + cover / 2;
 
     const g = new THREE.Group();
     const coverMat = (slot, label) => bookCoverMat(D, slot, label);
@@ -2857,119 +2888,113 @@ async function createEngine(mount, bookCallbacks) {
       stackedEdge(leaves, true, D.edgeColor),    // -y tail
       pageBlock(), pageBlock(),     // hidden under the covers
     ];
-    const block = new THREE.Mesh(new THREE.BoxGeometry(w * 0.985, h * 0.985, d), blockEdge);
+    const pageInset = saddle ? radius / 2 : w * 0.0075;
+    const block = new THREE.Mesh(
+      new THREE.BoxGeometry(w - pageInset * 2, h * 0.985, d), blockEdge);
+    block.position.x = saddle ? pageInset : 0;
     g.add(block);
 
-    /* Keep the cover plane true; the fixed key produces its gradient while
-       the hinge groove and separate spine provide the physical detail. */
-    const front = sheet(coverW, coverH, cover, coverMat('cover', '표지'), pageBlock());
-    front.position.z = d / 2 + cover / 2;
+    /* Flat printed faces meet either a wrapped spine or a continuous fold;
+       the fixed key supplies their tonal gradient. */
+    const flatCoverW = saddle ? w - radius : coverW;
+    const front = sheet(flatCoverW, coverH, cover, coverMat('cover', '표지'), pageBlock());
+    front.position.set(saddle ? radius / 2 : boardX, 0, radius);
     g.add(front);
 
-    const back = sheet(coverW, coverH, cover, pageBlock(), coverMat('coverBack', '뒷표지'));
-    back.position.z = -(d / 2 + cover / 2);
+    const back = sheet(flatCoverW, coverH, cover, pageBlock(), coverMat('coverBack', '뒷표지'));
+    back.position.set(saddle ? radius / 2 : boardX, 0, -radius);
     g.add(back);
 
     if (D.bind === '링(스프링)제본') {
       const ringMat = new THREE.MeshPhysicalMaterial({
-        color: D.ringColor, metalness: 0.9, roughness: 0.28, envMapIntensity: 1.2,
+        color: D.ringColor, metalness: 0.8, roughness: 0.3, envMapIntensity: 0.7,
       });
-      /* Twin loop wire, measured the way it is made: the wire runs through a
-         hole about 5㎜ in from the spine and closes around the outside of the
-         edge, so each loop lies FLAT — its plane horizontal, seen from the
-         front as a short bar crossing the edge — and the loops stack up the
-         height at a 8.5㎜ pitch. */
-      const holeIn = 5 * s;
-      const wire = Math.max(0.006, 0.55 * s);
-      const r = Math.max(holeIn, d / 2 + cover) + 1.2 * s;
-      const count = Math.max(6, Math.round(D.h / 8.5));
-      for (let i = 0; i < count; i++) {
-        const loop = new THREE.Mesh(new THREE.TorusGeometry(r, wire, 12, 40), ringMat);
-        loop.position.set(-w / 2 + holeIn, -h / 2 + ((i + 0.5) / count) * h, 0);
-        loop.rotation.x = Math.PI / 2;      // lay the loop down, axis vertical
-        g.add(loop);
+      /* One wire advances at each turn instead of a stack of disconnected
+         torus rings. Its inner arc passes through the punched margin. */
+      const turns = Math.max(6, Math.round(D.h / 8.5));
+      const coilRadius = d / 2 + cover + 0.8 * s;
+      const coilX = -w / 2 + 3.2 * s;
+      const points = [];
+      const segments = turns * 24;
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const a = t * turns * Math.PI * 2;
+        points.push(new THREE.Vector3(coilX - coilRadius * Math.cos(a),
+          -h * 0.485 + t * h * 0.97, coilRadius * Math.sin(a)));
       }
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(
+        new THREE.CatmullRomCurve3(points), segments, Math.max(0.001, 0.4 * s), 6, false), ringMat));
 
     } else if (D.bind !== '제본 없음') {
-      /* 무선·PUR·사철 wrap the cover around the back. A bound spine is not a
-         flat plate — it bellies out, so it is a half round. 중철 folds and
-         staples instead. */
-      if (D.bind === '중철제본_세로형') {
-        const fold = new THREE.Mesh(
-          new THREE.CylinderGeometry(d / 2 + cover, d / 2 + cover, h, 20, 1, true,
-            Math.PI / 2, Math.PI),
-          pageBlock());
-        fold.position.x = -w / 2;
-        g.add(fold);
-
+      /* The saddle cover bends continuously around the pages. The two small
+         wires lie on that fold rather than appearing as plates on its edge. */
+      if (saddle) {
+        g.add(curvedBookSpine(-w / 2 + radius, radius, coverH,
+          coverMat('cover', '표지')));
         const steel = new THREE.MeshPhysicalMaterial({
-          color: 0x9aa0a6, metalness: 0.95, roughness: 0.22, envMapIntensity: 1.2,
+          color: 0xa6a9a9, metalness: 0.7, roughness: 0.4,
         });
         [-h * 0.22, h * 0.22].forEach((y) => {
-          const st = new THREE.Mesh(
-            new THREE.BoxGeometry(cover * 1.8, h * 0.075, (d + cover) * 0.55), steel);
-          st.position.set(-(w / 2 + cover * 0.4), y, 0);
-          g.add(st);
+          const points = [];
+          for (let i = 0; i <= 12; i++) {
+            const theta = -1.2 + i * 0.2;
+            points.push(new THREE.Vector3(
+              -w / 2 + radius - (radius + 0.35 * s) * Math.cos(theta),
+              y, (radius + 0.35 * s) * Math.sin(theta)));
+          }
+          const wire = new THREE.Mesh(new THREE.TubeGeometry(
+            new THREE.CatmullRomCurve3(points), 24, Math.max(0.001, 0.22 * s), 5, false), steel);
+          g.add(wire);
         });
 
       } else {
-        /* Perfect binding has a flat printed back, not a half cylinder. The
-           narrow hinge grooves beside it are what make a thin cover read as
-           something that can flex when the book opens. */
+        /* Perfect/PUR/sewn books all conceal the glue or thread under a flat
+           printed spine. Hardcovers bridge the board to that spine at the
+           narrow cloth hinge; the paper block stays behind the boards. */
         const edge = cutEdge();
         const spine = D.bind === '환양장'
-          ? new THREE.Mesh(
-            new THREE.CylinderGeometry(d / 2 + cover, d / 2 + cover, coverH, 40, 1, true,
-              Math.PI / 2, Math.PI), coverMat('spine', '책등'))
+          ? curvedBookSpine(-w / 2, radius, coverH, coverMat('spine', '책등'), 40)
           : new THREE.Mesh(
             new THREE.BoxGeometry(cover, coverH, d + cover * 2, 1, 1, 1),
             [pageBlock(), coverMat('spine', '책등'), edge, edge, edge, edge]);
-        spine.position.x = -(w / 2 + (D.bind === '환양장' ? 0 : cover / 2));
+        if (D.bind !== '환양장') spine.position.x = -(w / 2 + cover / 2);
         g.add(spine);
 
-        const grooveWidth = Math.max(0.0025, 1 * s);
-        const grooveX = -w / 2 + 3 * s + grooveWidth / 2;
+        if (hardcover) {
+          [1, -1].forEach((side) => {
+            const bridge = sheet(hinge + 0.3 * s, coverH, cover * 0.35,
+              coverMat(side > 0 ? 'cover' : 'coverBack', side > 0 ? '표지' : '뒷표지'),
+              pageBlock());
+            bridge.position.set(-w / 2 + hinge / 2, 0, side * (radius - cover * 0.28));
+            g.add(bridge);
+          });
+        }
+
+        const grooveWidth = Math.max(0.001, 0.5 * s);
+        const grooveX = -w / 2 + (hardcover ? hinge : 2 * s);
         const grooveMat = new THREE.MeshStandardMaterial({
-          color: 0x777777, roughness: 1, transparent: true, opacity: 0.16,
+          color: 0x777777, roughness: 1, transparent: true, opacity: hardcover ? 0.16 : 0.08,
           depthWrite: false, side: THREE.DoubleSide,
         });
         const frontGroove = new THREE.Mesh(
           new THREE.PlaneGeometry(grooveWidth, h * 0.985), grooveMat);
-        frontGroove.position.set(grooveX, 0, d / 2 + cover + 0.0006);
+        frontGroove.position.set(grooveX, 0, radius + cover / 2 + 0.0006);
         g.add(frontGroove);
         const backGroove = frontGroove.clone();
-        backGroove.position.z = -(d / 2 + cover + 0.0006);
+        backGroove.position.z = -(radius + cover / 2 + 0.0006);
         backGroove.rotation.y = Math.PI;
         g.add(backGroove);
-
-        if (D.bind === '사철제본') {
-          /* 사철은 대장을 실로 꿰므로 책등에 땀이 줄지어 남는다 */
-          const thread = new THREE.MeshStandardMaterial({
-            color: 0xb2a68d, roughness: 0.8,
-          });
-          const stitches = Math.max(4, Math.round(D.h / 28));
-          for (let i = 0; i < stitches; i++) {
-            const st = new THREE.Mesh(
-              new THREE.TorusGeometry(d / 2 + cover * 1.4, Math.max(0.0022, 0.28 * s),
-                8, 24, Math.PI * 0.86),
-              thread);
-            st.position.set(-w / 2, -h / 2 + ((i + 0.5) / stitches) * h, 0);
-            st.rotation.y = Math.PI / 2;
-            st.rotation.z = Math.PI / 2;
-            g.add(st);
-          }
-        }
       }
     }
 
     /* 표지날개 — the cover folds back in at the fore edge */
-    if (D.wings && D.cover) {
+    if (D.wings && D.cover && !saddle) {
       [1, -1].forEach((side) => {
         const wing = sheet(w * 0.4, h, cover, coverMat('cover', '표지'), pageBlock());
         const pivot = new THREE.Group();
-        pivot.position.set(w / 2, 0, side * (d / 2 + cover / 2));
-        wing.position.x = -w * 0.2;
-        wing.rotation.y = side * 0.55;
+        pivot.position.set(w / 2, 0, side * (d / 2 - cover));
+        wing.position.x = w * 0.2;
+        pivot.rotation.y = side * (Math.PI - 0.08);
         pivot.add(wing);
         g.add(pivot);
       });
@@ -3102,10 +3127,12 @@ async function createEngine(mount, bookCallbacks) {
     const h = D.h * s;
     const d = Math.max(0.035, D.spine * s);
     const hardcover = D.bind === '각양장' || D.bind === '환양장';
-    const cover = D.coverThicknessMm ? Math.max(0.008, D.coverThicknessMm * s)
-      : hardcover ? Math.max(0.012, 1.4 * s) : 0.008;
-    const coverW = w * (hardcover ? 1.035 : 1);
-    const coverH = h * (hardcover ? 1.025 : 1);
+    const cover = Math.max(0.0018, (D.coverThicknessMm || (hardcover ? 1 : 0.25)) * s);
+    const overhang = hardcover ? 2 * s : 0;
+    const hinge = hardcover ? 3 * s : 0;
+    const coverW = w + overhang - hinge;
+    const coverH = h + overhang * 2;
+    const boardCenter = (w + overhang + hinge) / 2;
     const pageT = Math.max(0.0022, d / Math.max(18, D.pages / 2));
     const firstOpen = !bookMotion.active;
     bookMotion.active = true;
@@ -3134,29 +3161,44 @@ async function createEngine(mount, bookCallbacks) {
     g.add(rightBlock);
 
     const backCover = sheet(coverW, coverH, cover, pageBlock(), coverMat('coverBack', '뒷표지'));
-    backCover.position.set(w / 2, 0, -(d / 2 + cover / 2));
+    backCover.position.set(boardCenter, 0, -(d / 2 + cover / 2));
     g.add(backCover);
 
-    const spine = D.bind === '각양장'
-      ? new THREE.Mesh(new THREE.BoxGeometry(cover, coverH, d + cover * 2),
-        coverMat('spine', '책등'))
-      : new THREE.Mesh(new THREE.CylinderGeometry(d / 2 + cover, d / 2 + cover,
-        coverH, 28, 1, true), coverMat('spine', '책등'));
-    spine.position.z = -cover / 2;
+    const curvedBinding = D.bind === '환양장' || D.bind === '중철제본_세로형';
+    const spine = curvedBinding
+      ? curvedBookSpine(0, d / 2 + cover / 2, coverH,
+        coverMat(D.bind === '중철제본_세로형' ? 'cover' : 'spine',
+          D.bind === '중철제본_세로형' ? '표지' : '책등'))
+      : new THREE.Mesh(new THREE.BoxGeometry(cover, coverH, d + cover * 2),
+        [pageBlock(), coverMat('spine', '책등'), cutEdge(), cutEdge(), cutEdge(), cutEdge()]);
+    if (!curvedBinding) spine.position.x = -cover / 2;
     g.add(spine);
 
+    if (hardcover) {
+      const backBridge = sheet(hinge + 0.3 * s, coverH, cover * 0.35,
+        pageBlock(), coverMat('coverBack', '뒷표지'));
+      backBridge.position.set(hinge / 2, 0, -(d / 2 + cover * 0.22));
+      g.add(backBridge);
+    }
+
     const frontPivot = new THREE.Group();
-    const closedCoverZ = d / 2 + cover * 4;
-    const openCoverZ = d / 2 + cover * 0.25;
+    const closedCoverZ = d / 2 + cover / 2;
+    const openCoverZ = d / 2 + cover / 2;
     frontPivot.position.z = closedCoverZ;
     const frontCover = sheet(coverW, coverH, cover,
-      coverMat('cover', '앞표지'), pageBlock(), w * 0.012);
-    frontCover.position.x = w / 2;
+      coverMat('cover', '앞표지'), pageBlock());
+    frontCover.position.x = boardCenter;
     frontPivot.add(frontCover);
+    if (hardcover) {
+      const frontBridge = sheet(hinge + 0.3 * s, coverH, cover * 0.35,
+        coverMat('cover', '앞표지'), pageBlock());
+      frontBridge.position.set(hinge / 2, 0, -cover * 0.28);
+      frontPivot.add(frontBridge);
+    }
     g.add(frontPivot);
 
     const pageLayer = new THREE.Group();
-    pageLayer.position.z = d / 2 + cover * 2;
+    pageLayer.position.z = d / 2 + cover + pageT / 2;
     const leftPage = new THREE.Mesh(
       new THREE.BoxGeometry(w, h, pageT, 1, 4, 1), bookPageMaterials(D, 0, 0));
     leftPage.position.x = -w / 2;
