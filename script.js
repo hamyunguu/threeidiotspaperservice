@@ -6,7 +6,6 @@
    --------------------------------------------------------------- */
 
 const STAGE_W = 1920;
-const STAGE_H = 1080;      // base frame; taller states scroll (see fit())
 const BALL_R  = 52.393;    // sphere radius in design px
 const THROW_MAX = 2600;    // cap on release speed, design px/s
 const SETTLE = 0.3;        // per-second decay of speed back towards cruise
@@ -19,13 +18,12 @@ const stage = document.getElementById('stage');
    so the expand transition and the resize share one source of truth. */
 let resizeTimer;
 
-/* Contain-fit: the frame is sized to whichever axis runs out first, so a wide
-   or short window letterboxes instead of cropping. The design frame is 16:9,
-   so a 16:9 window fills exactly. Measured against the base 1080 height —
-   states that are deliberately taller (expanded cards, detail pages) keep this
-   scale and scroll, as they always have. */
+/* Fill the browser width at the Figma frame's 16:9 ratio. Desktop browser
+   chrome often makes the content viewport wider than 16:9; fitting to its
+   shorter height used to leave large empty margins at both sides on iMac.
+   The frame keeps its proportions and scrolls vertically when necessary. */
 function fit() {
-  const scale = Math.min(window.innerWidth / STAGE_W, window.innerHeight / STAGE_H);
+  const scale = window.innerWidth / STAGE_W;
   document.documentElement.style.setProperty('--scale', scale);
 }
 
@@ -496,7 +494,7 @@ document.querySelectorAll('.ball[data-letter]').forEach((el) => {
   el.style.setProperty('--gh', `${m.gh}px`);
   el.classList.toggle('is-dark', m.dark);
   const img = document.createElement('img');
-  img.src = `assets/${m.file}?v=133`;
+  img.src = `assets/${m.file}?v=134`;
   img.alt = '';
   el.appendChild(img);
 });
@@ -532,7 +530,7 @@ function openTip(b) {
   overlay.className = 'tip-overlay';
   overlay.innerHTML =
     `<div class="tip-circle${meta.dark ? ' is-dark' : ''}" style="--tip:${meta.color}; --gh:${meta.gh}px">
-       <img class="tip-letter" src="assets/${meta.file}?v=133" alt="">
+       <img class="tip-letter" src="assets/${meta.file}?v=134" alt="">
        <div class="tip-copy">
          <div class="tip-title"></div>
          <div class="tip-body"></div>
