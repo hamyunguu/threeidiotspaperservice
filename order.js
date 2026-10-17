@@ -279,6 +279,7 @@ const SERVICE_MODES = {
 };
 
 const SERVICE_FORMATS = [
+  { name: '명함', w: 90, h: 50 },
   { name: 'A1', w: 594, h: 841 }, { name: 'A2', w: 420, h: 594 },
   { name: 'A3', w: 297, h: 420 }, { name: 'A4', w: 210, h: 297 },
   { name: 'A5', w: 148, h: 210 }, { name: 'A6', w: 105, h: 148 },
@@ -303,7 +304,8 @@ function applyFormatDimensions(width, height) {
 }
 
 /* 제본 방식 — 사철은 실로 대장을 꿰는 방식이라 링·중철과 함께 늘 걸려 있어야 한다 */
-const BINDINGS = ['무선제본', '사철제본', '중철제본_세로형', 'PUR 제본', '링(스프링)제본', '제본 없음'];
+const BINDINGS = ['무선제본', '사철제본', '중철제본_세로형', 'PUR 제본',
+  '링(스프링)제본', '각양장', '환양장', '제본 없음'];
 
 /* 참고용 추정치의 부당 제본 단가 */
 const BIND_RATE = {
@@ -312,6 +314,8 @@ const BIND_RATE = {
   '중철제본_세로형': 400,
   'PUR 제본': 1100,
   '링(스프링)제본': 900,
+  '각양장': 2400,
+  '환양장': 2200,
 };
 
 /* step discs run through the CMYK marks the rest of the site uses */
@@ -686,9 +690,10 @@ function commonDone() {
     state.files[u.slot] && !state.files[u.slot].busy && !state.files[u.slot].error);
   const customSizeDone = state.pickedSize !== 'custom' ||
     ((parseInt(state.customSize.w, 10) || 0) > 0 && (parseInt(state.customSize.h, 10) || 0) > 0);
+  const needsPages = state.mode === 'book' || (state.mode === 'product' && state.opts.product_kind === '소책자');
   const order = Boolean(String(state.opts.customer_name || '').trim()) &&
     (parseInt(String(state.opts.goods_ea || '').replace(/[^\d]/g, ''), 10) || 0) > 0 &&
-    (state.mode !== 'book' || (parseInt(state.opts.in_page_val, 10) || 0) > 0) &&
+    (!needsPages || (parseInt(state.opts.in_page_val, 10) || 0) > 0) &&
     Boolean(state.opts.quick_no);
   const size = Boolean(state.pickedSize) && customSizeDone && Boolean(state.opts.goods_orientation);
   return { files, size, order };
@@ -715,9 +720,12 @@ function renderCommon(mode) {
   });
   out.push('</div></section>');
 
+  const cardFormat = mode === 'product' && o.product_kind === '명함';
   out.push(`<section class="ord-common-step" data-common-step="size">${commonHead(2, '작업 크기', done.size)}` +
-    '<p class="ord-common-help">드래그 혹은 클릭하여 크기를 지정하세요.</p><div class="ord-format-groups">' +
-    formatBoard('A', 'A판형', mode) + formatBoard('B', 'B판형', mode) +
+    `<p class="ord-common-help">${cardFormat ? '명함 기본 규격을 선택하거나 크기를 직접 입력하세요.' : '드래그 혹은 클릭하여 크기를 지정하세요.'}</p><div class="ord-format-groups">` +
+    (cardFormat ? '<div class="ord-format-set is-card"><p><span>명함 기본 규격</span><b data-format-dim>90×50</b></p>' +
+      '<button type="button" class="ord-format is-card" data-format="명함" data-w="90" data-h="50">' +
+      '<span>90 × 50 mm</span></button></div>' : formatBoard('A', 'A판형', mode) + formatBoard('B', 'B판형', mode)) +
     `<div class="ord-format-set is-custom"><p><span>사용자 지정</span><b class="ord-custom-dim" data-format-dim>` +
       `<input type="number" min="1" inputmode="numeric" data-common-key="custom_w" value="${esc(state.customSize.w)}" placeholder="000" aria-label="사용자 지정 가로">` +
       '<span aria-hidden="true">×</span>' +
@@ -751,8 +759,8 @@ function renderCommon(mode) {
   out.push(`<section class="ord-common-step" data-common-step="order">${commonHead(3, '주문 정보', done.order)}` +
     `<div class="ord-common-row"><label>주문 제목</label>${titleField}</div>` +
     `<div class="ord-common-row"><label>주문 수량</label><div class="ord-quantity-set">${qtyField}` +
-      `<span class="ord-unit-label">${mode === 'book' ? '부' : '매'}</span>` +
-      (mode === 'book' ? `${pageField}<span class="ord-unit-label">페이지</span>` : '') +
+      `<span class="ord-unit-label">${mode === 'book' || (mode === 'product' && o.product_kind === '소책자') ? '부' : '매'}</span>` +
+      (mode === 'book' || (mode === 'product' && o.product_kind === '소책자') ? `${pageField}<span class="ord-unit-label">페이지</span>` : '') +
     `</div></div>` +
     `<div class="ord-common-row"><label>주문 일정</label><div class="ord-common-seg">${rush}${normal}</div></div>` +
     `${next}</section>`);
@@ -766,47 +774,107 @@ function detailChoice(key, value, label) {
   return framedControl(button, 'ord-detail-choice-frame');
 }
 
+function detailSelect(label, key, options, placeholder) {
+  const value = state.opts[key] || '';
+  return `<div class="ord-spec-row"><label for="detail-${key}">${esc(label)}</label>` +
+    framedControl(`<select id="detail-${key}" class="ord-detail-select${value ? ' is-complete' : ''}" data-key="${key}">` +
+      `<option value="">${esc(placeholder || '선택하세요')}</option>` +
+      options.map((option) => `<option${option === value ? ' selected' : ''}>${esc(option)}</option>`).join('') +
+      '</select>', 'ord-detail-select-frame') + '</div>';
+}
+
+function detailPaper(label, part, mode, kind) {
+  const o = state.opts;
+  const papers = paperCatalogFor(mode, kind);
+  const group = o[part + '_paper_group'];
+  const weight = o[part + '_paper'];
+  const weights = paperWeightsFor(mode, group, kind);
+  return `<div class="ord-paper-selects"><p class="ord-spec-title">${esc(label)}</p>` +
+    detailSelect('종이 종류', part + '_paper_group', papers, '종이 선택') +
+    `<div class="ord-spec-row"><label for="detail-${part}-weight">평량</label>` +
+    framedControl(`<select id="detail-${part}-weight" class="ord-detail-select${weight ? ' is-complete' : ''}" ` +
+      `data-key="${part}_paper"${group ? '' : ' disabled'}>` +
+      `<option value="">${group ? '평량 선택' : '종이를 먼저 선택하세요'}</option>` +
+      weights.map((item) => `<option${item === weight ? ' selected' : ''}>${esc(item)}</option>`).join('') +
+      '</select>', 'ord-detail-select-frame') + '</div></div>';
+}
+
+function detailStep(no, key, title, done, body) {
+  return `<section class="ord-detail-step" data-detail-step="${key}">` +
+    commonHead(no, title, done) + body + '</section>';
+}
+
+function detailActions() {
+  const o = state.opts;
+  return '<section class="ord-detail-step is-submit"><label for="opt-goods_memo">추가 요청</label>' +
+    `<textarea id="opt-goods_memo" data-key="goods_memo" placeholder="요청 사항을 입력하세요.">${esc(o.goods_memo)}</textarea>` +
+    '<p class="ord-validation" id="ordValidation" role="alert" hidden></p>' +
+    '<div class="ord-submit-actions">' +
+      '<button type="button" class="ord-submit is-quote" data-order-action="quote">견적 문의</button>' +
+      '<button type="button" class="ord-submit is-cart" data-order-action="cart">카트에 넣기</button>' +
+      '<button type="button" class="ord-submit is-order" data-order-action="order">바로 주문하기</button>' +
+    '</div></section>';
+}
+
 function renderForm(mode) {
   const meta = SERVICE_MODES[mode];
   const o = state.opts;
-  const papers = paperCatalogFor(mode, o.product_kind);
-  const weights = paperWeightsFor(mode, o.in_paper_group, o.product_kind);
-  const finish = mode === 'book' ? BINDINGS : ['코팅 없음', '무광 코팅', '유광 코팅', '재단'];
   const colors = ['컬러 8도', '컬러 4도', '컬러 2도', '흑백 1도', '별색 지정', '상담 필요'];
+  const isBook = mode === 'book';
+  const kind = mode === 'product' ? o.product_kind : '';
+  const isBooklet = kind === '소책자';
+  const isLeaflet = kind === '리플렛';
+  let no = 0;
+  const steps = [];
+  const add = (key, title, done, body) => steps.push(detailStep(++no, key, title, done, body));
+  const choices = (key, values, cls) => `<div class="ord-detail-options ${cls || 'is-colors'}">` +
+    values.map((value) => detailChoice(key, value, value)).join('') + '</div>';
 
-  detailTitle.innerHTML = `<strong>${meta.ko}</strong><span>작업 상세 정보</span>`;
-  form.innerHTML =
-    `<section class="ord-detail-step" data-detail-step="sides">${commonHead(1, '양면 인쇄 여부', Boolean(o.in_mun_values))}` +
-      '<div class="ord-detail-options is-small">' +
-      detailChoice('in_mun_values', '양면출력', '양면') +
-      detailChoice('in_mun_values', '단면출력', '단면') + '</div></section>' +
-    `<section class="ord-detail-step" data-detail-step="colors">${commonHead(2, '색상 도수', Boolean(o.in_printer))}` +
-      '<div class="ord-detail-options is-colors">' +
-      colors.map((c) => detailChoice('in_printer', c, c)).join('') + '</div></section>' +
-    `<section class="ord-detail-step" data-detail-step="paper">${commonHead(3, '종이 선택', Boolean(o.in_paper_group && o.in_paper))}` +
-      '<div class="ord-paper-selects"><label>종이 종류</label>' +
-      framedControl(`<select class="ord-detail-select${o.in_paper_group ? ' is-complete' : ''}" data-key="in_paper_group">` +
-        '<option value="">종이 선택</option>' + papers.map((p) => `<option${o.in_paper_group === p ? ' selected' : ''}>${esc(p)}</option>`).join('') +
-        '</select>', 'ord-detail-select-frame') +
-      '<label>평량</label>' +
-      framedControl(`<select class="ord-detail-select${o.in_paper ? ' is-complete' : ''}" data-key="in_paper"${o.in_paper_group ? '' : ' disabled'}>` +
-        `<option value="">${o.in_paper_group ? '평량 선택' : '종이를 먼저 선택하세요'}</option>` +
-        weights.map((weight) => `<option${o.in_paper === weight ? ' selected' : ''}>${esc(weight)}</option>`).join('') +
-        '</select>', 'ord-detail-select-frame') +
-      '<p>태산인디고의 현재 상품별 용지 옵션 기준</p></div></section>' +
-    `<section class="ord-detail-step" data-detail-step="finish">${commonHead(4, mode === 'book' ? '제본 및 후가공' : '후가공', Boolean(o.in_lastJob4 || (mode === 'book' && o.goods_jebon)))}` +
-      framedControl(`<select class="ord-detail-select${o.in_lastJob4 || (mode === 'book' && o.goods_jebon) ? ' is-complete' : ''}" ` +
-      `data-key="${mode === 'book' ? 'goods_jebon' : 'in_lastJob4'}"><option value="">후가공 선택</option>` +
-      finish.map((p) => `<option${(mode === 'book' ? o.goods_jebon : o.in_lastJob4) === p ? ' selected' : ''}>${esc(p)}</option>`).join('') +
-      '</select>', 'ord-detail-select-frame') + '</section>' +
-    '<section class="ord-detail-step is-submit"><label for="opt-goods_memo">추가 요청</label>' +
-      `<textarea id="opt-goods_memo" data-key="goods_memo" placeholder="요청 사항을 입력하세요.">${esc(o.goods_memo)}</textarea>` +
-      '<p class="ord-validation" id="ordValidation" role="alert" hidden></p>' +
-      '<div class="ord-submit-actions">' +
-        '<button type="button" class="ord-submit is-quote" data-order-action="quote">견적 문의</button>' +
-        '<button type="button" class="ord-submit is-cart" data-order-action="cart">카트에 넣기</button>' +
-        '<button type="button" class="ord-submit is-order" data-order-action="order">바로 주문하기</button>' +
-      '</div></section>';
+  detailTitle.innerHTML = `<strong>${meta.ko}</strong><span>${kind ? esc(kind) + ' · ' : ''}작업 상세 정보</span>`;
+  add('sides', isBook ? '내지 인쇄면' : '양면 인쇄 여부', Boolean(o.in_mun_values),
+    choices('in_mun_values', ['양면출력', '단면출력'], 'is-small'));
+  add('colors', isBook ? '내지 색상 도수' : '색상 도수', Boolean(o.in_printer),
+    choices('in_printer', colors));
+  add('paper', isBook ? '내지 종이' : '종이 선택', Boolean(o.in_paper_group && o.in_paper),
+    detailPaper(isBook ? '내지' : '인쇄 용지', 'in', mode, kind) +
+    '<p class="ord-spec-note">태산인디고 상품별 용지·평량 선택지를 바탕으로 정리한 초안입니다.</p>');
+
+  if (isBook) {
+    add('cover', '표지 사양', Boolean(o.cover_paper_group && o.cover_paper && o.cover_printer),
+      detailSelect('표지 인쇄 도수', 'cover_printer', colors, '표지 색상 선택') +
+      detailPaper('표지 용지', 'cover', mode, kind) +
+      detailSelect('표지 두께', 'book_cover_thickness',
+        ['기본 표지', '1 mm 합지', '1.5 mm 합지', '2 mm 합지'], '표지 두께 선택') +
+      detailSelect('표지 코팅', 'cover_lastJob4', ['코팅 없음', '단면무광코팅', '단면유광코팅'], '코팅 선택') +
+      detailSelect('표지 날개', 'cover_nalgae', ['날개없음', '날개있음'], '날개 선택'));
+    add('finish', '제본 방식', Boolean(o.goods_jebon),
+      detailSelect('제본', 'goods_jebon', BINDINGS, '제본 선택') +
+      '<p class="ord-spec-note">책등은 페이지 수와 내지 평량으로 추정해 미리보기에 반영합니다.</p>');
+    add('book-extra', '책 세부 사양', true,
+      detailSelect('책배·재단면 색', 'book_edge_color', ['기본 흰색', '검정', '색상 지정 상담'], '재단면 선택') +
+      detailSelect('헤드밴드', 'book_headband', ['없음', '흰색', '검정', '색상 지정 상담'], '헤드밴드 선택') +
+      detailSelect('가름끈', 'book_ribbon', ['없음', '흰색', '검정', '색상 지정 상담'], '가름끈 선택') +
+      '<p class="ord-spec-note">책배·헤드밴드·가름끈은 주문서에 기록되며 3D 미리보기에는 표시되지 않습니다. 제작 가능 여부와 금액은 견적에서 확인합니다.</p>');
+  } else if (mode === 'poster') {
+    add('finish', '후가공', Boolean(o.in_lastJob4),
+      detailSelect('후가공', 'in_lastJob4', ['코팅 없음', '무광 코팅', '유광 코팅', '재단'], '후가공 선택'));
+  } else if (isBooklet) {
+    add('finish', '제본 및 후가공', Boolean(o.goods_jebon),
+      detailSelect('제본 방식', 'goods_jebon', ['중철제본_세로형', '무선제본', '사철제본', 'PUR 제본', '제본 없음'], '제본 선택') +
+      detailSelect('표지 코팅', 'in_lastJob4', ['코팅 없음', '단면무광코팅', '단면유광코팅'], '코팅 선택'));
+  } else if (isLeaflet) {
+    add('finish', '접지 및 후가공', Boolean(o.in_lastJob4),
+      detailSelect('코팅', 'in_lastJob4', ['코팅 없음', '단면무광코팅', '단면유광코팅', '양면무광코팅', '양면유광코팅'], '코팅 선택') +
+      detailSelect('접지', 'in_lastJob27', ['접지 없음', ...LAST_FOLD.options], '접지 선택') +
+      detailSelect('오시', 'in_lastJob47', ['오시 없음', ...LAST_OSI.options], '오시 선택') +
+      detailSelect('재단', 'in_lastJob7', ['재단', '재단 없음'], '재단 선택'));
+  } else {
+    add('finish', '명함 후가공', Boolean(o.in_lastJob4),
+      detailSelect('코팅', 'in_lastJob4', ['코팅 없음', '단면무광코팅', '단면유광코팅', '양면무광코팅', '양면유광코팅'], '코팅 선택') +
+      detailSelect('재단', 'in_lastJob7', ['재단', '재단 없음'], '재단 선택'));
+  }
+  form.innerHTML = steps.join('') + detailActions();
+  paintDetailCompletion();
 }
 
 function totalPages(o) {
@@ -887,8 +955,24 @@ function seedDefaults(mode) {
   if (mode === 'book') {
     o.goods_jebon = '';
     o.in_page_val = 0;
+    o.cover_printer = '';
+    o.cover_paper_group = '';
+    o.cover_paper = '';
+    o.cover_lastJob4 = '';
+    o.cover_nalgae = '';
+    o.book_edge_color = '';
+    o.book_cover_thickness = '';
+    o.book_headband = '';
+    o.book_ribbon = '';
   }
-  if (mode === 'product') o.product_kind = '명함';
+  if (mode === 'product') {
+    o.product_kind = '명함';
+    o.goods_jebon = '';
+    o.in_page_val = 0;
+    o.in_lastJob7 = '';
+    o.in_lastJob27 = '';
+    o.in_lastJob47 = '';
+  }
   return o;
 }
 
@@ -906,7 +990,9 @@ function activeParts() {
 /* how many sheets a part eats per copy */
 function partSheets(p) {
   const o = state.opts;
-  if (p === 'in') return state.mode === 'book' ? Math.max(1, (+o.in_page_val || 0) / 2) : 1;
+  if (p === 'in') return (state.mode === 'book' ||
+    (state.mode === 'product' && o.product_kind === '소책자'))
+    ? Math.max(1, (+o.in_page_val || 0) / 2) : 1;
   if (p === 'in2') return Math.max(1, (+o.in2_page_val || 0) / 2);
   if (p === 'mun') return o.mun_page_values === '앞뒤2장씩' ? 4 : 2;
   if (p === 'ganji') return Math.max(1, +o.ganji_page_values || 1);
@@ -953,7 +1039,8 @@ function estimate() {
   });
 
   let bind = 0;
-  if (state.mode === 'book' && o.goods_jebon !== '제본 없음') {
+  if ((state.mode === 'book' || (state.mode === 'product' && o.product_kind === '소책자')) &&
+      o.goods_jebon && o.goods_jebon !== '제본 없음') {
     bind = (BIND_RATE[o.goods_jebon] || 0) * qty;
     if (o.goods_opt_pp) bind += 300 * qty;                  // 투명PP
     if (o.cover_nalgae === '날개있음') bind += 250 * qty;
@@ -961,12 +1048,16 @@ function estimate() {
 
   let last = 0;
   activeParts().forEach((p) => {
-    if (o[p + '_lastJob4'] && o[p + '_lastJob4'] !== '코팅없음') {
+    if (o[p + '_lastJob4'] && !/코팅\s*없음/.test(o[p + '_lastJob4'])) {
       last += Math.round(area * qty * kinds * 18);
     }
     if (o[p + '_lastJob7'] === '재단') last += Math.round(qty * kinds * 6);
-    if (o[p + '_lastJob27'] || o[p + '_lastJob54']) last += Math.round(qty * kinds * 22);
-    if (o[p + '_lastJob47']) last += Math.round(qty * kinds * 10);
+    if ((o[p + '_lastJob27'] && o[p + '_lastJob27'] !== '접지 없음') || o[p + '_lastJob54']) {
+      last += Math.round(qty * kinds * 22);
+    }
+    if (o[p + '_lastJob47'] && o[p + '_lastJob47'] !== '오시 없음') {
+      last += Math.round(qty * kinds * 10);
+    }
   });
 
   const supply = paper + print + bind + last;
@@ -996,7 +1087,7 @@ function derive() {
     ? (o.product_kind === '소책자' ? 'book' : o.product_kind === '리플렛' ? 'leaflet' : 'print')
     : state.mode;
   const productBook = state.mode === 'product' && previewMode === 'book';
-  const productPages = productBook && flatPreview.doc ? flatPreview.total : 0;
+  const productPages = productBook ? (+o.in_page_val || (flatPreview.doc ? flatPreview.total : 0)) : 0;
   return {
     mode: previewMode,
     w: Math.max(1, +o.goods_size_w || 210),
@@ -1005,6 +1096,7 @@ function derive() {
     coverSides: o.cover_mun_values === '양면출력' ? '양면' : '단면',
     coating: coatOf(o.in_lastJob4),
     coverCoating: coatOf(o.cover_lastJob4),
+    coverThicknessMm: parseFloat(o.book_cover_thickness) || 0,
     paper: paperLabel,
     coverPaper: `${o.cover_paper_group || ''} ${o.cover_paper || ''}`,
     gsm,
@@ -1207,19 +1299,23 @@ function paintCommonCompletion() {
 }
 
 function paintDetailCompletion() {
-  const checks = [
-    Boolean(state.opts.in_mun_values),
-    Boolean(state.opts.in_printer),
-    Boolean(state.opts.in_paper_group && state.opts.in_paper),
-    Boolean(state.mode === 'book' ? state.opts.goods_jebon : state.opts.in_lastJob4),
-  ];
-  form.querySelectorAll('.ord-detail-step').forEach((step, index) => {
-    if (index >= checks.length) return;
+  const o = state.opts;
+  const checks = {
+    sides: Boolean(o.in_mun_values),
+    colors: Boolean(o.in_printer),
+    paper: Boolean(o.in_paper_group && o.in_paper),
+    cover: Boolean(o.cover_printer && o.cover_paper_group && o.cover_paper),
+    finish: Boolean(state.mode === 'book' || (state.mode === 'product' && o.product_kind === '소책자')
+      ? o.goods_jebon : o.in_lastJob4),
+    'book-extra': Boolean(o.book_edge_color || o.book_headband || o.book_ribbon),
+  };
+  form.querySelectorAll('.ord-detail-step[data-detail-step]').forEach((step, index) => {
+    const done = checks[step.dataset.detailStep];
     const head = step.querySelector('.ord-common-head');
     if (!head) return;
-    head.classList.toggle('is-complete', checks[index]);
+    head.classList.toggle('is-complete', done);
     const no = head.querySelector('span');
-    if (no) no.textContent = checks[index] ? '✓' : String(index + 1);
+    if (no) no.textContent = done ? '✓' : String(index + 1);
   });
   form.querySelectorAll('.ord-detail-select').forEach((select) =>
     select.classList.toggle('is-complete', Boolean(select.value)));
@@ -1253,7 +1349,8 @@ function missingOrderRequirements() {
   if (!o.goods_orientation) add('판형 방향', 'common', '[data-common-step="size"]');
   if (!String(o.customer_name || '').trim()) add('주문 제목', 'common', '[data-common-step="order"]');
   if (quantity <= 0) add('주문 수량', 'common', '[data-common-step="order"]');
-  if (state.mode === 'book' && (parseInt(o.in_page_val, 10) || 0) <= 0) {
+  if ((state.mode === 'book' || (state.mode === 'product' && o.product_kind === '소책자')) &&
+      (parseInt(o.in_page_val, 10) || 0) <= 0) {
     add('페이지 수', 'common', '[data-common-step="order"]');
   }
   if (!o.quick_no) add('주문 일정', 'common', '[data-common-step="order"]');
@@ -1261,8 +1358,14 @@ function missingOrderRequirements() {
   if (!o.in_printer) add('색상 도수', 'detail', '[data-detail-step="colors"]');
   if (!o.in_paper_group) add('종이 종류', 'detail', '[data-detail-step="paper"]');
   if (!o.in_paper) add('평량', 'detail', '[data-detail-step="paper"]');
-  if (!(state.mode === 'book' ? o.goods_jebon : o.in_lastJob4)) {
-    add(state.mode === 'book' ? '제본 및 후가공' : '후가공', 'detail', '[data-detail-step="finish"]');
+  if (state.mode === 'book') {
+    if (!o.cover_printer) add('표지 인쇄 도수', 'detail', '[data-detail-step="cover"]');
+    if (!o.cover_paper_group) add('표지 종이 종류', 'detail', '[data-detail-step="cover"]');
+    if (!o.cover_paper) add('표지 평량', 'detail', '[data-detail-step="cover"]');
+  }
+  if (!(state.mode === 'book' || (state.mode === 'product' && o.product_kind === '소책자')
+    ? o.goods_jebon : o.in_lastJob4)) {
+    add(state.mode === 'book' ? '제본 방식' : '후가공', 'detail', '[data-detail-step="finish"]');
   }
   return missing;
 }
@@ -1333,10 +1436,15 @@ function orderSnapshot() {
     product,
     title: String(o.customer_name || '').trim(),
     size: `${o.goods_size_w} × ${o.goods_size_h}mm · ${o.goods_orientation}`,
-    quantity: `${o.goods_ea}${state.mode === 'book' ? '부' : '매'}` +
-      (state.mode === 'book' ? ` · ${o.in_page_val}페이지` : ''),
-    options: `${o.in_paper_group} ${o.in_paper} · ${o.in_mun_values.replace('출력', '')} · ${o.in_printer}`,
-    finish: state.mode === 'book' ? o.goods_jebon : o.in_lastJob4,
+    quantity: `${o.goods_ea}${state.mode === 'book' || o.product_kind === '소책자' ? '부' : '매'}` +
+      (state.mode === 'book' || o.product_kind === '소책자' ? ` · ${o.in_page_val}페이지` : ''),
+    options: `${o.in_paper_group} ${o.in_paper} · ${o.in_mun_values.replace('출력', '')} · ${o.in_printer}` +
+      (state.mode === 'book' ? ` · 표지 ${o.cover_paper_group} ${o.cover_paper} · ${o.cover_printer}` : ''),
+    finish: state.mode === 'book'
+      ? [o.goods_jebon, o.book_cover_thickness, o.cover_lastJob4, o.cover_nalgae,
+          o.book_edge_color, o.book_headband, o.book_ribbon].filter(Boolean).join(' · ')
+      : [o.goods_jebon, o.in_lastJob4, o.in_lastJob27, o.in_lastJob47, o.in_lastJob7]
+          .filter(Boolean).join(' · '),
     supply: price.supply,
     vat: price.vat,
     total: price.total,
@@ -1916,10 +2024,24 @@ productKinds.addEventListener('click', (e) => {
   state.opts.product_kind = btn.dataset.kind;
   state.opts.in_paper_group = '';
   state.opts.in_paper = '';
+  state.opts.in_lastJob4 = '';
+  state.opts.in_lastJob7 = '';
+  state.opts.in_lastJob27 = '';
+  state.opts.in_lastJob47 = '';
+  state.opts.goods_jebon = '';
+  state.pickedSize = '';
+  state.customSize = { w: '', h: '' };
+  state.opts.goods_orientation = '';
+  const defaultSize = btn.dataset.kind === '명함' ? { name: '명함', w: 90, h: 50 }
+    : btn.dataset.kind === '리플렛' ? { name: 'A4', w: 210, h: 297 }
+      : { name: 'A5', w: 148, h: 210 };
+  state.opts.goods_size = defaultSize.name;
+  state.opts.goods_size_w = state.opts.size_w_plus = defaultSize.w;
+  state.opts.goods_size_h = state.opts.size_h_plus = defaultSize.h;
   productKinds.querySelectorAll('[data-kind]').forEach((b) => b.classList.toggle('is-on', b === btn));
+  renderCommon(state.mode);
   renderForm(state.mode);
-  paintCaption();
-  if (engine) engine.update(derive());
+  onOptionChange();
 });
 
 function switchMode(mode) {
@@ -2526,7 +2648,7 @@ async function createEngine(mount, bookCallbacks) {
     const h = D.h * s;
     /* a 0-page book would be a plane; give the block a floor so it reads */
     const d = Math.max(0.02, D.spine * s);
-    const cover = 0.006;
+    const cover = D.coverThicknessMm ? Math.max(0.006, D.coverThicknessMm * s) : 0.006;
 
     const g = new THREE.Group();
     const coverMat = (slot, label) => bookCoverMat(D, slot, label);
@@ -2779,7 +2901,7 @@ async function createEngine(mount, bookCallbacks) {
     const w = D.w * s;
     const h = D.h * s;
     const d = Math.max(0.035, D.spine * s);
-    const cover = 0.008;
+    const cover = D.coverThicknessMm ? Math.max(0.008, D.coverThicknessMm * s) : 0.008;
     const pageT = Math.max(0.0022, d / Math.max(18, D.pages / 2));
     const firstOpen = !bookMotion.active;
     bookMotion.active = true;
